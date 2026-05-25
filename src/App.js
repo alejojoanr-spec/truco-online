@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
 import Auth from "./Auth";
 import Multijugador from "./Multijugador";
+import Terminos from "./Terminos";
+
 const PALO = { espada: "espada", basto: "basto", copa: "copa", oro: "oro" };
 const MAZO = [
   { num: 1, palo: PALO.espada },{ num: 2, palo: PALO.espada },{ num: 3, palo: PALO.espada },
@@ -95,7 +97,8 @@ function btnStyle(bg, border) {
   return { background:`${bg}88`,border:`1px solid ${border}`,borderRadius:8,padding:"7px 14px",color:border,fontSize:12,cursor:"pointer",fontFamily:"Georgia",letterSpacing:0.5 };
 }
 
-function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador }) {  const [manoJugador, setManoJugador] = useState([]);
+function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerminos }) {
+  const [manoJugador, setManoJugador] = useState([]);
   const [manoRival, setManoRival] = useState([]);
   const [jugadasJugador, setJugadasJugador] = useState([]);
   const [jugadasRival, setJugadasRival] = useState([]);
@@ -112,12 +115,12 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador }) {  cons
   const [ganadoresRondas, setGanadoresRondas] = useState([]);
   const [fasePartida, setFasePartida] = useState("jugando");
   const [ganadorPartida, setGanadorPartida] = useState(null);
- const [chatMsg, setChatMsg] = useState(null);
+  const [chatMsg, setChatMsg] = useState(null);
   const [cartaSeleccionada, setCartaSeleccionada] = useState(null);
   const [mostrarPerfil, setMostrarPerfil] = useState(false);
   const [mostrarRanking, setMostrarRanking] = useState(false);
-  const [modoMulti, setModoMulti] = useState(false);
   const [ranking, setRanking] = useState([]);
+
   const addLog = useCallback((msg) => { setLog((prev) => [...prev.slice(-8), msg]); }, []);
 
   useEffect(() => { iniciarPartida(); }, []);
@@ -138,7 +141,8 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador }) {  cons
     if (data) setRanking(data);
     setMostrarRanking(true);
   }
-   async function actualizarEstadisticas(gano) {
+
+  async function actualizarEstadisticas(gano) {
     if (!perfil) return;
     const nuevasJugadas = (perfil.partidas_jugadas || 0) + 1;
     const nuevasGanadas = (perfil.partidas_ganadas || 0) + (gano ? 1 : 0);
@@ -162,11 +166,11 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador }) {  cons
     setTimeout(() => jugarRival(nuevasJugadas, nuevaMesa), 900);
   }
 
-  function jugarRival(jugadasJ, mesaJ) {
-    const idxRival = iaJugarCarta(manoRival, jugadasRival);
+  function jugarRival(jugadasJ, mesaJ, jugadasR = jugadasRival) {
+    const idxRival = iaJugarCarta(manoRival, jugadasR);
     if (idxRival === -1) return;
     const carta = manoRival[idxRival];
-    const nuevasJugadasR = [...jugadasRival, idxRival];
+    const nuevasJugadasR = [...jugadasR, idxRival];
     const nuevaMesaR = [...mesaRival, carta];
     setJugadasRival(nuevasJugadasR); setMesaRival(nuevaMesaR);
     addLog(`Rival jugó: ${carta.num} de ${carta.palo}`);
@@ -270,7 +274,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador }) {  cons
   return (
     <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",fontFamily:"Georgia,serif",display:"flex",flexDirection:"column",alignItems:"center",padding:"16px 8px",overflow:"hidden" }}>
 
-      {/* Header */}
       <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",maxWidth:600,marginBottom:12 }}>
         <div style={{ textAlign:"center" }}>
           <div style={{ fontSize:10,color:"#4ade80",letterSpacing:3,textTransform:"uppercase" }}>Truco</div>
@@ -292,17 +295,16 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador }) {  cons
           <button onClick={onMultijugador} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #a78bfa",borderRadius:8,padding:"4px 10px",color:"#a78bfa",fontSize:10,cursor:"pointer" }}>👥 2 Jugadores</button>
           <button onClick={iniciarPartida} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:8,padding:"4px 10px",color:"#4ade80",fontSize:10,cursor:"pointer" }}>Nueva</button>
           <button onClick={onLogout} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #7f1d1d",borderRadius:8,padding:"4px 10px",color:"#f87171",fontSize:10,cursor:"pointer" }}>Salir</button>
+          <button onClick={onVerTerminos} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #374151",borderRadius:8,padding:"4px 10px",color:"#6b7280",fontSize:10,cursor:"pointer" }}>T&C</button>
         </div>
       </div>
 
-      {/* Rondas */}
       <div style={{ display:"flex",gap:6,marginBottom:10 }}>
         {[1,2,3].map(r=>(
           <div key={r} style={{ width:28,height:8,borderRadius:4,background:r<rondaActual?(ganadoresRondas[r-1]==="jugador"?"#4ade80":ganadoresRondas[r-1]==="rival"?"#f87171":"#888"):r===rondaActual?"#fbbf24":"rgba(255,255,255,0.1)",border:r===rondaActual?"1px solid #fbbf24":"1px solid transparent" }} />
         ))}
       </div>
 
-      {/* Rival */}
       <div style={{ marginBottom:16,textAlign:"center" }}>
         <div style={{ fontSize:10,color:"#f87171",letterSpacing:2,textTransform:"uppercase",marginBottom:8 }}>{turno==="rival"?"⟳ Rival piensa...":"Rival"}</div>
         <div style={{ display:"flex",gap:8,justifyContent:"center" }}>
@@ -310,7 +312,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador }) {  cons
         </div>
       </div>
 
-      {/* Mesa */}
       <div style={{ background:"rgba(0,0,0,0.25)",border:"1px solid rgba(45,106,79,0.4)",borderRadius:16,padding:"12px 24px",marginBottom:16,minHeight:80,display:"flex",alignItems:"center",justifyContent:"center",gap:24,width:"100%",maxWidth:400,minWidth:280 }}>
         <div style={{ textAlign:"center" }}>
           {mesaRival.length>0?(<><div style={{ fontSize:9,color:"#9ca",marginBottom:4 }}>RIVAL</div><Carta carta={mesaRival[mesaRival.length-1]} /></>):<div style={{ color:"rgba(255,255,255,0.1)",fontSize:12 }}>—</div>}
@@ -321,12 +322,10 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador }) {  cons
         </div>
       </div>
 
-      {/* Log */}
       <div style={{ background:"rgba(0,0,0,0.35)",border:"1px solid rgba(45,106,79,0.3)",borderRadius:10,padding:"8px 12px",width:"100%",maxWidth:500,marginBottom:12,maxHeight:80,overflowY:"auto" }}>
         {log.slice(-4).map((msg,i)=><div key={i} style={{ fontSize:11,color:i===log.slice(-4).length-1?"#e2f5e9":"rgba(180,220,190,0.5)",lineHeight:1.6 }}>{msg}</div>)}
       </div>
 
-      {/* Cartas jugador */}
       <div style={{ marginBottom:14,textAlign:"center" }}>
         <div style={{ fontSize:10,color:"#4ade80",letterSpacing:2,textTransform:"uppercase",marginBottom:8 }}>{puedeJugar?"👆 Tocá una carta para jugar":turno==="rival"?"Esperando rival...":"Tu mano"}</div>
         <div style={{ display:"flex",gap:10,justifyContent:"center" }}>
@@ -338,14 +337,12 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador }) {  cons
         {cartaSeleccionada!==null&&!jugadasJugador.includes(cartaSeleccionada)&&<div style={{ marginTop:6,fontSize:11,color:"#fbbf24" }}>Tocá de nuevo para confirmar</div>}
       </div>
 
-      {/* Botones */}
       <div style={{ display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",maxWidth:500,marginBottom:10 }}>
         {trucoDisponible&&<button onClick={cantarTruco} style={btnStyle("#b45309","#fbbf24")}>🗣 Truco</button>}
         {envidoDisponible&&<><button onClick={()=>cantarEnvido("envido")} style={btnStyle("#1d4ed8","#60a5fa")}>Envido</button><button onClick={()=>cantarEnvido("realenvido")} style={btnStyle("#5b21b6","#a78bfa")}>Real Envido</button><button onClick={()=>cantarEnvido("faltaenvido")} style={btnStyle("#065f46","#34d399")}>Falta Envido</button></>}
         <button onClick={irseAlMazo} style={btnStyle("#7f1d1d","#f87171")}>Ir al mazo</button>
       </div>
 
-      {/* Chat */}
       <div style={{ display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center" }}>
         {QUICK_CHAT.map((msg,i)=>(
           <button key={i} onClick={()=>{ setChatMsg(msg); addLog(`Vos: "${msg}"`); setTimeout(()=>setChatMsg(null),2000); }} style={{ background:"rgba(0,0,0,0.3)",border:"1px solid rgba(45,106,79,0.4)",borderRadius:20,padding:"4px 10px",color:"#9ca3af",fontSize:10,cursor:"pointer" }}>{msg}</button>
@@ -354,7 +351,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador }) {  cons
 
       {chatMsg&&<div style={{ position:"fixed",bottom:80,left:"50%",transform:"translateX(-50%)",background:"#1a472a",border:"1px solid #4ade80",borderRadius:20,padding:"8px 16px",color:"#4ade80",fontSize:13,zIndex:10 }}>💬 {chatMsg}</div>}
 
-      {/* Modal perfil */}
       {mostrarPerfil&&(
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20 }}>
           <div style={{ background:"#0a2414",border:"1px solid #2d6a4f",borderRadius:16,padding:"32px",textAlign:"center",minWidth:280 }}>
@@ -379,7 +375,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador }) {  cons
         </div>
       )}
 
-     {mostrarRanking&&(
+      {mostrarRanking&&(
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20 }}>
           <div style={{ background:"#0a2414",border:"1px solid #2d6a4f",borderRadius:16,padding:"32px",textAlign:"center",minWidth:320,maxWidth:420 }}>
             <div style={{ fontSize:32,marginBottom:8 }}>🏆</div>
@@ -402,7 +398,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador }) {  cons
         </div>
       )}
 
- {/* Fin partida */}
       {fasePartida==="fin"&&(
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20,flexDirection:"column",gap:16 }}>
           <div style={{ fontSize:64 }}>{ganadorPartida==="jugador"?"🏆":"💀"}</div>
@@ -420,6 +415,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [perfil, setPerfil] = useState(null);
   const [modoMulti, setModoMulti] = useState(false);
+  const [verTerminos, setVerTerminos] = useState(false);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -453,9 +449,11 @@ export default function App() {
 
   async function handleLogout() { await supabase.auth.signOut(); }
 
- if (cargando) return (
+  if (cargando) return (
     <div style={{ minHeight:"100vh",background:"#050f08",display:"flex",alignItems:"center",justifyContent:"center",color:"#4ade80",fontFamily:"Georgia",fontSize:18 }}>Cargando...</div>
   );
   if (!user) return <Auth />;
   if (modoMulti) return <Multijugador user={user} perfil={perfil} onVolver={()=>setModoMulti(false)} />;
-return <TrucoApp user={user} perfil={perfil} setPerfil={setPerfil} onLogout={handleLogout} onMultijugador={()=>setModoMulti(true)} />;}
+  if (verTerminos) return <Terminos onVolver={()=>setVerTerminos(false)} />;
+  return <TrucoApp user={user} perfil={perfil} setPerfil={setPerfil} onLogout={handleLogout} onMultijugador={()=>setModoMulti(true)} onVerTerminos={()=>setVerTerminos(true)} />;
+}
