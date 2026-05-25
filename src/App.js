@@ -113,10 +113,11 @@ function TrucoApp({ user, perfil, setPerfil, onLogout }) {
   const [ganadoresRondas, setGanadoresRondas] = useState([]);
   const [fasePartida, setFasePartida] = useState("jugando");
   const [ganadorPartida, setGanadorPartida] = useState(null);
-  const [chatMsg, setChatMsg] = useState(null);
+ const [chatMsg, setChatMsg] = useState(null);
   const [cartaSeleccionada, setCartaSeleccionada] = useState(null);
   const [mostrarPerfil, setMostrarPerfil] = useState(false);
-
+  const [mostrarRanking, setMostrarRanking] = useState(false);
+  const [ranking, setRanking] = useState([]);
   const addLog = useCallback((msg) => { setLog((prev) => [...prev.slice(-8), msg]); }, []);
 
   useEffect(() => { iniciarPartida(); }, []);
@@ -132,7 +133,12 @@ function TrucoApp({ user, perfil, setPerfil, onLogout }) {
     setLog(["🃏 Nueva partida. ¡A jugar!"]); setCartaSeleccionada(null);
   }
 
-  async function actualizarEstadisticas(gano) {
+  async function cargarRanking() {
+    const { data } = await supabase.from("perfiles").select("nombre, partidas_jugadas, partidas_ganadas").order("partidas_ganadas", { ascending: false }).limit(10);
+    if (data) setRanking(data);
+    setMostrarRanking(true);
+  }
+   async function actualizarEstadisticas(gano) {
     if (!perfil) return;
     const nuevasJugadas = (perfil.partidas_jugadas || 0) + 1;
     const nuevasGanadas = (perfil.partidas_ganadas || 0) + (gano ? 1 : 0);
@@ -156,16 +162,17 @@ function TrucoApp({ user, perfil, setPerfil, onLogout }) {
     setTimeout(() => jugarRival(nuevasJugadas, nuevaMesa), 900);
   }
 
-  function jugarRival(jugadasJ, mesaJ, jugadasR = jugadasRival) {
-    const idxRival = iaJugarCarta(manoRival, jugadasR);
+  function jugarRival(jugadasJ, mesaJ) {
+    const idxRival = iaJugarCarta(manoRival, jugadasRival);
     if (idxRival === -1) return;
     const carta = manoRival[idxRival];
-    const nuevasJugadasR = [...jugadasR, idxRival];
+    const nuevasJugadasR = [...jugadasRival, idxRival];
     const nuevaMesaR = [...mesaRival, carta];
     setJugadasRival(nuevasJugadasR); setMesaRival(nuevaMesaR);
     addLog(`Rival jugó: ${carta.num} de ${carta.palo}`);
     setTimeout(() => evaluarRonda(mesaJ, nuevaMesaR, jugadasJ, nuevasJugadasR), 600);
   }
+
   function evaluarRonda(mesaJ, mesaR, jugadasJ, jugadasR) {
     const cartaJ = mesaJ[mesaJ.length-1], cartaR = mesaR[mesaR.length-1];
     const vJ = valorTruco(cartaJ), vR = valorTruco(cartaR);
@@ -281,6 +288,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout }) {
         <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
           <div style={{ fontSize:10,color:"#4ade80",textAlign:"right" }}>👤 {perfil?.nombre || user.email?.split("@")[0]}</div>
           <button onClick={()=>setMostrarPerfil(true)} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:8,padding:"4px 10px",color:"#4ade80",fontSize:10,cursor:"pointer" }}>Mi perfil</button>
+          <button onClick={cargarRanking} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #fbbf24",borderRadius:8,padding:"4px 10px",color:"#fbbf24",fontSize:10,cursor:"pointer" }}>🏆 Ranking</button>
           <button onClick={iniciarPartida} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:8,padding:"4px 10px",color:"#4ade80",fontSize:10,cursor:"pointer" }}>Nueva</button>
           <button onClick={onLogout} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #7f1d1d",borderRadius:8,padding:"4px 10px",color:"#f87171",fontSize:10,cursor:"pointer" }}>Salir</button>
         </div>
@@ -370,7 +378,30 @@ function TrucoApp({ user, perfil, setPerfil, onLogout }) {
         </div>
       )}
 
-      {/* Fin partida */}
+     {mostrarRanking&&(
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20 }}>
+          <div style={{ background:"#0a2414",border:"1px solid #2d6a4f",borderRadius:16,padding:"32px",textAlign:"center",minWidth:320,maxWidth:420 }}>
+            <div style={{ fontSize:32,marginBottom:8 }}>🏆</div>
+            <div style={{ fontSize:22,color:"#fbbf24",fontWeight:900,marginBottom:16 }}>Ranking</div>
+            <div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:16 }}>
+              {ranking.length===0&&<div style={{ color:"#6b7280",fontSize:13 }}>Sin jugadores aún</div>}
+              {ranking.map((p,i)=>(
+                <div key={i} style={{ display:"flex",alignItems:"center",gap:12,background:"rgba(0,0,0,0.3)",borderRadius:10,padding:"10px 16px" }}>
+                  <div style={{ fontSize:20,width:32 }}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}.`}</div>
+                  <div style={{ flex:1,textAlign:"left" }}>
+                    <div style={{ color:"#e2f5e9",fontSize:13,fontWeight:700 }}>{p.nombre}</div>
+                    <div style={{ color:"#6b9",fontSize:10 }}>{p.partidas_jugadas} jugadas</div>
+                  </div>
+                  <div style={{ color:"#fbbf24",fontSize:16,fontWeight:900 }}>{p.partidas_ganadas} 🏆</div>
+                </div>
+              ))}
+            </div>
+            <button onClick={()=>setMostrarRanking(false)} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:8,padding:"8px 24px",color:"#4ade80",fontSize:14,cursor:"pointer",fontFamily:"Georgia" }}>Cerrar</button>
+          </div>
+        </div>
+      )}
+
+ {/* Fin partida */}
       {fasePartida==="fin"&&(
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20,flexDirection:"column",gap:16 }}>
           <div style={{ fontSize:64 }}>{ganadorPartida==="jugador"?"🏆":"💀"}</div>
