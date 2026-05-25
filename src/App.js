@@ -156,17 +156,16 @@ function TrucoApp({ user, perfil, setPerfil, onLogout }) {
     setTimeout(() => jugarRival(nuevasJugadas, nuevaMesa), 900);
   }
 
-  function jugarRival(jugadasJ, mesaJ) {
-    const idxRival = iaJugarCarta(manoRival, jugadasRival);
+  function jugarRival(jugadasJ, mesaJ, jugadasR = jugadasRival) {
+    const idxRival = iaJugarCarta(manoRival, jugadasR);
     if (idxRival === -1) return;
     const carta = manoRival[idxRival];
-    const nuevasJugadasR = [...jugadasRival, idxRival];
+    const nuevasJugadasR = [...jugadasR, idxRival];
     const nuevaMesaR = [...mesaRival, carta];
     setJugadasRival(nuevasJugadasR); setMesaRival(nuevaMesaR);
     addLog(`Rival jugó: ${carta.num} de ${carta.palo}`);
     setTimeout(() => evaluarRonda(mesaJ, nuevaMesaR, jugadasJ, nuevasJugadasR), 600);
   }
-
   function evaluarRonda(mesaJ, mesaR, jugadasJ, jugadasR) {
     const cartaJ = mesaJ[mesaJ.length-1], cartaR = mesaR[mesaR.length-1];
     const vJ = valorTruco(cartaJ), vR = valorTruco(cartaR);
