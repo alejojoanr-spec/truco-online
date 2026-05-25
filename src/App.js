@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
 import Auth from "./Auth";
-
+import Multijugador from "./Multijugador";
 const PALO = { espada: "espada", basto: "basto", copa: "copa", oro: "oro" };
 const MAZO = [
   { num: 1, palo: PALO.espada },{ num: 2, palo: PALO.espada },{ num: 3, palo: PALO.espada },
@@ -95,8 +95,7 @@ function btnStyle(bg, border) {
   return { background:`${bg}88`,border:`1px solid ${border}`,borderRadius:8,padding:"7px 14px",color:border,fontSize:12,cursor:"pointer",fontFamily:"Georgia",letterSpacing:0.5 };
 }
 
-function TrucoApp({ user, perfil, setPerfil, onLogout }) {
-  const [manoJugador, setManoJugador] = useState([]);
+function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador }) {  const [manoJugador, setManoJugador] = useState([]);
   const [manoRival, setManoRival] = useState([]);
   const [jugadasJugador, setJugadasJugador] = useState([]);
   const [jugadasRival, setJugadasRival] = useState([]);
@@ -117,6 +116,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout }) {
   const [cartaSeleccionada, setCartaSeleccionada] = useState(null);
   const [mostrarPerfil, setMostrarPerfil] = useState(false);
   const [mostrarRanking, setMostrarRanking] = useState(false);
+  const [modoMulti, setModoMulti] = useState(false);
   const [ranking, setRanking] = useState([]);
   const addLog = useCallback((msg) => { setLog((prev) => [...prev.slice(-8), msg]); }, []);
 
@@ -289,6 +289,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout }) {
           <div style={{ fontSize:10,color:"#4ade80",textAlign:"right" }}>👤 {perfil?.nombre || user.email?.split("@")[0]}</div>
           <button onClick={()=>setMostrarPerfil(true)} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:8,padding:"4px 10px",color:"#4ade80",fontSize:10,cursor:"pointer" }}>Mi perfil</button>
           <button onClick={cargarRanking} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #fbbf24",borderRadius:8,padding:"4px 10px",color:"#fbbf24",fontSize:10,cursor:"pointer" }}>🏆 Ranking</button>
+          <button onClick={onMultijugador} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #a78bfa",borderRadius:8,padding:"4px 10px",color:"#a78bfa",fontSize:10,cursor:"pointer" }}>👥 2 Jugadores</button>
           <button onClick={iniciarPartida} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:8,padding:"4px 10px",color:"#4ade80",fontSize:10,cursor:"pointer" }}>Nueva</button>
           <button onClick={onLogout} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #7f1d1d",borderRadius:8,padding:"4px 10px",color:"#f87171",fontSize:10,cursor:"pointer" }}>Salir</button>
         </div>
@@ -418,6 +419,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout }) {
 export default function App() {
   const [user, setUser] = useState(null);
   const [perfil, setPerfil] = useState(null);
+  const [modoMulti, setModoMulti] = useState(false);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -451,9 +453,9 @@ export default function App() {
 
   async function handleLogout() { await supabase.auth.signOut(); }
 
-  if (cargando) return (
+ if (cargando) return (
     <div style={{ minHeight:"100vh",background:"#050f08",display:"flex",alignItems:"center",justifyContent:"center",color:"#4ade80",fontFamily:"Georgia",fontSize:18 }}>Cargando...</div>
   );
   if (!user) return <Auth />;
-  return <TrucoApp user={user} perfil={perfil} setPerfil={setPerfil} onLogout={handleLogout} />;
-}
+  if (modoMulti) return <Multijugador user={user} perfil={perfil} onVolver={()=>setModoMulti(false)} />;
+return <TrucoApp user={user} perfil={perfil} setPerfil={setPerfil} onLogout={handleLogout} onMultijugador={()=>setModoMulti(true)} />;}
