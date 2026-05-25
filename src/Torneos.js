@@ -66,7 +66,6 @@ export default function Torneos({ user, perfil, onVolver }) {
     setPantalla("detalle");
   }
 
-  const estaInscripto = (torneo) => jugadoresTorneo.find(j => j.jugador_id === user.id && j.torneo_id === torneo.id);
 
   if (pantalla === "crear") return (
     <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"Georgia,serif",padding:20 }}>

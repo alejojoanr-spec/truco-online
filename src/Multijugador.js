@@ -70,7 +70,7 @@ export default function Multijugador({ user, perfil, onVolver }) {
         (payload) => { setPartida(payload.new); procesarCambio(payload.new); }
       ).subscribe();
     return () => supabase.removeChannel(channel);
-  }, [codigo]);
+}, [codigo, procesarCambio]);
 
   function procesarCambio(p) {
     if (!p) return;
