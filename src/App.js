@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
+import { supabase } from "./supabase";
+import Auth from "./Auth";
 
 const PALO = { espada: "espada", basto: "basto", copa: "copa", oro: "oro" };
 
@@ -102,7 +104,7 @@ function btnStyle(bg, border) {
   return { background:`${bg}88`,border:`1px solid ${border}`,borderRadius:8,padding:"7px 14px",color:border,fontSize:12,cursor:"pointer",fontFamily:"Georgia",letterSpacing:0.5,transition:"all 0.15s" };
 }
 
-export default function TrucoApp() {
+function TrucoApp({ user, onLogout }) {
   const [manoJugador, setManoJugador] = useState([]);
   const [manoRival, setManoRival] = useState([]);
   const [jugadasJugador, setJugadasJugador] = useState([]);
@@ -269,7 +271,11 @@ export default function TrucoApp() {
           </div>
           <div style={{ fontSize:9,color:"#4a7",marginTop:2 }}>Meta: 15 pts</div>
         </div>
-        <button onClick={iniciarPartida} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:8,padding:"6px 12px",color:"#4ade80",fontSize:11,cursor:"pointer",letterSpacing:1 }}>Nueva<br/>Partida</button>
+        <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+          <div style={{ fontSize:10,color:"#4ade80",textAlign:"right" }}>👤 {user.email?.split("@")[0]}</div>
+          <button onClick={iniciarPartida} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:8,padding:"4px 10px",color:"#4ade80",fontSize:10,cursor:"pointer" }}>Nueva partida</button>
+          <button onClick={onLogout} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #7f1d1d",borderRadius:8,padding:"4px 10px",color:"#f87171",fontSize:10,cursor:"pointer" }}>Salir</button>
+        </div>
       </div>
 
       <div style={{ display:"flex",gap:6,marginBottom:10,zIndex:1 }}>
@@ -334,4 +340,33 @@ export default function TrucoApp() {
       )}
     </div>
   );
+}
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setCargando(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+  }
+
+  if (cargando) return (
+    <div style={{ minHeight:"100vh",background:"#050f08",display:"flex",alignItems:"center",justifyContent:"center",color:"#4ade80",fontFamily:"Georgia",fontSize:18 }}>
+      Cargando...
+    </div>
+  );
+
+  if (!user) return <Auth />;
+  return <TrucoApp user={user} onLogout={handleLogout} />;
 }
