@@ -49,7 +49,7 @@ function CartaMulti({ carta, oculta, onClick, jugada, seleccionada }) {
 }
 
 export default function Multijugador({ user, perfil, onVolver }) {
-  const [pantalla, setPantalla] = useState("menu"); // menu | esperando | jugando
+  const [pantalla, setPantalla] = useState("menu");
   const [codigo, setCodigo] = useState("");
   const [codigoInput, setCodigoInput] = useState("");
   const [partida, setPartida] = useState(null);
@@ -62,26 +62,26 @@ export default function Multijugador({ user, perfil, onVolver }) {
 
   const addLog = (msg) => setLog(prev => [...prev.slice(-6), msg]);
 
-  // Suscripción realtime
   useEffect(() => {
     if (!codigo) return;
+
+    function procesarCambio(p) {
+      if (!p) return;
+      if (p.estado === "jugando") setPantalla("jugando");
+      if (p.mano_jugador1) {
+        const mano1 = JSON.parse(p.mano_jugador1);
+        const mano2 = JSON.parse(p.mano_jugador2);
+        if (soyJugador1) { setMiMano(mano1); setManoRival(mano2); }
+        else { setMiMano(mano2); setManoRival(mano1); }
+      }
+    }
+
     const channel = supabase.channel(`partida-${codigo}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "partidas", filter: `codigo=eq.${codigo}` },
         (payload) => { setPartida(payload.new); procesarCambio(payload.new); }
       ).subscribe();
     return () => supabase.removeChannel(channel);
-}, [codigo, procesarCambio]);
-
-  function procesarCambio(p) {
-    if (!p) return;
-    if (p.estado === "jugando") setPantalla("jugando");
-    if (p.mano_jugador1) {
-      const mano1 = JSON.parse(p.mano_jugador1);
-      const mano2 = JSON.parse(p.mano_jugador2);
-      if (soyJugador1) { setMiMano(mano1); setManoRival(mano2); }
-      else { setMiMano(mano2); setManoRival(mano1); }
-    }
-  }
+  }, [codigo, soyJugador1]);
 
   async function crearSala() {
     const cod = generarCodigo();
@@ -127,17 +127,14 @@ export default function Multijugador({ user, perfil, onVolver }) {
     const esMiTurno = partida.turno === user.id;
     if (!esMiTurno) { addLog("No es tu turno"); return; }
     if (cartaSeleccionada !== idx) { setCartaSeleccionada(idx); return; }
-
     const carta = miMano[idx];
     const mesaActual = JSON.parse(partida.mesa || "[]");
     const nuevaMesa = [...mesaActual, { carta, jugador: user.id }];
     const rivalId = soyJugador1 ? partida.jugador2_id : partida.jugador1_id;
-
     await supabase.from("partidas").update({
       mesa: JSON.stringify(nuevaMesa),
       turno: rivalId,
     }).eq("codigo", codigo);
-
     addLog(`Jugaste: ${carta.num} de ${carta.palo}`);
     setCartaSeleccionada(null);
   }
@@ -145,7 +142,6 @@ export default function Multijugador({ user, perfil, onVolver }) {
   const miTurno = partida?.turno === user.id;
   const mesaActual = partida?.mesa ? JSON.parse(partida.mesa) : [];
 
-  // ── Render ──
   if (pantalla === "menu") return (
     <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"Georgia,serif",gap:20,padding:20 }}>
       <div style={{ fontSize:10,color:"#4ade80",letterSpacing:3,textTransform:"uppercase" }}>Truco</div>
