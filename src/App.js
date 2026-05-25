@@ -75,14 +75,97 @@ const COLOR_PALO = { espada: "#60a5fa", basto: "#4ade80", copa: "#f472b6", oro: 
 
 function Carta({ carta, oculta, onClick, jugada, seleccionada }) {
   if (oculta) return (
-    <div style={{ width:70,height:110,borderRadius:10,background:"linear-gradient(135deg,#1a472a,#0d2e1a)",border:"2px solid #2d6a4f",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,userSelect:"none" }}>🂠</div>
+    <svg width="70" height="110" style={{ cursor:"default", userSelect:"none", opacity: jugada ? 0.5 : 1 }}>
+      <rect width="70" height="110" rx="8" fill="#0f3d20"/>
+      <rect x="3" y="3" width="64" height="104" rx="6" fill="none" stroke="#2d6a4f" stroke-width="2"/>
+      <rect x="6" y="6" width="58" height="98" rx="4" fill="#1a472a"/>
+      <text x="35" y="72" fontSize="48" textAnchor="middle" fill="#2d6a4f">🂠</text>
+    </svg>
   );
+
+  const palos = {
+    espada: {
+      color: "#1e3a8a", label: "ESPADA",
+      svg: <g transform="translate(35,58)">
+        <path d="M-4,-38 L4,-38 L6,10 L0,16 L-6,10 Z" fill="#3b82f6"/>
+        <path d="M-1,-38 L1,-38 L1,10 L0,12 L-1,10 Z" fill="#93c5fd"/>
+        <path d="M-16,-14 Q-4,-18 4,-10 Q12,-2 20,4" stroke="#dc2626" strokeWidth="2.5" fill="none"/>
+        <path d="M16,-14 Q4,-18 -4,-10 Q-12,-2 -20,4" stroke="#16a34a" strokeWidth="2.5" fill="none"/>
+        <path d="M-16,12 Q0,6 16,12 Q0,18 -16,12 Z" fill="#b45309"/>
+        <rect x="-4" y="14" width="8" height="16" rx="3" fill="#92400e"/>
+        <ellipse cx="0" cy="32" rx="7" ry="4" fill="#fbbf24"/>
+      </g>
+    },
+    basto: {
+      color: "#78350f", label: "BASTO",
+      svg: <g transform="translate(35,58)">
+        <path d="M-6,-44 Q-9,-22 -7,0 Q-5,22 -4,40" stroke="#78350f" strokeWidth="11" fill="none" strokeLinecap="round"/>
+        <path d="M6,-44 Q9,-22 7,0 Q5,22 4,40" stroke="#78350f" strokeWidth="11" fill="none" strokeLinecap="round"/>
+        <path d="M0,-44 Q0,-22 0,0 Q0,22 0,40" stroke="#b45309" strokeWidth="6" fill="none" strokeLinecap="round"/>
+        <ellipse cx="0" cy="-14" rx="13" ry="9" fill="#92400e"/>
+        <ellipse cx="0" cy="-14" rx="9" ry="6" fill="#b45309"/>
+        <ellipse cx="0" cy="16" rx="13" ry="9" fill="#92400e"/>
+        <ellipse cx="0" cy="16" rx="9" ry="6" fill="#b45309"/>
+        <path d="M-13,-28 Q-22,-36 -16,-44 Q-8,-36 -13,-28 Z" fill="#16a34a"/>
+        <path d="M13,-28 Q22,-36 16,-44 Q8,-36 13,-28 Z" fill="#16a34a"/>
+        <ellipse cx="0" cy="-44" rx="9" ry="6" fill="#92400e"/>
+      </g>
+    },
+    copa: {
+      color: "#dc2626", label: "COPA",
+      svg: <g transform="translate(35,56)">
+        <path d="M-24,-40 Q-28,-8 -16,10 Q-6,22 0,24 Q6,22 16,10 Q28,-8 24,-40 Z" fill="#dc2626"/>
+        <ellipse cx="0" cy="-40" rx="24" ry="6" fill="#b91c1c"/>
+        <ellipse cx="0" cy="-40" rx="18" ry="4" fill="#ef4444"/>
+        <path d="M-22,-30 Q-24,-8 -14,6" stroke="#fbbf24" strokeWidth="1.5" fill="none"/>
+        <path d="M22,-30 Q24,-8 14,6" stroke="#fbbf24" strokeWidth="1.5" fill="none"/>
+        <rect x="-22" y="-12" width="44" height="8" rx="2" fill="#b91c1c"/>
+        <rect x="-3" y="24" width="6" height="14" rx="3" fill="#6d28d9"/>
+        <ellipse cx="0" cy="34" rx="9" ry="5" fill="#7c3aed"/>
+        <path d="M-22,38 Q0,32 22,38 Q0,46 -22,38 Z" fill="#1d4ed8"/>
+      </g>
+    },
+    oro: {
+      color: "#b45309", label: "ORO",
+      svg: <g transform="translate(35,58)">
+        <circle cx="0" cy="0" r="30" fill="#b45309"/>
+        <circle cx="0" cy="0" r="27" fill="#d97706"/>
+        <circle cx="0" cy="0" r="23" fill="none" stroke="#92400e" strokeWidth="2"/>
+        <circle cx="0" cy="0" r="19" fill="#f59e0b"/>
+        <circle cx="0" cy="0" r="15" fill="none" stroke="#b45309" strokeWidth="1.5"/>
+        <circle cx="0" cy="0" r="11" fill="#fbbf24"/>
+        <circle cx="0" cy="0" r="6" fill="#d97706"/>
+        <circle cx="0" cy="-24" r="3" fill="#fef3c7"/>
+        <circle cx="0" cy="24" r="3" fill="#fef3c7"/>
+        <circle cx="-24" cy="0" r="3" fill="#fef3c7"/>
+        <circle cx="24" cy="0" r="3" fill="#fef3c7"/>
+        <circle cx="-17" cy="-17" r="2.5" fill="#fef3c7"/>
+        <circle cx="17" cy="-17" r="2.5" fill="#fef3c7"/>
+        <circle cx="-17" cy="17" r="2.5" fill="#fef3c7"/>
+        <circle cx="17" cy="17" r="2.5" fill="#fef3c7"/>
+      </g>
+    },
+  };
+
+  const p = palos[carta.palo] || palos.espada;
+
   return (
-    <div onClick={onClick} style={{ width:70,height:110,borderRadius:10,background:jugada?"linear-gradient(135deg,#1c1c1c,#111)":seleccionada?"linear-gradient(135deg,#fef3c7,#fde68a)":"linear-gradient(135deg,#fffef7,#fef9e7)",border:seleccionada?"2px solid #f59e0b":jugada?"2px solid #333":"2px solid #d4a017",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",padding:"6px 4px",boxShadow:seleccionada?"0 0 20px rgba(245,158,11,0.6)":"0 4px 15px rgba(0,0,0,0.4)",cursor:onClick&&!jugada?"pointer":"default",transition:"all 0.2s",transform:seleccionada?"translateY(-12px) scale(1.05)":jugada?"scale(0.95)":"none",opacity:jugada?0.5:1,userSelect:"none" }}>
-      <span style={{ fontSize:13,fontWeight:900,color:jugada?"#555":"#1a1a1a",fontFamily:"Georgia,serif" }}>{carta.num}</span>
-      <span style={{ fontSize:22,filter:jugada?"grayscale(1)":"none" }}>{SIMBOLO[carta.palo]}</span>
-      <span style={{ fontSize:8,fontWeight:700,color:jugada?"#555":COLOR_PALO[carta.palo],textTransform:"uppercase" }}>{carta.palo}</span>
-    </div>
+    <svg width="70" height="110" onClick={onClick} style={{
+      cursor: onClick && !jugada ? "pointer" : "default",
+      userSelect: "none",
+      transform: seleccionada ? "translateY(-12px) scale(1.05)" : jugada ? "scale(0.95)" : "none",
+      opacity: jugada ? 0.5 : 1,
+      transition: "all 0.2s",
+      filter: seleccionada ? "drop-shadow(0 0 8px rgba(245,158,11,0.8))" : "none",
+    }}>
+      <rect width="70" height="110" rx="8" fill="#fffef0"/>
+      <rect width="70" height="110" rx="8" fill="none" stroke={seleccionada ? "#f59e0b" : jugada ? "#555" : "#c8960c"} strokeWidth={seleccionada ? "2.5" : "1.5"}/>
+      <rect x="4" y="4" width="62" height="102" rx="6" fill="none" stroke="#c8960c" strokeWidth="0.6"/>
+      <text x="6" y="20" style={{ fontSize:14, fontWeight:900, fontFamily:"Georgia,serif", fill: jugada ? "#888" : "#1a1a1a" }}>{carta.num}</text>
+      <text x="64" y="98" style={{ fontSize:14, fontWeight:900, fontFamily:"Georgia,serif", fill: jugada ? "#888" : "#1a1a1a", textAnchor:"end" }}>{carta.num}</text>
+      {p.svg}
+      <text x="35" y="107" style={{ fontSize:7, fontWeight:800, fontFamily:"Georgia,serif", fill: jugada ? "#888" : p.color, textAnchor:"middle", letterSpacing:"1.5px" }}>{p.label}</text>
+    </svg>
   );
 }
 
