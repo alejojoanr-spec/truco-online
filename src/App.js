@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 import Auth from "./Auth";
 import Multijugador from "./Multijugador";
 import Terminos from "./Terminos";
-
+import Torneos from "./Torneos";
 const PALO = { espada: "espada", basto: "basto", copa: "copa", oro: "oro" };
 const MAZO = [
   { num: 1, palo: PALO.espada },{ num: 2, palo: PALO.espada },{ num: 3, palo: PALO.espada },
@@ -97,7 +97,7 @@ function btnStyle(bg, border) {
   return { background:`${bg}88`,border:`1px solid ${border}`,borderRadius:8,padding:"7px 14px",color:border,fontSize:12,cursor:"pointer",fontFamily:"Georgia",letterSpacing:0.5 };
 }
 
-function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerminos }) {
+function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerminos, onVerTorneos }) {
   const [manoJugador, setManoJugador] = useState([]);
   const [manoRival, setManoRival] = useState([]);
   const [jugadasJugador, setJugadasJugador] = useState([]);
@@ -295,8 +295,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
           <button onClick={onMultijugador} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #a78bfa",borderRadius:8,padding:"4px 10px",color:"#a78bfa",fontSize:10,cursor:"pointer" }}>👥 2 Jugadores</button>
           <button onClick={iniciarPartida} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:8,padding:"4px 10px",color:"#4ade80",fontSize:10,cursor:"pointer" }}>Nueva</button>
           <button onClick={onLogout} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #7f1d1d",borderRadius:8,padding:"4px 10px",color:"#f87171",fontSize:10,cursor:"pointer" }}>Salir</button>
-          <button onClick={onVerTerminos} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #374151",borderRadius:8,padding:"4px 10px",color:"#6b7280",fontSize:10,cursor:"pointer" }}>T&C</button>
-        </div>
+<button onClick={onVerTorneos} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #fbbf24",borderRadius:8,padding:"4px 10px",color:"#fbbf24",fontSize:10,cursor:"pointer" }}>🏆 Torneos</button>        </div>
       </div>
 
       <div style={{ display:"flex",gap:6,marginBottom:10 }}>
@@ -416,6 +415,7 @@ export default function App() {
   const [perfil, setPerfil] = useState(null);
   const [modoMulti, setModoMulti] = useState(false);
   const [verTerminos, setVerTerminos] = useState(false);
+  const [verTorneos, setVerTorneos] = useState(false);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -455,5 +455,5 @@ export default function App() {
   if (!user) return <Auth />;
   if (modoMulti) return <Multijugador user={user} perfil={perfil} onVolver={()=>setModoMulti(false)} />;
   if (verTerminos) return <Terminos onVolver={()=>setVerTerminos(false)} />;
-  return <TrucoApp user={user} perfil={perfil} setPerfil={setPerfil} onLogout={handleLogout} onMultijugador={()=>setModoMulti(true)} onVerTerminos={()=>setVerTerminos(true)} />;
-}
+  if (verTorneos) return <Torneos user={user} perfil={perfil} onVolver={()=>setVerTorneos(false)} />;
+return <TrucoApp user={user} perfil={perfil} setPerfil={setPerfil} onLogout={handleLogout} onMultijugador={()=>setModoMulti(true)} onVerTerminos={()=>setVerTerminos(true)} onVerTorneos={()=>setVerTorneos(true)} />;}
