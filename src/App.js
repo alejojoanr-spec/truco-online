@@ -70,8 +70,6 @@ function repartir() {
   return { jugador: mazo.slice(0, 3), rival: mazo.slice(3, 6) };
 }
 
-const SIMBOLO = { espada: "⚔", basto: "🪄", copa: "🏆", oro: "⭕" };
-const COLOR_PALO = { espada: "#60a5fa", basto: "#4ade80", copa: "#f472b6", oro: "#fbbf24" };
 
 function Carta({ carta, oculta, onClick, jugada, seleccionada }) {
   if (oculta) return (
