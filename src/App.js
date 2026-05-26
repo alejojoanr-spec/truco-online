@@ -5,6 +5,7 @@ import Multijugador from "./Multijugador";
 import Terminos from "./Terminos";
 import Torneos from "./Torneos";
 import Configuracion from "./Configuracion";
+import ElegirNombre from "./ElegirNombre";
 const PALO = { espada: "espada", basto: "basto", copa: "copa", oro: "oro" };
 const MAZO = [
   { num: 1, palo: PALO.espada },{ num: 2, palo: PALO.espada },{ num: 3, palo: PALO.espada },
@@ -551,6 +552,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 export default function App() {
   const [user, setUser] = useState(null);
   const [perfil, setPerfil] = useState(null);
+  const [necesitaNombre, setNecesitaNombre] = useState(false);
   const [modoMulti, setModoMulti] = useState(false);
   const [verTerminos, setVerTerminos] = useState(false);
   const [verTorneos, setVerTorneos] = useState(false);
@@ -571,17 +573,12 @@ export default function App() {
   }, []);
 
   async function cargarPerfil(u) {
-    let { data } = await supabase.from("perfiles").select("*").eq("usuario_id", u.id).single();
+    const { data } = await supabase.from("perfiles").select("*").eq("usuario_id", u.id).single();
     if (!data) {
-      const { data: nuevo } = await supabase.from("perfiles").insert({
-        usuario_id: u.id,
-        nombre: u.user_metadata?.full_name || u.email?.split("@")[0] || "Jugador",
-        partidas_jugadas: 0,
-        partidas_ganadas: 0,
-      }).select().single();
-      data = nuevo;
+      setNecesitaNombre(true);
+    } else {
+      setPerfil(data);
     }
-    setPerfil(data);
     setCargando(false);
   }
 
@@ -591,6 +588,7 @@ export default function App() {
     <div style={{ minHeight:"100vh",background:"#050f08",display:"flex",alignItems:"center",justifyContent:"center",color:"#4ade80",fontFamily:"Georgia",fontSize:18 }}>Cargando...</div>
   );
   if (!user) return <Auth />;
+  if (necesitaNombre) return <ElegirNombre user={user} onPerfilCreado={(p) => { setPerfil(p); setNecesitaNombre(false); }} />;
   if (modoMulti) return <Multijugador user={user} perfil={perfil} onVolver={()=>setModoMulti(false)} />;
   if (verTerminos) return <Terminos onVolver={()=>setVerTerminos(false)} />;
   if (verTorneos) return <Torneos user={user} perfil={perfil} onVolver={()=>setVerTorneos(false)} />;
