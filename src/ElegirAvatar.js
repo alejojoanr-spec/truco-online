@@ -1,28 +1,13 @@
 import { useState } from "react";
-import { supabase } from "./supabase";
 
 const AVATARES = ["👨","👩","👴","👵","🧔","👱","🧑","👮","🧑‍🍳","🥷","🧙","🤠","👸","🤴","🧛","🧜","🧝","🧞","🤖","👾"];
 
 export default function ElegirAvatar({ perfil, onAvatarGuardado }) {
   const [seleccionado, setSeleccionado] = useState(AVATARES[0]);
-  const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState("");
 
-  async function handleGuardar() {
-    setCargando(true);
-    setError("");
-    const { data, error: dbError } = await supabase
-      .from("perfiles")
-      .update({ avatar: seleccionado })
-      .eq("usuario_id", perfil.usuario_id)
-      .select()
-      .single();
-    if (dbError) {
-      setError("No se pudo guardar. Intentá de nuevo.");
-      setCargando(false);
-      return;
-    }
-    onAvatarGuardado(data);
+  function handleGuardar() {
+    localStorage.setItem(`truco_avatar_${perfil.usuario_id}`, seleccionado);
+    onAvatarGuardado({ ...perfil, avatar: seleccionado });
   }
 
   return (
@@ -83,27 +68,17 @@ export default function ElegirAvatar({ perfil, onAvatarGuardado }) {
           ))}
         </div>
 
-        {/* Error */}
-        {error && (
-          <div style={{ color: "#f87171", fontSize: 12, textAlign: "center", padding: "8px 12px", borderRadius: 8, background: "rgba(0,0,0,0.3)", width: "100%" }}>
-            ❌ {error}
-          </div>
-        )}
-
         {/* Botón */}
         <button
           onClick={handleGuardar}
-          disabled={cargando}
           style={{
-            width: "100%", padding: "14px", borderRadius: 10,
-            cursor: cargando ? "not-allowed" : "pointer",
+            width: "100%", padding: "14px", borderRadius: 10, cursor: "pointer",
             background: "linear-gradient(135deg,#1a472a,#2d6a4f)",
             border: "1px solid #4ade80", color: "#4ade80",
             fontFamily: "Georgia, serif", fontSize: 16, fontWeight: 700, letterSpacing: 1,
-            opacity: cargando ? 0.7 : 1,
           }}
         >
-          {cargando ? "⏳ Guardando..." : "✅ Guardar"}
+          ✅ Guardar
         </button>
 
       </div>

@@ -578,7 +578,8 @@ export default function App() {
     if (!data) {
       setNecesitaNombre(true);
     } else {
-      setPerfil(data);
+      const avatarLocal = localStorage.getItem(`truco_avatar_${u.id}`);
+      setPerfil(avatarLocal ? { ...data, avatar: avatarLocal } : data);
     }
     setCargando(false);
   }
