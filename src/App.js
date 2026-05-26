@@ -244,7 +244,14 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     setJugadasJugador(nuevasJugadas); setMesaJugador(nuevaMesa);
     addLog(`Vos jugaste: ${carta.num} de ${carta.palo}`);
     setCartaSeleccionada(null); setTurno("rival");
-    setTimeout(() => jugarRival(nuevasJugadas, nuevaMesa), 900);
+    if (mesaRival.length > 0) {
+      // El rival ya jugó primero esta ronda, evaluar directamente
+      const mesaRivalActual = mesaRival;
+      const jugadasRivalActual = jugadasRival;
+      setTimeout(() => evaluarRonda(nuevaMesa, mesaRivalActual, nuevasJugadas, jugadasRivalActual), 600);
+    } else {
+      setTimeout(() => jugarRival(nuevasJugadas, nuevaMesa), 900);
+    }
   }
 
   function jugarRival(jugadasJ, mesaJ, jugadasR = jugadasRival) {
@@ -272,7 +279,23 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         resolverMano(ganadorMano || "empate");
       } else {
         setRondaActual(rondaActual+1);
-        setTurno(ganador==="empate"?"jugador":ganador);
+        if (ganador === "rival") {
+          // El rival ganó la ronda: juega primero en la siguiente
+          setTurno("rival");
+          const idxRival = iaJugarCarta(manoRival, jugadasR);
+          if (idxRival !== -1) {
+            const cartaRival = manoRival[idxRival];
+            const nuevasJugadasR = [...jugadasR, idxRival];
+            setTimeout(() => {
+              setJugadasRival(nuevasJugadasR);
+              setMesaRival([cartaRival]);
+              addLog(`Rival jugó: ${cartaRival.num} de ${cartaRival.palo}`);
+              setTurno("jugador");
+            }, 900);
+          }
+        } else {
+          setTurno("jugador");
+        }
       }
     }, 1200);
   }
@@ -288,23 +311,30 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
   function resolverMano(ganador) {
     const ptsTruco = estadoTruco==="quiero"?2:1;
+    let juegoTerminado = false;
     if (ganador==="jugador") {
-      setPuntosJugador(p => {
-        const n = p+ptsTruco;
-        if (n>=15) { setFasePartida("fin"); setGanadorPartida("jugador"); actualizarEstadisticas(true); addLog("🏆 ¡GANASTE LA PARTIDA!"); }
-        return n;
-      });
+      const nuevos = puntosJugador + ptsTruco;
       addLog(`🏆 Ganaste la mano (+${ptsTruco} pts)`);
+      if (nuevos >= 15) {
+        juegoTerminado = true;
+        setFasePartida("fin"); setGanadorPartida("jugador");
+        actualizarEstadisticas(true);
+        addLog("🏆 ¡GANASTE LA PARTIDA!");
+      }
+      setPuntosJugador(nuevos);
     } else if (ganador==="rival") {
-      setPuntosRival(p => {
-        const n = p+ptsTruco;
-        if (n>=15) { setFasePartida("fin"); setGanadorPartida("rival"); actualizarEstadisticas(false); addLog("💀 El rival ganó la partida"); }
-        return n;
-      });
+      const nuevos = puntosRival + ptsTruco;
       addLog(`💀 El rival ganó la mano (+${ptsTruco} pts)`);
+      if (nuevos >= 15) {
+        juegoTerminado = true;
+        setFasePartida("fin"); setGanadorPartida("rival");
+        actualizarEstadisticas(false);
+        addLog("💀 El rival ganó la partida");
+      }
+      setPuntosRival(nuevos);
     } else addLog("🤝 Mano empatada");
     setTimeout(() => {
-      if (fasePartida!=="fin") {
+      if (!juegoTerminado && fasePartida!=="fin") {
         const { jugador, rival } = repartir();
         setManoJugador(jugador); setManoRival(rival);
         setJugadasJugador([]); setJugadasRival([]);
