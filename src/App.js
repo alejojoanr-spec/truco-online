@@ -6,6 +6,7 @@ import Terminos from "./Terminos";
 import Torneos from "./Torneos";
 import Configuracion from "./Configuracion";
 import ElegirNombre from "./ElegirNombre";
+import ElegirAvatar from "./ElegirAvatar";
 const PALO = { espada: "espada", basto: "basto", copa: "copa", oro: "oro" };
 const MAZO = [
   { num: 1, palo: PALO.espada },{ num: 2, palo: PALO.espada },{ num: 3, palo: PALO.espada },
@@ -589,6 +590,7 @@ export default function App() {
   );
   if (!user) return <Auth />;
   if (necesitaNombre) return <ElegirNombre user={user} onPerfilCreado={(p) => { setPerfil(p); setNecesitaNombre(false); }} />;
+  if (perfil && !perfil.avatar) return <ElegirAvatar perfil={perfil} onAvatarGuardado={(p) => setPerfil(p)} />;
   if (modoMulti) return <Multijugador user={user} perfil={perfil} onVolver={()=>setModoMulti(false)} />;
   if (verTerminos) return <Terminos onVolver={()=>setVerTerminos(false)} />;
   if (verTorneos) return <Torneos user={user} perfil={perfil} onVolver={()=>setVerTorneos(false)} />;
