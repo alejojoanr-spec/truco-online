@@ -4,6 +4,7 @@ import Auth from "./Auth";
 import Multijugador from "./Multijugador";
 import Terminos from "./Terminos";
 import Torneos from "./Torneos";
+import Configuracion from "./Configuracion";
 const PALO = { espada: "espada", basto: "basto", copa: "copa", oro: "oro" };
 const MAZO = [
   { num: 1, palo: PALO.espada },{ num: 2, palo: PALO.espada },{ num: 3, palo: PALO.espada },
@@ -200,6 +201,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [cartaSeleccionada, setCartaSeleccionada] = useState(null);
   const [mostrarPerfil, setMostrarPerfil] = useState(false);
   const [mostrarRanking, setMostrarRanking] = useState(false);
+  const [mostrarConfig, setMostrarConfig] = useState(false);
   const [ranking, setRanking] = useState([]);
 
   const addLog = useCallback((msg) => { setLog((prev) => [...prev.slice(-8), msg]); }, []);
@@ -406,7 +408,9 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
           <button onClick={onMultijugador} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #a78bfa",borderRadius:8,padding:"4px 10px",color:"#a78bfa",fontSize:10,cursor:"pointer" }}>👥 2 Jugadores</button>
           <button onClick={iniciarPartida} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:8,padding:"4px 10px",color:"#4ade80",fontSize:10,cursor:"pointer" }}>Nueva</button>
           <button onClick={onLogout} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #7f1d1d",borderRadius:8,padding:"4px 10px",color:"#f87171",fontSize:10,cursor:"pointer" }}>Salir</button>
-<button onClick={onVerTorneos} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #fbbf24",borderRadius:8,padding:"4px 10px",color:"#fbbf24",fontSize:10,cursor:"pointer" }}>🏆 Torneos</button>        </div>
+          <button onClick={onVerTorneos} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #fbbf24",borderRadius:8,padding:"4px 10px",color:"#fbbf24",fontSize:10,cursor:"pointer" }}>🏆 Torneos</button>
+          <button onClick={()=>setMostrarConfig(true)} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #6b7280",borderRadius:8,padding:"4px 10px",color:"#9ca3af",fontSize:10,cursor:"pointer" }}>⚙️ Config</button>
+        </div>
       </div>
 
       <div style={{ display:"flex",gap:6,marginBottom:10 }}>
@@ -507,6 +511,8 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
           </div>
         </div>
       )}
+
+      {mostrarConfig&&<Configuracion onCerrar={()=>setMostrarConfig(false)} />}
 
       {fasePartida==="fin"&&(
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20,flexDirection:"column",gap:16 }}>
