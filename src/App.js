@@ -202,6 +202,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [mostrarPerfil, setMostrarPerfil] = useState(false);
   const [mostrarRanking, setMostrarRanking] = useState(false);
   const [mostrarConfig, setMostrarConfig] = useState(false);
+  const [mostrarConfirmSalir, setMostrarConfirmSalir] = useState(false);
   const [ranking, setRanking] = useState([]);
 
   const addLog = useCallback((msg) => { setLog((prev) => [...prev.slice(-8), msg]); }, []);
@@ -407,7 +408,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
           <button onClick={cargarRanking} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #fbbf24",borderRadius:8,padding:"4px 10px",color:"#fbbf24",fontSize:10,cursor:"pointer" }}>🏆 Ranking</button>
           <button onClick={onMultijugador} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #a78bfa",borderRadius:8,padding:"4px 10px",color:"#a78bfa",fontSize:10,cursor:"pointer" }}>👥 2 Jugadores</button>
           <button onClick={iniciarPartida} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:8,padding:"4px 10px",color:"#4ade80",fontSize:10,cursor:"pointer" }}>Nueva</button>
-          <button onClick={onLogout} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #7f1d1d",borderRadius:8,padding:"4px 10px",color:"#f87171",fontSize:10,cursor:"pointer" }}>Salir</button>
+          <button onClick={()=>setMostrarConfirmSalir(true)} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #7f1d1d",borderRadius:8,padding:"4px 10px",color:"#f87171",fontSize:10,cursor:"pointer" }}>Salir</button>
           <button onClick={onVerTorneos} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #fbbf24",borderRadius:8,padding:"4px 10px",color:"#fbbf24",fontSize:10,cursor:"pointer" }}>🏆 Torneos</button>
           <button onClick={()=>setMostrarConfig(true)} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #6b7280",borderRadius:8,padding:"4px 10px",color:"#9ca3af",fontSize:10,cursor:"pointer" }}>⚙️ Config</button>
         </div>
@@ -513,6 +514,26 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       )}
 
       {mostrarConfig&&<Configuracion onCerrar={()=>setMostrarConfig(false)} />}
+
+      {mostrarConfirmSalir&&(
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:30 }}>
+          <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)",border:"1px solid #2d6a4f",borderRadius:20,padding:"32px 28px",textAlign:"center",maxWidth:320,width:"100%",fontFamily:"Georgia,serif" }}>
+            <div style={{ fontSize:40,marginBottom:12 }}>🚪</div>
+            <div style={{ fontSize:18,color:"#fbbf24",fontWeight:900,marginBottom:8 }}>Cerrar sesión</div>
+            <div style={{ fontSize:13,color:"#9ca3af",marginBottom:24,lineHeight:1.6 }}>¿Estás seguro que deseas cerrar sesión?</div>
+            <div style={{ display:"flex",gap:10 }}>
+              <button
+                onClick={()=>setMostrarConfirmSalir(false)}
+                style={{ flex:1,padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(255,255,255,0.05)",border:"1px solid #374151",color:"#9ca3af",fontFamily:"Georgia,serif",fontSize:14 }}
+              >Cancelar</button>
+              <button
+                onClick={onLogout}
+                style={{ flex:1,padding:"11px",borderRadius:10,cursor:"pointer",background:"linear-gradient(135deg,#7f1d1d,#991b1b)",border:"1px solid #f87171",color:"#f87171",fontFamily:"Georgia,serif",fontSize:14,fontWeight:700 }}
+              >Salir</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {fasePartida==="fin"&&(
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20,flexDirection:"column",gap:16 }}>
