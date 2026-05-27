@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "./supabase";
 import Auth from "./Auth";
 import Multijugador from "./Multijugador";
@@ -211,6 +211,9 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
   const AVATARES = ["👨","👩","👴","👵","🧔","👱","🧑","👮","🧑‍🍳","🥷","🧙","🤠","👸","🤴","🧛","🧜","🧝","🧞","🤖","👾"];
 
+  const [timerSegundos, setTimerSegundos] = useState(15);
+  const timerRef = useRef(null);
+
   function guardarAvatar(av) {
     localStorage.setItem(`truco_avatar_${user.id}`, av);
     setPerfil(p => ({ ...p, avatar: av }));
@@ -226,6 +229,25 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   }, []);
 
   useEffect(() => { iniciarPartida(); }, []);
+
+  useEffect(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (turno === "jugador" && fasePartida === "jugando") {
+      setTimerSegundos(15);
+      timerRef.current = setInterval(() => {
+        setTimerSegundos(s => s - 1);
+      }, 1000);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [turno, fasePartida]);
+
+  useEffect(() => {
+    if (timerSegundos <= 0 && turno === "jugador" && fasePartida === "jugando") {
+      if (timerRef.current) clearInterval(timerRef.current);
+      irseAlMazo();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timerSegundos, turno, fasePartida]);
 
   function iniciarPartida() {
     const { jugador, rival } = repartir();
@@ -507,11 +529,26 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
       <div style={{ marginBottom:14,textAlign:"center" }}>
         <div style={{ fontSize:10,color:"#4ade80",letterSpacing:2,textTransform:"uppercase",marginBottom:8 }}>{puedeJugar?"👆 Tocá una carta para jugar":turno==="rival"?"Esperando rival...":"Tu mano"}</div>
-        <div style={{ display:"flex",gap:10,justifyContent:"center" }}>
-          {manoJugador.map((c,i)=>(
-            <Carta key={i} carta={c} jugada={jugadasJugador.includes(i)} seleccionada={cartaSeleccionada===i}
-              onClick={()=>{ if(!puedeJugar||jugadasJugador.includes(i))return; if(cartaSeleccionada===i)jugarCarta(i); else setCartaSeleccionada(i); }} />
-          ))}
+        <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:14 }}>
+          {turno==="jugador"&&fasePartida==="jugando"&&(
+            <svg width="56" height="56" style={{flexShrink:0}}>
+              <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4"/>
+              <circle cx="28" cy="28" r="22" fill="none"
+                stroke={timerSegundos>10?"#4ade80":timerSegundos>5?"#fbbf24":"#f87171"} strokeWidth="4"
+                strokeDasharray={2*Math.PI*22} strokeDashoffset={2*Math.PI*22*(1-timerSegundos/15)}
+                strokeLinecap="round" style={{transform:"rotate(-90deg)",transformOrigin:"28px 28px"}}/>
+              <text x="28" y="28" textAnchor="middle" dominantBaseline="middle"
+                fill={timerSegundos>10?"#4ade80":timerSegundos>5?"#fbbf24":"#f87171"} fontSize="15" fontWeight="700">
+                {timerSegundos}
+              </text>
+            </svg>
+          )}
+          <div style={{ display:"flex",gap:10,justifyContent:"center" }}>
+            {manoJugador.map((c,i)=>(
+              <Carta key={i} carta={c} jugada={jugadasJugador.includes(i)} seleccionada={cartaSeleccionada===i}
+                onClick={()=>{ if(!puedeJugar||jugadasJugador.includes(i))return; if(cartaSeleccionada===i)jugarCarta(i); else setCartaSeleccionada(i); }} />
+            ))}
+          </div>
         </div>
         {cartaSeleccionada!==null&&!jugadasJugador.includes(cartaSeleccionada)&&<div style={{ marginTop:6,fontSize:11,color:"#fbbf24" }}>Tocá de nuevo para confirmar</div>}
       </div>
