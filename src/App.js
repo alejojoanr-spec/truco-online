@@ -233,7 +233,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [chatMsg, setChatMsg] = useState(null);
   const [cartaSeleccionada, setCartaSeleccionada] = useState(null);
   const [mostrarPerfil, setMostrarPerfil] = useState(false);
-  const [mostrarRanking, setMostrarRanking] = useState(false);
   const [mostrarConfig, setMostrarConfig] = useState(false);
   const [mostrarConfirmSalir, setMostrarConfirmSalir] = useState(false);
   const [cambiarAvatar, setCambiarAvatar] = useState(false);
@@ -248,8 +247,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     setPerfil(p => ({ ...p, avatar: av }));
     setCambiarAvatar(false);
   }
-  const [ranking, setRanking] = useState([]);
-
   const addLog = useCallback((msg) => { setLog((prev) => [...prev.slice(-8), msg]); }, []);
 
   useEffect(() => {
@@ -287,12 +284,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     setTrucoCantadoPor(null); setPtsTrucoApostados(0); setRondaActual(1); setGanadoresRondas([]);
     setFasePartida("jugando"); setGanadorPartida(null);
     setLog(["🃏 Nueva partida. ¡A jugar!"]); setCartaSeleccionada(null);
-  }
-
-  async function cargarRanking() {
-    const { data } = await supabase.from("perfiles").select("nombre, partidas_jugadas, partidas_ganadas").order("partidas_ganadas", { ascending: false }).limit(10);
-    if (data) setRanking(data);
-    setMostrarRanking(true);
   }
 
   async function actualizarEstadisticas(gano) {
@@ -657,29 +648,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         </div>
       )}
 
-      {mostrarRanking&&(
-        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20 }}>
-          <div style={{ background:"#0a2414",border:"1px solid #2d6a4f",borderRadius:16,padding:"32px",textAlign:"center",minWidth:320,maxWidth:420 }}>
-            <div style={{ fontSize:32,marginBottom:8 }}>🏆</div>
-            <div style={{ fontSize:22,color:"#fbbf24",fontWeight:900,marginBottom:16 }}>Ranking</div>
-            <div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:16 }}>
-              {ranking.length===0&&<div style={{ color:"#6b7280",fontSize:13 }}>Sin jugadores aún</div>}
-              {ranking.map((p,i)=>(
-                <div key={i} style={{ display:"flex",alignItems:"center",gap:12,background:"rgba(0,0,0,0.3)",borderRadius:10,padding:"10px 16px" }}>
-                  <div style={{ fontSize:20,width:32 }}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}.`}</div>
-                  <div style={{ fontSize:26,width:32,textAlign:"center" }}>{p.nombre===perfil?.nombre?(perfil?.avatar||"👤"):"👤"}</div>
-                  <div style={{ flex:1,textAlign:"left" }}>
-                    <div style={{ color: p.nombre===perfil?.nombre?"#4ade80":"#e2f5e9",fontSize:13,fontWeight:700 }}>{p.nombre}</div>
-                    <div style={{ color:"#6b9",fontSize:10 }}>{p.partidas_jugadas} jugadas</div>
-                  </div>
-                  <div style={{ color:"#fbbf24",fontSize:16,fontWeight:900 }}>{p.partidas_ganadas} 🏆</div>
-                </div>
-              ))}
-            </div>
-            <button onClick={()=>setMostrarRanking(false)} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:8,padding:"8px 24px",color:"#4ade80",fontSize:14,cursor:"pointer",fontFamily:"'Lato',sans-serif" }}>Cerrar</button>
-          </div>
-        </div>
-      )}
+
 
       {mostrarConfig&&<Configuracion onCerrar={()=>setMostrarConfig(false)} />}
 
