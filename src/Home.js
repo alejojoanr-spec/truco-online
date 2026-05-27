@@ -53,20 +53,23 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
     }
     setCargandoEdit(true);
     setErrorEdit("");
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("perfiles")
       .update({ nombre })
-      .eq("usuario_id", perfil.usuario_id)
-      .select()
-      .single();
+      .eq("usuario_id", perfil.usuario_id);
     if (error) {
-      setErrorEdit("No se pudo guardar. Intentá de nuevo.");
+      console.error("Error al actualizar perfil:", error);
+      const msg = error.code === "23505"
+        ? "Ese nombre de usuario ya está en uso."
+        : `No se pudo guardar (${error.message})`;
+      setErrorEdit(msg);
       setCargandoEdit(false);
       return;
     }
+    const perfilActualizado = { ...perfil, nombre, avatar: avatarEdit };
     localStorage.setItem(`truco_avatar_${perfil.usuario_id}`, avatarEdit);
-    localStorage.setItem(`truco_perfil_${perfil.usuario_id}`, JSON.stringify(data));
-    onPerfilActualizado({ ...data, avatar: avatarEdit });
+    localStorage.setItem(`truco_perfil_${perfil.usuario_id}`, JSON.stringify(perfilActualizado));
+    onPerfilActualizado(perfilActualizado);
     setCargandoEdit(false);
     setMostrarEditar(false);
   }
