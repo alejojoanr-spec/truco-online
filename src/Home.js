@@ -11,7 +11,7 @@ function MenuItem({ icono, label, onClick, peligro }) {
         border: "none", borderBottom: "1px solid rgba(255,255,255,0.05)",
         cursor: "pointer", textAlign: "left",
         color: peligro ? "#f87171" : "#e2f5e9",
-        fontFamily: "Georgia, serif", fontSize: 15,
+        fontFamily: "'Lato', sans-serif", fontSize: 15,
         transition: "background 0.15s",
       }}
       onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.04)"}
@@ -64,7 +64,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
       minHeight: "100vh", position: "relative", overflow: "hidden",
       background: "radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",
       display: "flex", flexDirection: "column", alignItems: "center",
-      justifyContent: "center", fontFamily: "Georgia, serif",
+      justifyContent: "center", fontFamily: "'Lato', sans-serif",
       padding: "24px 16px", gap: 20,
     }}>
 
@@ -103,18 +103,18 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
           {perfil.avatar || "👤"}
         </div>
         <div style={{ textAlign: "left", flex: 1 }}>
-          <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900, fontFamily: "Georgia, serif" }}>{perfil.nombre}</div>
+          <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>{perfil.nombre}</div>
           <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
             <div>
-              <div style={{ fontSize: 16, color: "#4ade80", fontWeight: 900, fontFamily: "Georgia, serif" }}>{perfil.partidas_jugadas || 0}</div>
+              <div style={{ fontSize: 16, color: "#4ade80", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>{perfil.partidas_jugadas || 0}</div>
               <div style={{ fontSize: 9, color: "#ffffff", textTransform: "uppercase", letterSpacing: 1 }}>Jugadas</div>
             </div>
             <div>
-              <div style={{ fontSize: 16, color: "#fbbf24", fontWeight: 900, fontFamily: "Georgia, serif" }}>{perfil.partidas_ganadas || 0}</div>
+              <div style={{ fontSize: 16, color: "#fbbf24", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>{perfil.partidas_ganadas || 0}</div>
               <div style={{ fontSize: 9, color: "#ffffff", textTransform: "uppercase", letterSpacing: 1 }}>Ganadas</div>
             </div>
             <div>
-              <div style={{ fontSize: 16, color: "#60a5fa", fontWeight: 900, fontFamily: "Georgia, serif" }}>{winRate}%</div>
+              <div style={{ fontSize: 16, color: "#60a5fa", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>{winRate}%</div>
               <div style={{ fontSize: 9, color: "#ffffff", textTransform: "uppercase", letterSpacing: 1 }}>Win rate</div>
             </div>
           </div>
@@ -134,7 +134,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
         >
           <div>
             <div style={{ fontSize: 20, marginBottom: 4 }}>🃏</div>
-            <div style={{ fontSize: 18, color: "#4ade80", fontWeight: 900, fontFamily: "Georgia, serif" }}>Jugar ahora</div>
+            <div style={{ fontSize: 18, color: "#4ade80", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>Jugar ahora</div>
             <div style={{ fontSize: 12, color: "#ffffff", marginTop: 2 }}>Contra la IA</div>
           </div>
           <div style={{ fontSize: 28, color: "#4ade80", opacity: 0.6 }}>→</div>
@@ -151,7 +151,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
         >
           <div>
             <div style={{ fontSize: 20, marginBottom: 4 }}>👥</div>
-            <div style={{ fontSize: 18, color: "#a78bfa", fontWeight: 900, fontFamily: "Georgia, serif" }}>Sala privada</div>
+            <div style={{ fontSize: 18, color: "#a78bfa", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>Sala privada</div>
             <div style={{ fontSize: 12, color: "#ffffff", marginTop: 2 }}>Conectá con tus amigos</div>
           </div>
           <div style={{ fontSize: 28, color: "#a78bfa", opacity: 0.6 }}>→</div>
@@ -233,7 +233,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
                 </div>
               ))}
             </div>
-            <button onClick={() => setMostrarRanking(false)} style={{ background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 8, padding: "10px 28px", color: "#4ade80", fontSize: 14, cursor: "pointer", fontFamily: "Georgia" }}>Cerrar</button>
+            <button onClick={() => setMostrarRanking(false)} style={{ background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 8, padding: "10px 28px", color: "#4ade80", fontSize: 14, cursor: "pointer", fontFamily: "'Lato', sans-serif" }}>Cerrar</button>
           </div>
         </div>
       )}
@@ -260,7 +260,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
                 <div style={{ color: "#9ca3af", fontSize: 12, lineHeight: 1.6, paddingLeft: 24 }}>{texto}</div>
               </div>
             ))}
-            <button onClick={() => setMostrarReglas(false)} style={{ width: "100%", background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 8, padding: "10px", color: "#4ade80", fontSize: 14, cursor: "pointer", fontFamily: "Georgia", marginTop: 8 }}>Cerrar</button>
+            <button onClick={() => setMostrarReglas(false)} style={{ width: "100%", background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 8, padding: "10px", color: "#4ade80", fontSize: 14, cursor: "pointer", fontFamily: "'Lato', sans-serif", marginTop: 8 }}>Cerrar</button>
           </div>
         </div>
       )}
@@ -273,8 +273,8 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
             <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900, marginBottom: 8 }}>Cerrar sesión</div>
             <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 24, lineHeight: 1.6 }}>¿Estás seguro que deseas cerrar sesión?</div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setMostrarConfirmSalir(false)} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "Georgia, serif", fontSize: 14 }}>Cancelar</button>
-              <button onClick={onLogout} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: "pointer", background: "linear-gradient(135deg,#7f1d1d,#991b1b)", border: "1px solid #f87171", color: "#f87171", fontFamily: "Georgia, serif", fontSize: 14, fontWeight: 700 }}>Salir</button>
+              <button onClick={() => setMostrarConfirmSalir(false)} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>Cancelar</button>
+              <button onClick={onLogout} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: "pointer", background: "linear-gradient(135deg,#7f1d1d,#991b1b)", border: "1px solid #f87171", color: "#f87171", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700 }}>Salir</button>
             </div>
           </div>
         </div>
