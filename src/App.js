@@ -661,16 +661,15 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:30 }}>
           <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)",border:"1px solid #2d6a4f",borderRadius:20,padding:"32px 28px",textAlign:"center",maxWidth:320,width:"100%",fontFamily:"'Lato',sans-serif" }}>
             <div style={{ fontSize:40,marginBottom:12 }}>🚪</div>
-            <div style={{ fontSize:18,color:"#fbbf24",fontWeight:900,marginBottom:8 }}>Abandonar partida</div>
-            <div style={{ fontSize:13,color:"rgba(255,255,255,0.7)",marginBottom:24,lineHeight:1.6 }}>¿Querés abandonar la partida?</div>
+            <div style={{ fontSize:18,color:"#fbbf24",fontWeight:900,marginBottom:24,lineHeight:1.4 }}>¿Querés abandonar la partida?</div>
             <div style={{ display:"flex",gap:10 }}>
               <button
                 onClick={()=>setMostrarConfirmSalir(false)}
-                style={{ flex:1,padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(255,255,255,0.05)",border:"1px solid #374151",color:"#9ca3af",fontFamily:"'Lato',sans-serif",fontSize:14 }}
+                style={{ flex:1,padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(255,255,255,0.05)",border:"1px solid #374151",color:"#ffffff",fontFamily:"'Lato',sans-serif",fontSize:14 }}
               >Cancelar</button>
               <button
                 onClick={onHome}
-                style={{ flex:1,padding:"11px",borderRadius:10,cursor:"pointer",background:"linear-gradient(135deg,#7f1d1d,#991b1b)",border:"1px solid #f87171",color:"#f87171",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}
+                style={{ flex:1,padding:"11px",borderRadius:10,cursor:"pointer",background:"linear-gradient(135deg,#7f1d1d,#991b1b)",border:"1px solid #f87171",color:"#ffffff",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}
               >Salir</button>
             </div>
           </div>
