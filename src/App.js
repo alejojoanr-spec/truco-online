@@ -193,17 +193,22 @@ function CajitaPalito({ marcada }) {
 }
 
 function PalitosPuntaje({ puntos, total=15 }) {
-  const cols = 5;
-  const rows = Math.ceil(total / cols);
+  const POR_GRUPO = 5;
+  const GRUPOS_POR_FILA = 3;
+  const POR_FILA = POR_GRUPO * GRUPOS_POR_FILA;
+  const filas = total / POR_FILA;
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
-      {Array.from({ length:rows }, (_,fila) => (
-        <div key={fila} style={{ display:"flex", gap:2 }}>
-          {Array.from({ length:cols }, (_,col) => {
-            const idx = fila*cols+col;
-            if (idx >= total) return null;
-            return <CajitaPalito key={col} marcada={idx < puntos} />;
-          })}
+    <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+      {Array.from({ length:filas }, (_,fila) => (
+        <div key={fila} style={{ display:"flex", gap:6 }}>
+          {Array.from({ length:GRUPOS_POR_FILA }, (_,grupo) => (
+            <div key={grupo} style={{ display:"flex", gap:2 }}>
+              {Array.from({ length:POR_GRUPO }, (_,palito) => {
+                const idx = fila*POR_FILA + grupo*POR_GRUPO + palito;
+                return <CajitaPalito key={palito} marcada={idx < puntos} />;
+              })}
+            </div>
+          ))}
         </div>
       ))}
     </div>
@@ -498,7 +503,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
             <span style={{ fontSize:13,flexShrink:0 }}>{perfil?.avatar || "👤"}</span>
             <span style={{ fontSize:12,color:"#4ade80",letterSpacing:0.5,fontFamily:"'Lato',sans-serif",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{nombreJugador}</span>
           </div>
-          <PalitosPuntaje puntos={puntosJugador} />
+          <PalitosPuntaje puntos={puntosJugador} total={30} />
         </div>
         <div style={{ width:1,alignSelf:"stretch",background:"#2d6a4f",margin:"0 2px" }}/>
         <div>
@@ -506,7 +511,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
             <span style={{ fontSize:13,flexShrink:0 }}>{rivalAvatar}</span>
             <span style={{ fontSize:12,color:"#f87171",letterSpacing:0.5,fontFamily:"'Lato',sans-serif",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{rivalNombre}</span>
           </div>
-          <PalitosPuntaje puntos={puntosRival} />
+          <PalitosPuntaje puntos={puntosRival} total={30} />
         </div>
       </div>
 
