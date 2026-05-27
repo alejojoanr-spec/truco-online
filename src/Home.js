@@ -47,7 +47,16 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
 
   function abrirSoporte() {
     setMenuAbierto(false);
-    if (window.Tawk_API) window.Tawk_API.maximize();
+    if (window.Tawk_API && window.Tawk_API.toggle) {
+      window.Tawk_API.toggle();
+    } else {
+      window.Tawk_API = window.Tawk_API || {};
+      const prev = window.Tawk_API.onLoad;
+      window.Tawk_API.onLoad = function () {
+        if (prev) prev();
+        window.Tawk_API.toggle();
+      };
+    }
   }
 
   return (
