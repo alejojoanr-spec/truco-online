@@ -500,21 +500,20 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   return (
     <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",fontFamily:"Georgia,serif",display:"flex",flexDirection:"column",alignItems:"center",padding:"16px 8px",overflow:"hidden" }}>
 
-      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",maxWidth:600,marginBottom:12 }}>
-        <div style={{ background:"rgba(0,0,0,0.5)",border:"1px solid #2d6a4f",borderRadius:12,padding:"8px 14px",display:"flex",gap:12,alignItems:"flex-start" }}>
-          <div>
-            <div style={{ fontSize:8,color:"#4ade80",letterSpacing:2,marginBottom:5,fontFamily:"'Lato',sans-serif" }}>VOS — {puntosJugador} pts</div>
-            <PalitosPuntaje puntos={puntosJugador} />
-          </div>
-          <div style={{ width:1,alignSelf:"stretch",background:"#2d6a4f",margin:"0 2px" }}/>
-          <div>
-            <div style={{ fontSize:8,color:"#f87171",letterSpacing:2,marginBottom:5,fontFamily:"'Lato',sans-serif" }}>RIVAL — {puntosRival} pts</div>
-            <PalitosPuntaje puntos={puntosRival} />
-          </div>
+      <div style={{ position:"fixed",top:14,left:14,zIndex:30,display:"flex",alignItems:"center",gap:6 }}>
+        <span style={{ fontSize:18 }}>{perfil?.avatar || "👤"}</span>
+        <span style={{ fontSize:11,color:"#4ade80",fontFamily:"'Lato',sans-serif" }}>{perfil?.nombre || user.email?.split("@")[0]}</span>
+      </div>
+
+      <div style={{ background:"rgba(0,0,0,0.5)",border:"1px solid #2d6a4f",borderRadius:12,padding:"8px 14px",display:"flex",gap:12,alignItems:"flex-start",marginBottom:12 }}>
+        <div>
+          <div style={{ fontSize:8,color:"#4ade80",letterSpacing:2,marginBottom:5,fontFamily:"'Lato',sans-serif" }}>VOS — {puntosJugador} pts</div>
+          <PalitosPuntaje puntos={puntosJugador} />
         </div>
-        <div style={{ display:"flex",alignItems:"center",gap:6 }}>
-          <span style={{ fontSize:18 }}>{perfil?.avatar || "👤"}</span>
-          <span style={{ fontSize:11,color:"#4ade80" }}>{perfil?.nombre || user.email?.split("@")[0]}</span>
+        <div style={{ width:1,alignSelf:"stretch",background:"#2d6a4f",margin:"0 2px" }}/>
+        <div>
+          <div style={{ fontSize:8,color:"#f87171",letterSpacing:2,marginBottom:5,fontFamily:"'Lato',sans-serif" }}>RIVAL — {puntosRival} pts</div>
+          <PalitosPuntaje puntos={puntosRival} />
         </div>
       </div>
 
