@@ -116,7 +116,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
       height: "100dvh", position: "relative", overflow: "hidden",
       background: "radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",
       display: "flex", flexDirection: "column", alignItems: "center",
-      justifyContent: "space-between", fontFamily: "'Lato', sans-serif",
+      fontFamily: "'Lato', sans-serif",
       padding: "24px 16px 32px", boxSizing: "border-box",
     }}>
 
@@ -132,11 +132,14 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
         }}
       >☰</button>
 
-      {/* Logo */}
-      <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 10, color: "#4ade80", letterSpacing: 4, textTransform: "uppercase" }}>Bienvenido a</div>
-        <div style={{ fontSize: 32, color: "#fbbf24", fontWeight: 900, lineHeight: 1.1 }}>Truco Argentino</div>
-      </div>
+      {/* Logo + Card agrupados */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, width: "100%" }}>
+
+        {/* Logo */}
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 4, textTransform: "uppercase" }}>Bienvenido a</div>
+          <div style={{ fontSize: 44, color: "#fbbf24", fontWeight: 900, lineHeight: 1.1 }}>Truco Argentino</div>
+        </div>
 
       {/* Card usuario */}
       <div style={{
@@ -190,8 +193,10 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
         </div>
       </div>
 
+      </div>{/* fin grupo logo+card */}
+
       {/* Opciones principales */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 340 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 340, marginTop: "auto" }}>
         <button onClick={onJugar} style={{
           background: "linear-gradient(135deg,#1a472a,#2d6a4f)",
           border: "1px solid #4ade80", borderRadius: 16, padding: "20px 24px",
