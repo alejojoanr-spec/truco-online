@@ -187,13 +187,17 @@ function btnStyle(bg, border) {
   return { background:`${bg}88`,border:`1px solid ${border}`,borderRadius:8,padding:"7px 14px",color:border,fontSize:12,cursor:"pointer",fontFamily:"'Lato',sans-serif",letterSpacing:0.5 };
 }
 
-function CajitaPalito({ marcada }) {
-  const color = marcada ? "#fbbf24" : "rgba(255,140,160,0.55)";
-  const fill  = marcada ? "rgba(251,191,36,0.1)" : "rgba(255,140,160,0.07)";
+function GrupoCinco({ activos }) {
+  const a = "#fbbf24";
+  const i = "rgba(255,140,160,0.35)";
+  const c = (n) => activos >= n ? a : i;
   return (
-    <svg width="11" height="11" style={{ flexShrink:0, display:"block" }}>
-      <rect x="0.5" y="0.5" width="10" height="10" rx="1.5" fill={fill} stroke={color} strokeWidth="1"/>
-      <line x1="2.5" y1="8.5" x2="8.5" y2="2.5" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    <svg width="28" height="20" style={{ flexShrink:0 }}>
+      <line x1="4"  y1="1" x2="4"  y2="19" stroke={c(1)} strokeWidth="2" strokeLinecap="round"/>
+      <line x1="11" y1="1" x2="11" y2="19" stroke={c(2)} strokeWidth="2" strokeLinecap="round"/>
+      <line x1="18" y1="1" x2="18" y2="19" stroke={c(3)} strokeWidth="2" strokeLinecap="round"/>
+      <line x1="25" y1="1" x2="25" y2="19" stroke={c(4)} strokeWidth="2" strokeLinecap="round"/>
+      <line x1="27" y1="1" x2="1"  y2="19" stroke={c(5)} strokeWidth="2" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -206,15 +210,11 @@ function PalitosPuntaje({ puntos, total=15 }) {
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
       {Array.from({ length:filas }, (_,fila) => (
-        <div key={fila} style={{ display:"flex", gap:6 }}>
-          {Array.from({ length:GRUPOS_POR_FILA }, (_,grupo) => (
-            <div key={grupo} style={{ display:"flex", gap:2 }}>
-              {Array.from({ length:POR_GRUPO }, (_,palito) => {
-                const idx = fila*POR_FILA + grupo*POR_GRUPO + palito;
-                return <CajitaPalito key={palito} marcada={idx < puntos} />;
-              })}
-            </div>
-          ))}
+        <div key={fila} style={{ display:"flex", gap:8 }}>
+          {Array.from({ length:GRUPOS_POR_FILA }, (_,grupo) => {
+            const base = fila*POR_FILA + grupo*POR_GRUPO;
+            return <GrupoCinco key={grupo} activos={Math.min(POR_GRUPO, Math.max(0, puntos-base))} />;
+          })}
         </div>
       ))}
     </div>
