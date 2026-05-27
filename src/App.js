@@ -177,7 +177,6 @@ function iaJugarCarta(mano, jugadas) {
   return minIdx;
 }
 
-const QUICK_CHAT = ["¡Buena mano!", "Vamos 💪", "¡Qué suerte!", "Jajaja 😄", "Buena partida 🤝"];
 function btnStyle(bg, border) {
   return { background:`${bg}88`,border:`1px solid ${border}`,borderRadius:8,padding:"7px 14px",color:border,fontSize:12,cursor:"pointer",fontFamily:"'Lato',sans-serif",letterSpacing:0.5 };
 }
@@ -230,7 +229,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [ganadoresRondas, setGanadoresRondas] = useState([]);
   const [fasePartida, setFasePartida] = useState("jugando");
   const [ganadorPartida, setGanadorPartida] = useState(null);
-  const [chatMsg, setChatMsg] = useState(null);
   const [cartaSeleccionada, setCartaSeleccionada] = useState(null);
   const [mostrarPerfil, setMostrarPerfil] = useState(false);
   const [mostrarConfig, setMostrarConfig] = useState(false);
@@ -583,13 +581,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         <button onClick={irseAlMazo} style={btnStyle("#7f1d1d","#f87171")}>Ir al mazo</button>
       </div>
 
-      <div style={{ display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center" }}>
-        {QUICK_CHAT.map((msg,i)=>(
-          <button key={i} onClick={()=>{ setChatMsg(msg); addLog(`Vos: "${msg}"`); setTimeout(()=>setChatMsg(null),2000); }} style={{ background:"rgba(0,0,0,0.3)",border:"1px solid rgba(45,106,79,0.4)",borderRadius:20,padding:"4px 10px",color:"#9ca3af",fontSize:10,cursor:"pointer" }}>{msg}</button>
-        ))}
-      </div>
-
-      {chatMsg&&<div style={{ position:"fixed",bottom:80,left:"50%",transform:"translateX(-50%)",background:"#1a472a",border:"1px solid #4ade80",borderRadius:20,padding:"8px 16px",color:"#4ade80",fontSize:13,zIndex:10 }}>💬 {chatMsg}</div>}
 
       {mostrarPerfil&&(
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20,padding:"16px" }}>
