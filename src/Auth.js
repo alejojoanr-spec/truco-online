@@ -113,13 +113,15 @@ export default function Auth() {
 
   return (
     <div style={{
-      minHeight: "100vh",
+      height: "100dvh",
       backgroundImage: `url(${fondoLogin})`,
       backgroundSize: "cover",
       backgroundPosition: "center",
       display: "flex", alignItems: "center", justifyContent: "center",
       fontFamily: LATO,
-      padding: "0 16px 40px",
+      padding: "16px",
+      boxSizing: "border-box",
+      overflow: "hidden",
     }}>
       <div style={{
         background: "rgba(0,0,0,0.82)",
@@ -129,6 +131,7 @@ export default function Auth() {
         width: "100%", maxWidth: 380,
         display: "flex", flexDirection: "column", gap: 14,
         backdropFilter: "blur(8px)",
+        overflowY: "auto", maxHeight: "100%",
       }}>
 
         {/* Logo / título */}
