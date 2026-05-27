@@ -214,7 +214,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
                 Cuenta incompleta
               </span>
             </div>
-            <div style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.5 }}>
+            <div style={{ fontSize: 12, color: "#ffffff", lineHeight: 1.5 }}>
               Verificá tu identidad para habilitar partidas competitivas
             </div>
             <button
