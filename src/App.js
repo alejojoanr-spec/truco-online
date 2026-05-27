@@ -220,6 +220,11 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
   const addLog = useCallback((msg) => { setLog((prev) => [...prev.slice(-8), msg]); }, []);
 
+  useEffect(() => {
+    window.Tawk_API?.hideWidget?.();
+    return () => { window.Tawk_API?.showWidget?.(); };
+  }, []);
+
   useEffect(() => { iniciarPartida(); }, []);
 
   function iniciarPartida() {
