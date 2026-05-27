@@ -308,7 +308,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
                   <span style={{ fontSize: 16 }}>{icono}</span>
                   <span style={{ color: "#4ade80", fontSize: 13, fontWeight: 700 }}>{titulo}</span>
                 </div>
-                <div style={{ color: "#9ca3af", fontSize: 12, lineHeight: 1.6, paddingLeft: 24 }}>{texto}</div>
+                <div style={{ color: "#ffffff", fontSize: 12, lineHeight: 1.6, paddingLeft: 24 }}>{texto}</div>
               </div>
             ))}
             <button onClick={() => setMostrarReglas(false)} style={{ width: "100%", background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 8, padding: "10px", color: "#4ade80", fontSize: 14, cursor: "pointer", fontFamily: "'Lato', sans-serif", marginTop: 8 }}>Cerrar</button>
