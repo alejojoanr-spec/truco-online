@@ -193,8 +193,8 @@ function CajitaPalito({ marcada }) {
   );
 }
 
-function PalitosPuntaje({ puntos, total=30 }) {
-  const cols = 10;
+function PalitosPuntaje({ puntos, total=15 }) {
+  const cols = 5;
   const rows = Math.ceil(total / cols);
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
