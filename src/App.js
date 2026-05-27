@@ -211,7 +211,7 @@ function PalitosPuntaje({ puntos, total=30 }) {
   );
 }
 
-function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerminos, onVerTorneos, onHome }) {
+function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerminos, onVerTorneos, onHome, rivalNombre = "IA" }) {
   const [manoJugador, setManoJugador] = useState([]);
   const [manoRival, setManoRival] = useState([]);
   const [jugadasJugador, setJugadasJugador] = useState([]);
@@ -496,6 +496,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const esperandoRespuestaRetruco = estadoTruco === "retruco" && trucoCantadoPor === "rival";
   const puedeJugar = turno === "jugador" && fasePartida === "jugando" && !esperandoRespuestaRetruco && !(estadoTruco && !["quiero","noquiero"].includes(estadoTruco) && trucoCantadoPor === "rival");
   const winRate = perfil && perfil.partidas_jugadas > 0 ? Math.round((perfil.partidas_ganadas/perfil.partidas_jugadas)*100) : 0;
+  const nombreJugador = perfil?.nombre || user.email?.split("@")[0] || "Vos";
 
   return (
     <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",fontFamily:"'Lato',sans-serif",display:"flex",flexDirection:"column",alignItems:"center",padding:"16px 8px",overflow:"hidden" }}>
@@ -507,12 +508,12 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
       <div style={{ background:"rgba(0,0,0,0.5)",border:"1px solid #2d6a4f",borderRadius:12,padding:"8px 14px",display:"flex",gap:12,alignItems:"flex-start",marginBottom:12 }}>
         <div>
-          <div style={{ fontSize:8,color:"#4ade80",letterSpacing:2,marginBottom:5,fontFamily:"'Lato',sans-serif" }}>VOS — {puntosJugador} pts</div>
+          <div style={{ fontSize:8,color:"#4ade80",letterSpacing:1,marginBottom:5,fontFamily:"'Lato',sans-serif",maxWidth:128,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{nombreJugador} — {puntosJugador} pts</div>
           <PalitosPuntaje puntos={puntosJugador} />
         </div>
         <div style={{ width:1,alignSelf:"stretch",background:"#2d6a4f",margin:"0 2px" }}/>
         <div>
-          <div style={{ fontSize:8,color:"#f87171",letterSpacing:2,marginBottom:5,fontFamily:"'Lato',sans-serif" }}>RIVAL — {puntosRival} pts</div>
+          <div style={{ fontSize:8,color:"#f87171",letterSpacing:1,marginBottom:5,fontFamily:"'Lato',sans-serif",maxWidth:128,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{rivalNombre} — {puntosRival} pts</div>
           <PalitosPuntaje puntos={puntosRival} />
         </div>
       </div>
