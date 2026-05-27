@@ -357,6 +357,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     const nuevasJugadasR = [...jugadasR, idxRival];
     const nuevaMesaR = [...mesaRival, carta];
     setJugadasRival(nuevasJugadasR); setMesaRival(nuevaMesaR);
+    reproducirSonidoCarta();
     addLog(`Rival jugó: ${carta.num} de ${carta.palo}`);
     setTimeout(() => evaluarRonda(mesaJ, nuevaMesaR, jugadasJ, nuevasJugadasR), 600);
   }
@@ -385,6 +386,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
             setTimeout(() => {
               setJugadasRival(nuevasJugadasR);
               setMesaRival([cartaRival]);
+              reproducirSonidoCarta();
               addLog(`Rival jugó: ${cartaRival.num} de ${cartaRival.palo}`);
               setTurno("jugador");
             }, 900);
