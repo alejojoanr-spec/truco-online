@@ -8,6 +8,10 @@ import Configuracion from "./Configuracion";
 import ElegirNombre from "./ElegirNombre";
 import ElegirAvatar from "./ElegirAvatar";
 import Home from "./Home";
+import Admin from "./Admin";
+
+const ADMIN_EMAIL = "alejojoanr@gmail.com";
+
 const PALO = { espada: "espada", basto: "basto", copa: "copa", oro: "oro" };
 const MAZO = [
   { num: 1, palo: PALO.espada },{ num: 2, palo: PALO.espada },{ num: 3, palo: PALO.espada },
@@ -705,6 +709,8 @@ export default function App() {
   const [verTerminos, setVerTerminos] = useState(false);
   const [verTorneos, setVerTorneos] = useState(false);
   const [mostrarConfigHome, setMostrarConfigHome] = useState(false);
+  const [esBaneado, setEsBaneado] = useState(false);
+  const [verAdmin, setVerAdmin] = useState(false);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -717,6 +723,8 @@ export default function App() {
         setPerfil(null);
         setNecesitaNombre(false);
         setNecesitaAvatar(false);
+        setEsBaneado(false);
+        setVerAdmin(false);
         setCargando(false);
       }
     });
@@ -725,20 +733,31 @@ export default function App() {
 
   async function cargarPerfil(u) {
     const cacheKey = `truco_perfil_${u.id}`;
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      try {
-        const p = JSON.parse(cached);
-        if (p && p.nombre) {
-          const avatar = localStorage.getItem(`truco_avatar_${u.id}`) || p.avatar || "👤";
-          setPerfil({ ...p, avatar });
-          setCargando(false);
-          return;
-        }
-      } catch {}
+    // Siempre fetchea de DB para verificar ban; cache solo como fallback si falla la red
+    const { data, error } = await supabase.from("perfiles").select("*").eq("usuario_id", u.id).maybeSingle();
+    if (error || !data) {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          const p = JSON.parse(cached);
+          if (p && p.nombre) {
+            const avatar = localStorage.getItem(`truco_avatar_${u.id}`) || p.avatar || "👤";
+            setPerfil({ ...p, avatar });
+            setCargando(false);
+            return;
+          }
+        } catch {}
+      }
+      setNecesitaNombre(true);
+      setCargando(false);
+      return;
     }
-    const { data } = await supabase.from("perfiles").select("*").eq("usuario_id", u.id).maybeSingle();
-    if (data && data.nombre) {
+    if (data.is_banned) {
+      setEsBaneado(true);
+      setCargando(false);
+      return;
+    }
+    if (data.nombre) {
       const avatar = data.avatar || localStorage.getItem(`truco_avatar_${u.id}`) || "👤";
       const perfilCompleto = { ...data, avatar };
       localStorage.setItem(cacheKey, JSON.stringify(perfilCompleto));
@@ -755,15 +774,28 @@ export default function App() {
     <div style={{ minHeight:"100vh",background:"#050f08",display:"flex",alignItems:"center",justifyContent:"center",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:18 }}>Cargando...</div>
   );
   if (!user) return <Auth />;
+  if (esBaneado) return (
+    <div style={{ minHeight:"100vh", background:"radial-gradient(ellipse at center,#1a0505 0%,#050505 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Lato',sans-serif", padding:24 }}>
+      <div style={{ textAlign:"center", maxWidth:320 }}>
+        <div style={{ fontSize:56, marginBottom:16 }}>🚫</div>
+        <div style={{ fontSize:20, color:"#f87171", fontWeight:900, marginBottom:10 }}>Tu cuenta fue suspendida</div>
+        <div style={{ fontSize:13, color:"#9ca3af", lineHeight:1.7, marginBottom:28 }}>Contactá al soporte para más información.</div>
+        <button onClick={handleLogout} style={{ padding:"11px 28px", borderRadius:10, cursor:"pointer", background:"rgba(255,255,255,0.05)", border:"1px solid #374151", color:"#9ca3af", fontFamily:"'Lato',sans-serif", fontSize:14 }}>
+          Cerrar sesión
+        </button>
+      </div>
+    </div>
+  );
   if (necesitaNombre) return <ElegirNombre user={user} onPerfilCreado={(p) => { localStorage.setItem(`truco_perfil_${user.id}`, JSON.stringify(p)); setPerfil(p); setNecesitaNombre(false); setNecesitaAvatar(true); }} />;
   if (necesitaAvatar) return <ElegirAvatar perfil={perfil} onAvatarGuardado={(p) => { setPerfil(p); setNecesitaAvatar(false); }} />;
   if (verTerminos) return <Terminos onVolver={()=>setVerTerminos(false)} />;
   if (verTorneos) return <Torneos user={user} perfil={perfil} onVolver={()=>setVerTorneos(false)} />;
+  if (verAdmin && user?.email === ADMIN_EMAIL) return <Admin onVolver={()=>setVerAdmin(false)} />;
   if (modoJuego === "multi") return <Multijugador user={user} perfil={perfil} onVolver={()=>setModoJuego(null)} />;
   if (modoJuego === "single") return <TrucoApp user={user} perfil={perfil} setPerfil={setPerfil} onLogout={handleLogout} onMultijugador={()=>setModoJuego("multi")} onVerTerminos={()=>setVerTerminos(true)} onVerTorneos={()=>setVerTorneos(true)} onHome={()=>setModoJuego(null)} />;
   return (
     <>
-      <Home perfil={perfil} onJugar={()=>setModoJuego("single")} onSalaPrivada={()=>setModoJuego("multi")} onLogout={handleLogout} onVerTerminos={()=>setVerTerminos(true)} onConfig={()=>setMostrarConfigHome(true)} onPerfilActualizado={setPerfil} />
+      <Home perfil={perfil} onJugar={()=>setModoJuego("single")} onSalaPrivada={()=>setModoJuego("multi")} onLogout={handleLogout} onVerTerminos={()=>setVerTerminos(true)} onConfig={()=>setMostrarConfigHome(true)} onPerfilActualizado={setPerfil} esAdmin={user?.email === ADMIN_EMAIL} onAdmin={()=>setVerAdmin(true)} />
       {mostrarConfigHome && <Configuracion onCerrar={()=>setMostrarConfigHome(false)} />}
     </>
   );

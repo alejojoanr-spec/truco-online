@@ -27,7 +27,7 @@ function MenuItem({ icono, label, onClick, peligro }) {
 const AVATARES = ["👨","👩","👴","👵","🧔","👱","🧑","👮","🧑‍🍳","🥷","🧙","🤠","👸","🤴","🧛","🧜","🧝","🧞","🤖","👾"];
 const REGEX_NOMBRE = /^[a-zA-Z0-9.]{4,13}$/;
 
-export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTerminos, onConfig, onPerfilActualizado }) {
+export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTerminos, onConfig, onPerfilActualizado, esAdmin, onAdmin }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [mostrarRanking, setMostrarRanking] = useState(false);
   const [mostrarReglas, setMostrarReglas] = useState(false);
@@ -321,6 +321,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
           <MenuItem icono="🎮" label="Configuración del juego" onClick={() => { setMenuAbierto(false); onConfig(); }} />
           <MenuItem icono="📋" label="Términos y condiciones"  onClick={() => { setMenuAbierto(false); onVerTerminos(); }} />
           <MenuItem icono="💬" label="Soporte"                 onClick={abrirSoporte} />
+          {esAdmin && <MenuItem icono="🛡️" label="Panel de administrador" onClick={() => { setMenuAbierto(false); onAdmin(); }} />}
         </div>
 
         {/* Cerrar sesión al fondo */}
