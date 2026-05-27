@@ -605,6 +605,7 @@ export default function App() {
   const [modoJuego, setModoJuego] = useState(null); // null=home, "single"=vs IA, "multi"=multijugador
   const [verTerminos, setVerTerminos] = useState(false);
   const [verTorneos, setVerTorneos] = useState(false);
+  const [mostrarConfigHome, setMostrarConfigHome] = useState(false);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -644,5 +645,10 @@ export default function App() {
   if (verTorneos) return <Torneos user={user} perfil={perfil} onVolver={()=>setVerTorneos(false)} />;
   if (modoJuego === "multi") return <Multijugador user={user} perfil={perfil} onVolver={()=>setModoJuego(null)} />;
   if (modoJuego === "single") return <TrucoApp user={user} perfil={perfil} setPerfil={setPerfil} onLogout={handleLogout} onMultijugador={()=>setModoJuego("multi")} onVerTerminos={()=>setVerTerminos(true)} onVerTorneos={()=>setVerTorneos(true)} onHome={()=>setModoJuego(null)} />;
-  return <Home perfil={perfil} onJugar={()=>setModoJuego("single")} onSalaPrivada={()=>setModoJuego("multi")} onLogout={handleLogout} />;
+  return (
+    <>
+      <Home perfil={perfil} onJugar={()=>setModoJuego("single")} onSalaPrivada={()=>setModoJuego("multi")} onLogout={handleLogout} onVerTerminos={()=>setVerTerminos(true)} onConfig={()=>setMostrarConfigHome(true)} />
+      {mostrarConfigHome && <Configuracion onCerrar={()=>setMostrarConfigHome(false)} />}
+    </>
+  );
 }
