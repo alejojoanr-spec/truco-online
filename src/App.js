@@ -77,7 +77,7 @@ function repartir() {
 
 function Carta({ carta, oculta, onClick, jugada, seleccionada }) {
   if (oculta) return (
-    <svg width="70" height="110" style={{ cursor:"default", userSelect:"none", opacity: jugada ? 0.5 : 1 }}>
+    <svg width="70" height="110" style={{ cursor:"default", userSelect:"none", opacity: jugada ? 0.5 : 1, filter:"drop-shadow(0 5px 14px rgba(0,0,0,0.45)) drop-shadow(0 2px 5px rgba(0,0,0,0.3))" }}>
       <defs>
         <pattern id="dorso-rombos" x="0" y="0" width="10" height="8" patternUnits="userSpaceOnUse">
           <polygon points="5,0 10,4 5,8 0,4" fill="#0e2617" stroke="#3a7a55" strokeWidth="0.9"/>
@@ -88,6 +88,7 @@ function Carta({ carta, oculta, onClick, jugada, seleccionada }) {
       <rect x="6" y="6" width="58" height="98" rx="4" fill="#1a472a"/>
       <rect x="10" y="15" width="50" height="80" rx="2" fill="url(#dorso-rombos)"/>
       <rect x="10" y="15" width="50" height="80" rx="2" fill="none" stroke="#2d6a4f" strokeWidth="0.8"/>
+      <rect width="70" height="110" rx="8" fill="none" stroke="rgba(0,0,0,0.7)" strokeWidth="1"/>
     </svg>
   );
 
@@ -164,11 +165,16 @@ function Carta({ carta, oculta, onClick, jugada, seleccionada }) {
       transform: seleccionada ? "translateY(-12px) scale(1.05)" : jugada ? "scale(0.95)" : "none",
       opacity: jugada ? 0.5 : 1,
       transition: "all 0.2s",
-      filter: seleccionada ? "drop-shadow(0 0 8px rgba(245,158,11,0.8))" : "none",
+      filter: seleccionada
+        ? "drop-shadow(0 6px 16px rgba(0,0,0,0.6)) drop-shadow(0 0 10px rgba(245,158,11,0.75))"
+        : jugada
+          ? "drop-shadow(0 2px 5px rgba(0,0,0,0.3))"
+          : "drop-shadow(0 6px 16px rgba(0,0,0,0.45)) drop-shadow(0 2px 6px rgba(0,0,0,0.3))",
     }}>
       <rect width="70" height="110" rx="8" fill="#fffef0"/>
       <rect width="70" height="110" rx="8" fill="none" stroke={seleccionada ? "#f59e0b" : jugada ? "#555" : "#c8960c"} strokeWidth={seleccionada ? "2.5" : "1.5"}/>
-      <rect x="4" y="4" width="62" height="102" rx="6" fill="none" stroke="#c8960c" strokeWidth="0.6"/>
+      <rect x="4" y="4" width="62" height="102" rx="6" fill="none" stroke="#c8960c" strokeWidth="0.5"/>
+      <rect width="70" height="110" rx="8" fill="none" stroke="rgba(0,0,0,0.78)" strokeWidth="1"/>
       <text x="6" y="20" style={{ fontSize:14, fontWeight:900, fontFamily:"'Lato',sans-serif", fill: jugada ? "#888" : "#1a1a1a" }}>{carta.num}</text>
       <text x="64" y="98" style={{ fontSize:14, fontWeight:900, fontFamily:"'Lato',sans-serif", fill: jugada ? "#888" : "#1a1a1a", textAnchor:"end" }}>{carta.num}</text>
       {p.svg}

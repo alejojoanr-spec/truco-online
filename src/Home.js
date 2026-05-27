@@ -203,8 +203,8 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
         >
           <div>
             <div style={{ fontSize: 20, marginBottom: 4 }}>🃏</div>
-            <div style={{ fontSize: 18, color: "#4ade80", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>Jugar ahora</div>
-            <div style={{ fontSize: 12, color: "#ffffff", marginTop: 2 }}>Contra la IA</div>
+            <div style={{ fontSize: 21, color: "#4ade80", fontWeight: 900, fontFamily: "'Lato', sans-serif", textAlign: "center" }}>Jugar ahora</div>
+            <div style={{ fontSize: 14, color: "#ffffff", marginTop: 2, textAlign: "center" }}>Contra la IA</div>
           </div>
           <div style={{ fontSize: 28, color: "#4ade80", opacity: 0.6 }}>→</div>
         </button>
@@ -220,8 +220,8 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
         >
           <div>
             <div style={{ fontSize: 20, marginBottom: 4 }}>👥</div>
-            <div style={{ fontSize: 18, color: "#a78bfa", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>Sala privada</div>
-            <div style={{ fontSize: 12, color: "#ffffff", marginTop: 2 }}>Conectá con tus amigos</div>
+            <div style={{ fontSize: 21, color: "#a78bfa", fontWeight: 900, fontFamily: "'Lato', sans-serif", textAlign: "center" }}>Sala privada</div>
+            <div style={{ fontSize: 14, color: "#ffffff", marginTop: 2, textAlign: "center" }}>Conectá con tus amigos</div>
           </div>
           <div style={{ fontSize: 28, color: "#a78bfa", opacity: 0.6 }}>→</div>
         </button>

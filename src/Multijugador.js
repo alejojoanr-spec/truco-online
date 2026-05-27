@@ -37,10 +37,10 @@ const COLOR_PALO = { espada: "#60a5fa", basto: "#4ade80", copa: "#f472b6", oro: 
 
 function CartaMulti({ carta, oculta, onClick, jugada, seleccionada }) {
   if (oculta) return (
-    <div style={{ width:65,height:100,borderRadius:10,background:"linear-gradient(135deg,#1a472a,#0d2e1a)",border:"2px solid #2d6a4f",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,userSelect:"none" }}>🂠</div>
+    <div style={{ width:65,height:100,borderRadius:10,background:"linear-gradient(135deg,#1a472a,#0d2e1a)",border:"2px solid #2d6a4f",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,userSelect:"none",boxShadow:"0 0 0 1px rgba(0,0,0,0.8), 0 5px 14px rgba(0,0,0,0.45)" }}>🂠</div>
   );
   return (
-    <div onClick={onClick} style={{ width:65,height:100,borderRadius:10,background:jugada?"linear-gradient(135deg,#1c1c1c,#111)":seleccionada?"linear-gradient(135deg,#fef3c7,#fde68a)":"linear-gradient(135deg,#fffef7,#fef9e7)",border:seleccionada?"2px solid #f59e0b":jugada?"2px solid #333":"2px solid #d4a017",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",padding:"6px 4px",cursor:onClick&&!jugada?"pointer":"default",transition:"all 0.2s",transform:seleccionada?"translateY(-10px) scale(1.05)":jugada?"scale(0.95)":"none",opacity:jugada?0.5:1,userSelect:"none" }}>
+    <div onClick={onClick} style={{ width:65,height:100,borderRadius:10,background:jugada?"linear-gradient(135deg,#1c1c1c,#111)":seleccionada?"linear-gradient(135deg,#fef3c7,#fde68a)":"linear-gradient(135deg,#fffef7,#fef9e7)",border:seleccionada?"2px solid #f59e0b":jugada?"2px solid #333":"2px solid #d4a017",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",padding:"6px 4px",cursor:onClick&&!jugada?"pointer":"default",transition:"all 0.2s",transform:seleccionada?"translateY(-10px) scale(1.05)":jugada?"scale(0.95)":"none",opacity:jugada?0.5:1,userSelect:"none",boxShadow:seleccionada?"0 0 0 1.5px rgba(0,0,0,0.85), 0 8px 20px rgba(0,0,0,0.55), 0 0 12px rgba(245,158,11,0.45)":jugada?"0 2px 6px rgba(0,0,0,0.3)":"0 0 0 1.5px rgba(0,0,0,0.85), 0 6px 18px rgba(0,0,0,0.45), 0 0 8px rgba(255,215,0,0.1)" }}>
       <span style={{ fontSize:12,fontWeight:900,color:jugada?"#555":"#1a1a1a" }}>{carta.num}</span>
       <span style={{ fontSize:20,filter:jugada?"grayscale(1)":"none" }}>{SIMBOLO[carta.palo]}</span>
       <span style={{ fontSize:7,fontWeight:700,color:jugada?"#555":COLOR_PALO[carta.palo],textTransform:"uppercase" }}>{carta.palo}</span>
