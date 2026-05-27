@@ -205,6 +205,15 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [mostrarRanking, setMostrarRanking] = useState(false);
   const [mostrarConfig, setMostrarConfig] = useState(false);
   const [mostrarConfirmSalir, setMostrarConfirmSalir] = useState(false);
+  const [cambiarAvatar, setCambiarAvatar] = useState(false);
+
+  const AVATARES = ["👨","👩","👴","👵","🧔","👱","🧑","👮","🧑‍🍳","🥷","🧙","🤠","👸","🤴","🧛","🧜","🧝","🧞","🤖","👾"];
+
+  function guardarAvatar(av) {
+    localStorage.setItem(`truco_avatar_${user.id}`, av);
+    setPerfil(p => ({ ...p, avatar: av }));
+    setCambiarAvatar(false);
+  }
   const [ranking, setRanking] = useState([]);
 
   const addLog = useCallback((msg) => { setLog((prev) => [...prev.slice(-8), msg]); }, []);
@@ -472,25 +481,55 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       {chatMsg&&<div style={{ position:"fixed",bottom:80,left:"50%",transform:"translateX(-50%)",background:"#1a472a",border:"1px solid #4ade80",borderRadius:20,padding:"8px 16px",color:"#4ade80",fontSize:13,zIndex:10 }}>💬 {chatMsg}</div>}
 
       {mostrarPerfil&&(
-        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20 }}>
-          <div style={{ background:"#0a2414",border:"1px solid #2d6a4f",borderRadius:16,padding:"32px",textAlign:"center",minWidth:280 }}>
-            <div style={{ fontSize:72,marginBottom:8,lineHeight:1 }}>{perfil?.avatar || "👤"}</div>
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20,padding:"16px" }}>
+          <div style={{ background:"#0a2414",border:"1px solid #2d6a4f",borderRadius:16,padding:"28px",textAlign:"center",width:"100%",maxWidth:320 }}>
+
+            {/* Avatar + botón cambiar */}
+            <div style={{ position:"relative",display:"inline-block",marginBottom:8 }}>
+              <div style={{ fontSize:72,lineHeight:1 }}>{perfil?.avatar || "👤"}</div>
+              <button
+                onClick={()=>setCambiarAvatar(v=>!v)}
+                style={{ position:"absolute",bottom:-4,right:-8,background:"#1a472a",border:"1px solid #4ade80",borderRadius:"50%",width:24,height:24,fontSize:12,cursor:"pointer",color:"#4ade80",display:"flex",alignItems:"center",justifyContent:"center" }}
+              >✏️</button>
+            </div>
+
+            {/* Picker de avatar inline */}
+            {cambiarAvatar&&(
+              <div style={{ marginBottom:12 }}>
+                <div style={{ fontSize:10,color:"#4ade80",letterSpacing:2,textTransform:"uppercase",marginBottom:8 }}>Elegí un avatar</div>
+                <div style={{ display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6 }}>
+                  {AVATARES.map(av=>(
+                    <button
+                      key={av}
+                      onClick={()=>guardarAvatar(av)}
+                      style={{ fontSize:24,padding:"6px 0",borderRadius:10,cursor:"pointer",
+                        background: perfil?.avatar===av?"rgba(74,222,128,0.15)":"rgba(0,0,0,0.3)",
+                        border: perfil?.avatar===av?"2px solid #4ade80":"2px solid rgba(45,106,79,0.3)",
+                        transform: perfil?.avatar===av?"scale(1.1)":"scale(1)",
+                        transition:"all 0.15s",
+                      }}
+                    >{av}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div style={{ fontSize:22,color:"#fbbf24",fontWeight:900,marginBottom:16 }}>{perfil?.nombre || user.email?.split("@")[0]}</div>
-            <div style={{ display:"flex",gap:16,justifyContent:"center",marginBottom:16 }}>
-              <div style={{ background:"rgba(0,0,0,0.4)",borderRadius:10,padding:"12px 20px" }}>
-                <div style={{ fontSize:28,color:"#4ade80",fontWeight:900 }}>{perfil?.partidas_jugadas||0}</div>
+            <div style={{ display:"flex",gap:12,justifyContent:"center",marginBottom:16 }}>
+              <div style={{ background:"rgba(0,0,0,0.4)",borderRadius:10,padding:"10px 16px" }}>
+                <div style={{ fontSize:24,color:"#4ade80",fontWeight:900 }}>{perfil?.partidas_jugadas||0}</div>
                 <div style={{ fontSize:10,color:"#6b9",textTransform:"uppercase",letterSpacing:1 }}>Jugadas</div>
               </div>
-              <div style={{ background:"rgba(0,0,0,0.4)",borderRadius:10,padding:"12px 20px" }}>
-                <div style={{ fontSize:28,color:"#fbbf24",fontWeight:900 }}>{perfil?.partidas_ganadas||0}</div>
+              <div style={{ background:"rgba(0,0,0,0.4)",borderRadius:10,padding:"10px 16px" }}>
+                <div style={{ fontSize:24,color:"#fbbf24",fontWeight:900 }}>{perfil?.partidas_ganadas||0}</div>
                 <div style={{ fontSize:10,color:"#6b9",textTransform:"uppercase",letterSpacing:1 }}>Ganadas</div>
               </div>
-              <div style={{ background:"rgba(0,0,0,0.4)",borderRadius:10,padding:"12px 20px" }}>
-                <div style={{ fontSize:28,color:"#60a5fa",fontWeight:900 }}>{winRate}%</div>
+              <div style={{ background:"rgba(0,0,0,0.4)",borderRadius:10,padding:"10px 16px" }}>
+                <div style={{ fontSize:24,color:"#60a5fa",fontWeight:900 }}>{winRate}%</div>
                 <div style={{ fontSize:10,color:"#6b9",textTransform:"uppercase",letterSpacing:1 }}>Win rate</div>
               </div>
             </div>
-            <button onClick={()=>setMostrarPerfil(false)} style={{ ...btnStyle("#1a472a","#4ade80"),fontSize:14,padding:"10px 24px" }}>Cerrar</button>
+            <button onClick={()=>{ setMostrarPerfil(false); setCambiarAvatar(false); }} style={{ ...btnStyle("#1a472a","#4ade80"),fontSize:14,padding:"10px 24px" }}>Cerrar</button>
           </div>
         </div>
       )}
