@@ -562,26 +562,24 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
       <div style={{ marginBottom:14,textAlign:"center" }}>
         <div style={{ fontSize:10,color:"#4ade80",letterSpacing:2,textTransform:"uppercase",marginBottom:8 }}>{puedeJugar?"👆 Tocá una carta para jugar":turno==="rival"?"Esperando rival...":"Tu mano"}</div>
-        <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:14 }}>
-          {turno==="jugador"&&fasePartida==="jugando"&&(
-            <svg width="56" height="56" style={{flexShrink:0}}>
-              <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4"/>
-              <circle cx="28" cy="28" r="22" fill="none"
-                stroke={timerSegundos>10?"#4ade80":timerSegundos>5?"#fbbf24":"#f87171"} strokeWidth="4"
-                strokeDasharray={2*Math.PI*22} strokeDashoffset={2*Math.PI*22*(1-timerSegundos/15)}
-                strokeLinecap="round" style={{transform:"rotate(-90deg)",transformOrigin:"28px 28px"}}/>
-              <text x="28" y="28" textAnchor="middle" dominantBaseline="middle"
-                fill={timerSegundos>10?"#4ade80":timerSegundos>5?"#fbbf24":"#f87171"} fontSize="15" fontWeight="700">
+        <div style={{ position:"relative", display:"inline-flex", gap:10 }}>
+          {manoJugador.map((c,i)=>(
+            <Carta key={i} carta={c} jugada={jugadasJugador.includes(i)} seleccionada={cartaSeleccionada===i}
+              onClick={()=>{ if(!puedeJugar||jugadasJugador.includes(i))return; if(cartaSeleccionada===i)jugarCarta(i); else setCartaSeleccionada(i); }} />
+          ))}
+          {turno==="jugador"&&fasePartida==="jugando"&&timerSegundos>0&&(
+            <svg width="44" height="44" style={{ position:"absolute",left:-8,bottom:-8,zIndex:10,filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
+              <circle cx="22" cy="22" r="17" fill="rgba(0,0,0,0.75)" stroke="rgba(255,255,255,0.06)" strokeWidth="3"/>
+              <circle cx="22" cy="22" r="17" fill="none"
+                stroke={timerSegundos>10?"#4ade80":timerSegundos>5?"#fbbf24":"#f87171"} strokeWidth="3"
+                strokeDasharray={2*Math.PI*17} strokeDashoffset={2*Math.PI*17*(1-timerSegundos/15)}
+                strokeLinecap="round" style={{transform:"rotate(-90deg)",transformOrigin:"22px 22px"}}/>
+              <text x="22" y="22" textAnchor="middle" dominantBaseline="middle"
+                fill={timerSegundos>10?"#4ade80":timerSegundos>5?"#fbbf24":"#f87171"} fontSize="13" fontWeight="700">
                 {timerSegundos}
               </text>
             </svg>
           )}
-          <div style={{ display:"flex",gap:10,justifyContent:"center" }}>
-            {manoJugador.map((c,i)=>(
-              <Carta key={i} carta={c} jugada={jugadasJugador.includes(i)} seleccionada={cartaSeleccionada===i}
-                onClick={()=>{ if(!puedeJugar||jugadasJugador.includes(i))return; if(cartaSeleccionada===i)jugarCarta(i); else setCartaSeleccionada(i); }} />
-            ))}
-          </div>
         </div>
         {cartaSeleccionada!==null&&!jugadasJugador.includes(cartaSeleccionada)&&<div style={{ marginTop:6,fontSize:11,color:"#fbbf24" }}>Tocá de nuevo para confirmar</div>}
       </div>
