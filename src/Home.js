@@ -37,6 +37,9 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
   const [avatarEdit, setAvatarEdit] = useState("");
   const [errorEdit, setErrorEdit] = useState("");
   const [cargandoEdit, setCargandoEdit] = useState(false);
+  const [saldoVisible, setSaldoVisible] = useState(false);
+  const [mostrarDepositar, setMostrarDepositar] = useState(false);
+  const [copiado, setCopiado] = useState("");
 
   function abrirEditar() {
     setNombreEdit(perfil.nombre);
@@ -74,9 +77,14 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
     setMostrarEditar(false);
   }
 
-  const winRate = perfil.partidas_jugadas > 0
-    ? Math.round((perfil.partidas_ganadas / perfil.partidas_jugadas) * 100)
-    : 0;
+  const CBU = "próximamente";
+  const ALIAS = "próximamente";
+
+  function copiar(valor, key) {
+    navigator.clipboard.writeText(valor);
+    setCopiado(key);
+    setTimeout(() => setCopiado(""), 2000);
+  }
 
   async function abrirRanking() {
     setMenuAbierto(false);
@@ -155,20 +163,30 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
         </div>
         <div style={{ textAlign: "left", flex: 1 }}>
           <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>{perfil.nombre}</div>
-          <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
-            <div>
-              <div style={{ fontSize: 16, color: "#4ade80", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>{perfil.partidas_jugadas || 0}</div>
-              <div style={{ fontSize: 9, color: "#ffffff", textTransform: "uppercase", letterSpacing: 1 }}>Jugadas</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 16, color: "#fbbf24", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>{perfil.partidas_ganadas || 0}</div>
-              <div style={{ fontSize: 9, color: "#ffffff", textTransform: "uppercase", letterSpacing: 1 }}>Ganadas</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 16, color: "#60a5fa", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>{winRate}%</div>
-              <div style={{ fontSize: 9, color: "#ffffff", textTransform: "uppercase", letterSpacing: 1 }}>Win rate</div>
-            </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+            <span style={{ fontSize: 16, color: "#ffffff", fontWeight: 700, fontFamily: "'Lato', sans-serif", letterSpacing: 0.5 }}>
+              {saldoVisible
+                ? `$ ${(perfil.saldo || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}`
+                : "$ ••••••"}
+            </span>
+            <button onClick={() => setSaldoVisible(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 2, display: "flex", alignItems: "center" }}>
+              {saldoVisible ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              )}
+            </button>
           </div>
+          <button onClick={() => setMostrarDepositar(true)} style={{ marginTop: 10, padding: "5px 12px", borderRadius: 8, background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ade80", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", fontWeight: 700 }}>
+            + Depositar
+          </button>
         </div>
       </div>
 
@@ -363,6 +381,63 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
               <button onClick={() => setMostrarEditar(false)} style={{ flex: 1, padding: "12px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>Cancelar</button>
               <button onClick={guardarEdicion} disabled={cargandoEdit} style={{ flex: 1, padding: "12px", borderRadius: 10, cursor: cargandoEdit ? "not-allowed" : "pointer", background: "linear-gradient(135deg,#1a472a,#2d6a4f)", border: "1px solid #4ade80", color: "#4ade80", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700, opacity: cargandoEdit ? 0.7 : 1 }}>{cargandoEdit ? "⏳ Guardando..." : "✅ Guardar"}</button>
             </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL DEPOSITAR ── */}
+      {mostrarDepositar && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.88)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 16 }}>
+          <div style={{ background: "radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)", border: "1px solid #2d6a4f", borderRadius: 20, padding: "28px 24px", width: "100%", maxWidth: 380, fontFamily: "'Lato', sans-serif", display: "flex", flexDirection: "column", gap: 16 }}>
+
+            <div style={{ fontSize: 20, color: "#fbbf24", fontWeight: 900 }}>💰 Ingresar saldo</div>
+
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.6 }}>
+              ¿Querés ingresar dinero? Realizá una transferencia bancaria a nuestras cuentas.
+            </div>
+
+            {/* CBU */}
+            <div>
+              <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>CBU</div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(45,106,79,0.5)", background: "rgba(0,0,0,0.4)", color: "#9ca3af", fontSize: 13, fontFamily: "monospace" }}>
+                  {CBU}
+                </div>
+                <button onClick={() => copiar(CBU, "CBU")} style={{ padding: "10px 12px", borderRadius: 8, background: copiado === "CBU" ? "rgba(74,222,128,0.2)" : "rgba(0,0,0,0.3)", border: "1px solid rgba(45,106,79,0.5)", color: copiado === "CBU" ? "#4ade80" : "#9ca3af", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", whiteSpace: "nowrap", transition: "all 0.2s" }}>
+                  {copiado === "CBU" ? "✓ Copiado" : "📋 Copiar"}
+                </button>
+              </div>
+            </div>
+
+            {/* Alias */}
+            <div>
+              <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>ALIAS</div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(45,106,79,0.5)", background: "rgba(0,0,0,0.4)", color: "#9ca3af", fontSize: 13 }}>
+                  {ALIAS}
+                </div>
+                <button onClick={() => copiar(ALIAS, "ALIAS")} style={{ padding: "10px 12px", borderRadius: 8, background: copiado === "ALIAS" ? "rgba(74,222,128,0.2)" : "rgba(0,0,0,0.3)", border: "1px solid rgba(45,106,79,0.5)", color: copiado === "ALIAS" ? "#4ade80" : "#9ca3af", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", whiteSpace: "nowrap", transition: "all 0.2s" }}>
+                  {copiado === "ALIAS" ? "✓ Copiado" : "📋 Copiar"}
+                </button>
+              </div>
+            </div>
+
+            {/* Importante */}
+            <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 10, padding: "12px" }}>
+              <div style={{ fontSize: 11, color: "#fbbf24", fontWeight: 700, marginBottom: 4 }}>⚠️ IMPORTANTE</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", lineHeight: 1.6 }}>
+                El titular de la cuenta ingresada debe coincidir con los datos de su DNI.
+              </div>
+            </div>
+
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", textAlign: "center" }}>
+              ⏱ Tiempo promedio de acreditación: 5 a 10 minutos
+            </div>
+
+            <button onClick={() => setMostrarDepositar(false)} style={{ width: "100%", padding: "12px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#ffffff", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>
+              ← Volver
+            </button>
 
           </div>
         </div>
