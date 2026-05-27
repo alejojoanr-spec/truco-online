@@ -70,7 +70,7 @@ export default function Configuracion({ onCerrar }) {
         background: "radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)",
         border: "1px solid #2d6a4f", borderRadius: 20,
         padding: "28px 28px 24px", width: "100%", maxWidth: 360,
-        fontFamily: "Georgia, serif",
+        fontFamily: "'Lato', sans-serif",
         boxShadow: "0 8px 40px rgba(0,0,0,0.6)",
       }}>
 
@@ -106,8 +106,8 @@ export default function Configuracion({ onCerrar }) {
             >
               <span style={{ fontSize: 22, width: 28, textAlign: "center", flexShrink: 0 }}>{icono}</span>
               <div style={{ flex: 1 }}>
-                <div style={{ color: config[key] ? "#e2f5e9" : "#6b7280", fontSize: 14, fontWeight: 700, transition: "color 0.2s" }}>{label}</div>
-                <div style={{ color: "#4b5563", fontSize: 10, marginTop: 2 }}>{desc}</div>
+                <div style={{ color: "#ffffff", fontSize: 14, fontWeight: 700 }}>{label}</div>
+                <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 10, marginTop: 2 }}>{desc}</div>
               </div>
               <Toggle activo={config[key]} onChange={() => toggleOpcion(key)} />
             </div>
@@ -115,7 +115,7 @@ export default function Configuracion({ onCerrar }) {
         </div>
 
         {/* Nota al pie */}
-        <div style={{ fontSize: 10, color: "#374151", textAlign: "center", marginBottom: 16, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", textAlign: "center", marginBottom: 16, lineHeight: 1.5 }}>
           Las preferencias se guardan automáticamente en este dispositivo
         </div>
 
@@ -125,7 +125,7 @@ export default function Configuracion({ onCerrar }) {
             width: "100%", padding: "12px", borderRadius: 10, cursor: "pointer",
             background: "linear-gradient(135deg,#1a472a,#2d6a4f)",
             border: "1px solid #4ade80", color: "#4ade80",
-            fontFamily: "Georgia, serif", fontSize: 14, fontWeight: 700, letterSpacing: 1,
+            fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700, letterSpacing: 1,
           }}
         >
           Listo
