@@ -23,12 +23,53 @@ function MenuItem({ icono, label, onClick, peligro }) {
   );
 }
 
-export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTerminos, onConfig }) {
+const AVATARES = ["👨","👩","👴","👵","🧔","👱","🧑","👮","🧑‍🍳","🥷","🧙","🤠","👸","🤴","🧛","🧜","🧝","🧞","🤖","👾"];
+const REGEX_NOMBRE = /^[a-zA-Z0-9.]{4,13}$/;
+
+export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTerminos, onConfig, onPerfilActualizado }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [mostrarRanking, setMostrarRanking] = useState(false);
   const [mostrarReglas, setMostrarReglas] = useState(false);
   const [mostrarConfirmSalir, setMostrarConfirmSalir] = useState(false);
   const [ranking, setRanking] = useState([]);
+  const [mostrarEditar, setMostrarEditar] = useState(false);
+  const [nombreEdit, setNombreEdit] = useState("");
+  const [avatarEdit, setAvatarEdit] = useState("");
+  const [errorEdit, setErrorEdit] = useState("");
+  const [cargandoEdit, setCargandoEdit] = useState(false);
+
+  function abrirEditar() {
+    setNombreEdit(perfil.nombre);
+    setAvatarEdit(perfil.avatar || "👤");
+    setErrorEdit("");
+    setMostrarEditar(true);
+  }
+
+  async function guardarEdicion() {
+    const nombre = nombreEdit.trim();
+    if (!REGEX_NOMBRE.test(nombre)) {
+      setErrorEdit("Entre 4 y 13 caracteres. Solo letras, números o puntos.");
+      return;
+    }
+    setCargandoEdit(true);
+    setErrorEdit("");
+    const { data, error } = await supabase
+      .from("perfiles")
+      .update({ nombre })
+      .eq("usuario_id", perfil.usuario_id)
+      .select()
+      .single();
+    if (error) {
+      setErrorEdit("No se pudo guardar. Intentá de nuevo.");
+      setCargandoEdit(false);
+      return;
+    }
+    localStorage.setItem(`truco_avatar_${perfil.usuario_id}`, avatarEdit);
+    localStorage.setItem(`truco_perfil_${perfil.usuario_id}`, JSON.stringify(data));
+    onPerfilActualizado({ ...data, avatar: avatarEdit });
+    setCargandoEdit(false);
+    setMostrarEditar(false);
+  }
 
   const winRate = perfil.partidas_jugadas > 0
     ? Math.round((perfil.partidas_ganadas / perfil.partidas_jugadas) * 100)
@@ -92,7 +133,14 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
         borderRadius: 20, padding: "20px 24px",
         width: "100%", maxWidth: 340,
         display: "flex", alignItems: "center", gap: 16,
+        position: "relative",
       }}>
+        <button onClick={abrirEditar} style={{
+          position: "absolute", top: 10, right: 12,
+          background: "rgba(255,255,255,0.05)", border: "1px solid rgba(45,106,79,0.5)",
+          borderRadius: 8, width: 28, height: 28, cursor: "pointer",
+          color: "#4ade80", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center",
+        }}>✏️</button>
         <div style={{
           width: 64, height: 64, borderRadius: "50%", flexShrink: 0,
           background: "radial-gradient(circle,#1a472a,#050f08)",
@@ -261,6 +309,58 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
               </div>
             ))}
             <button onClick={() => setMostrarReglas(false)} style={{ width: "100%", background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 8, padding: "10px", color: "#4ade80", fontSize: 14, cursor: "pointer", fontFamily: "'Lato', sans-serif", marginTop: 8 }}>Cerrar</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL EDITAR PERFIL ── */}
+      {mostrarEditar && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.88)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 16 }}>
+          <div style={{ background: "radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)", border: "1px solid #2d6a4f", borderRadius: 20, padding: "28px 24px", width: "100%", maxWidth: 380, display: "flex", flexDirection: "column", gap: 20, fontFamily: "'Lato', sans-serif" }}>
+
+            {/* Encabezado */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 3, textTransform: "uppercase" }}>Truco Argentino</div>
+                <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900 }}>Editar perfil</div>
+              </div>
+              <button onClick={() => setMostrarEditar(false)} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+            </div>
+
+            {/* Avatar seleccionado grande */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 80, height: 80, borderRadius: "50%", background: "radial-gradient(circle,#1a472a,#050f08)", border: "2px solid #4ade80", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44, boxShadow: "0 0 20px rgba(74,222,128,0.2)" }}>
+                {avatarEdit}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6, width: "100%" }}>
+                {AVATARES.map(av => (
+                  <button key={av} onClick={() => setAvatarEdit(av)} style={{ fontSize: 24, padding: "6px 0", borderRadius: 10, cursor: "pointer", background: avatarEdit === av ? "rgba(74,222,128,0.15)" : "rgba(0,0,0,0.3)", border: avatarEdit === av ? "2px solid #4ade80" : "2px solid rgba(45,106,79,0.3)", transform: avatarEdit === av ? "scale(1.1)" : "scale(1)", transition: "all 0.15s" }}>{av}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Input nombre */}
+            <div>
+              <div style={{ fontSize: 10, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Nombre de usuario</div>
+              <input
+                type="text"
+                value={nombreEdit}
+                maxLength={13}
+                onChange={e => { setNombreEdit(e.target.value); setErrorEdit(""); }}
+                style={{ width: "100%", padding: "11px 13px", borderRadius: 10, border: `1px solid ${errorEdit ? "#f87171" : "#2d6a4f"}`, background: "rgba(0,0,0,0.5)", color: "#ffffff", fontFamily: "'Lato', sans-serif", fontSize: 15, outline: "none", boxSizing: "border-box" }}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                {errorEdit ? <span style={{ fontSize: 11, color: "#f87171" }}>{errorEdit}</span> : <span />}
+                <span style={{ fontSize: 10, color: nombreEdit.length > 13 ? "#f87171" : "#4b5563" }}>{nombreEdit.length}/13</span>
+              </div>
+            </div>
+
+            {/* Botones */}
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setMostrarEditar(false)} style={{ flex: 1, padding: "12px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>Cancelar</button>
+              <button onClick={guardarEdicion} disabled={cargandoEdit} style={{ flex: 1, padding: "12px", borderRadius: 10, cursor: cargandoEdit ? "not-allowed" : "pointer", background: "linear-gradient(135deg,#1a472a,#2d6a4f)", border: "1px solid #4ade80", color: "#4ade80", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700, opacity: cargandoEdit ? 0.7 : 1 }}>{cargandoEdit ? "⏳ Guardando..." : "✅ Guardar"}</button>
+            </div>
+
           </div>
         </div>
       )}

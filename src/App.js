@@ -723,7 +723,7 @@ export default function App() {
   if (modoJuego === "single") return <TrucoApp user={user} perfil={perfil} setPerfil={setPerfil} onLogout={handleLogout} onMultijugador={()=>setModoJuego("multi")} onVerTerminos={()=>setVerTerminos(true)} onVerTorneos={()=>setVerTorneos(true)} onHome={()=>setModoJuego(null)} />;
   return (
     <>
-      <Home perfil={perfil} onJugar={()=>setModoJuego("single")} onSalaPrivada={()=>setModoJuego("multi")} onLogout={handleLogout} onVerTerminos={()=>setVerTerminos(true)} onConfig={()=>setMostrarConfigHome(true)} />
+      <Home perfil={perfil} onJugar={()=>setModoJuego("single")} onSalaPrivada={()=>setModoJuego("multi")} onLogout={handleLogout} onVerTerminos={()=>setVerTerminos(true)} onConfig={()=>setMostrarConfigHome(true)} onPerfilActualizado={setPerfil} />
       {mostrarConfigHome && <Configuracion onCerrar={()=>setMostrarConfigHome(false)} />}
     </>
   );
