@@ -163,10 +163,10 @@ function Carta({ carta, oculta, onClick, jugada, seleccionada }) {
       <rect width="70" height="110" rx="8" fill="#fffef0"/>
       <rect width="70" height="110" rx="8" fill="none" stroke={seleccionada ? "#f59e0b" : jugada ? "#555" : "#c8960c"} strokeWidth={seleccionada ? "2.5" : "1.5"}/>
       <rect x="4" y="4" width="62" height="102" rx="6" fill="none" stroke="#c8960c" strokeWidth="0.6"/>
-      <text x="6" y="20" style={{ fontSize:14, fontWeight:900, fontFamily:"Georgia,serif", fill: jugada ? "#888" : "#1a1a1a" }}>{carta.num}</text>
-      <text x="64" y="98" style={{ fontSize:14, fontWeight:900, fontFamily:"Georgia,serif", fill: jugada ? "#888" : "#1a1a1a", textAnchor:"end" }}>{carta.num}</text>
+      <text x="6" y="20" style={{ fontSize:14, fontWeight:900, fontFamily:"'Lato',sans-serif", fill: jugada ? "#888" : "#1a1a1a" }}>{carta.num}</text>
+      <text x="64" y="98" style={{ fontSize:14, fontWeight:900, fontFamily:"'Lato',sans-serif", fill: jugada ? "#888" : "#1a1a1a", textAnchor:"end" }}>{carta.num}</text>
       {p.svg}
-      <text x="35" y="107" style={{ fontSize:7, fontWeight:800, fontFamily:"Georgia,serif", fill: jugada ? "#888" : p.color, textAnchor:"middle", letterSpacing:"1.5px" }}>{p.label}</text>
+      <text x="35" y="107" style={{ fontSize:7, fontWeight:800, fontFamily:"'Lato',sans-serif", fill: jugada ? "#888" : p.color, textAnchor:"middle", letterSpacing:"1.5px" }}>{p.label}</text>
     </svg>
   );
 }
@@ -179,7 +179,7 @@ function iaJugarCarta(mano, jugadas) {
 
 const QUICK_CHAT = ["¡Buena mano!", "Vamos 💪", "¡Qué suerte!", "Jajaja 😄", "Buena partida 🤝"];
 function btnStyle(bg, border) {
-  return { background:`${bg}88`,border:`1px solid ${border}`,borderRadius:8,padding:"7px 14px",color:border,fontSize:12,cursor:"pointer",fontFamily:"Georgia",letterSpacing:0.5 };
+  return { background:`${bg}88`,border:`1px solid ${border}`,borderRadius:8,padding:"7px 14px",color:border,fontSize:12,cursor:"pointer",fontFamily:"'Lato',sans-serif",letterSpacing:0.5 };
 }
 
 function CajitaPalito({ marcada }) {
@@ -498,7 +498,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const winRate = perfil && perfil.partidas_jugadas > 0 ? Math.round((perfil.partidas_ganadas/perfil.partidas_jugadas)*100) : 0;
 
   return (
-    <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",fontFamily:"Georgia,serif",display:"flex",flexDirection:"column",alignItems:"center",padding:"16px 8px",overflow:"hidden" }}>
+    <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",fontFamily:"'Lato',sans-serif",display:"flex",flexDirection:"column",alignItems:"center",padding:"16px 8px",overflow:"hidden" }}>
 
       <div style={{ position:"fixed",top:14,left:14,zIndex:30,display:"flex",alignItems:"center",gap:6 }}>
         <span style={{ fontSize:18 }}>{perfil?.avatar || "👤"}</span>
@@ -676,7 +676,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
                 </div>
               ))}
             </div>
-            <button onClick={()=>setMostrarRanking(false)} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:8,padding:"8px 24px",color:"#4ade80",fontSize:14,cursor:"pointer",fontFamily:"Georgia" }}>Cerrar</button>
+            <button onClick={()=>setMostrarRanking(false)} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:8,padding:"8px 24px",color:"#4ade80",fontSize:14,cursor:"pointer",fontFamily:"'Lato',sans-serif" }}>Cerrar</button>
           </div>
         </div>
       )}
@@ -770,7 +770,7 @@ export default function App() {
   async function handleLogout() { await supabase.auth.signOut(); }
 
   if (cargando) return (
-    <div style={{ minHeight:"100vh",background:"#050f08",display:"flex",alignItems:"center",justifyContent:"center",color:"#4ade80",fontFamily:"Georgia",fontSize:18 }}>Cargando...</div>
+    <div style={{ minHeight:"100vh",background:"#050f08",display:"flex",alignItems:"center",justifyContent:"center",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:18 }}>Cargando...</div>
   );
   if (!user) return <Auth />;
   if (necesitaNombre) return <ElegirNombre user={user} onPerfilCreado={(p) => { localStorage.setItem(`truco_perfil_${user.id}`, JSON.stringify(p)); setPerfil(p); setNecesitaNombre(false); setNecesitaAvatar(true); }} />;
