@@ -505,8 +505,9 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
               {ranking.map((p,i)=>(
                 <div key={i} style={{ display:"flex",alignItems:"center",gap:12,background:"rgba(0,0,0,0.3)",borderRadius:10,padding:"10px 16px" }}>
                   <div style={{ fontSize:20,width:32 }}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}.`}</div>
+                  <div style={{ fontSize:26,width:32,textAlign:"center" }}>{p.nombre===perfil?.nombre?(perfil?.avatar||"👤"):"👤"}</div>
                   <div style={{ flex:1,textAlign:"left" }}>
-                    <div style={{ color:"#e2f5e9",fontSize:13,fontWeight:700 }}>{p.nombre}</div>
+                    <div style={{ color: p.nombre===perfil?.nombre?"#4ade80":"#e2f5e9",fontSize:13,fontWeight:700 }}>{p.nombre}</div>
                     <div style={{ color:"#6b9",fontSize:10 }}>{p.partidas_jugadas} jugadas</div>
                   </div>
                   <div style={{ color:"#fbbf24",fontSize:16,fontWeight:900 }}>{p.partidas_ganadas} 🏆</div>
