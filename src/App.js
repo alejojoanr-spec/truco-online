@@ -524,7 +524,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       </div>
 
       <div style={{ background:"rgba(0,0,0,0.35)",border:"1px solid rgba(45,106,79,0.3)",borderRadius:10,padding:"8px 12px",width:"100%",maxWidth:500,marginBottom:12,maxHeight:80,overflowY:"auto" }}>
-        {log.slice(-4).map((msg,i)=><div key={i} style={{ fontSize:11,color:i===log.slice(-4).length-1?"#e2f5e9":"rgba(180,220,190,0.5)",lineHeight:1.6 }}>{msg}</div>)}
+        {log.slice(-4).map((msg,i)=><div key={i} style={{ fontSize:11,color:"#ffffff",lineHeight:1.6,fontFamily:"'Lato',sans-serif" }}>{msg}</div>)}
       </div>
 
       <div style={{ marginBottom:14,textAlign:"center" }}>
