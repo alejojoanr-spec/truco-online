@@ -109,7 +109,12 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
     setCargando(true);
     const { error: dbError } = await supabase
       .from("perfiles")
-      .update({ is_verified: true })
+      .update({
+        is_verified: true,
+        provincia: form.provincia || null,
+        fecha_nacimiento: form.fecha_nacimiento || null,
+        genero: form.genero || null,
+      })
       .eq("usuario_id", perfil.usuario_id);
     if (dbError) {
       setError("No se pudo completar la verificación. Intentá de nuevo.");

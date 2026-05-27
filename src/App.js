@@ -762,6 +762,7 @@ export default function App() {
       const perfilCompleto = { ...data, avatar };
       localStorage.setItem(cacheKey, JSON.stringify(perfilCompleto));
       setPerfil(perfilCompleto);
+      supabase.from("perfiles").update({ ultimo_acceso: new Date().toISOString() }).eq("usuario_id", u.id).then(() => {});
     } else {
       setNecesitaNombre(true);
     }

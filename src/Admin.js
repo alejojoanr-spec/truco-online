@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
+} from "recharts";
 
 /* ─── shared styles ─── */
 const CARD = {
@@ -538,6 +542,205 @@ function TabSoporte() {
 }
 
 /* ══════════════════════════════════════════
+   TAB 5 — MÉTRICAS
+══════════════════════════════════════════ */
+const PROVINCIAS_ORDEN = [
+  "Buenos Aires","CABA","Córdoba","Santa Fe","Mendoza","Tucumán","Entre Ríos",
+  "Salta","Chaco","Corrientes","Misiones","Santiago del Estero","San Juan",
+  "Jujuy","Río Negro","Neuquén","Formosa","San Luis","Catamarca","La Pampa",
+  "La Rioja","Chubut","Santa Cruz","Tierra del Fuego",
+];
+
+const GENERO_LABELS = {
+  masculino: "Masculino",
+  femenino: "Femenino",
+  no_binario: "No binario",
+  otro: "Otro",
+};
+
+const PIE_COLORS = ["#60a5fa","#f472b6","#a78bfa","#fbbf24","#6b7280"];
+
+const TOOLTIP_STYLE = {
+  contentStyle: { background: "#0a2414", border: "1px solid #2d6a4f", borderRadius: 8, fontFamily: "'Lato',sans-serif", fontSize: 12, color: "#e2f5e9" },
+  itemStyle: { color: "#e2f5e9" },
+  cursor: { fill: "rgba(74,222,128,0.06)" },
+};
+
+function calcularEdad(fecha_nacimiento) {
+  if (!fecha_nacimiento) return null;
+  const hoy = new Date();
+  const nac = new Date(fecha_nacimiento);
+  let edad = hoy.getFullYear() - nac.getFullYear();
+  const m = hoy.getMonth() - nac.getMonth();
+  if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
+  return edad;
+}
+
+function rangoEdad(edad) {
+  if (edad === null || edad < 18) return null;
+  if (edad <= 25) return "18-25";
+  if (edad <= 35) return "26-35";
+  if (edad <= 45) return "36-45";
+  return "46+";
+}
+
+function TabMetricas() {
+  const [data, setData] = useState(null);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => { cargar(); }, []);
+
+  async function cargar() {
+    setCargando(true);
+
+    const { data: todos } = await supabase
+      .from("perfiles")
+      .select("provincia, fecha_nacimiento, genero, partidas_jugadas, ultimo_acceso, is_verified");
+
+    if (!todos) { setCargando(false); return; }
+
+    const verificados = todos.filter(p => p.is_verified);
+    const hace7dias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const activos = todos.filter(p => p.ultimo_acceso && new Date(p.ultimo_acceso) >= hace7dias).length;
+    const totalPartidas = todos.reduce((s, p) => s + (p.partidas_jugadas || 0), 0);
+
+    // Province distribution
+    const provCount = {};
+    verificados.forEach(p => {
+      if (p.provincia) provCount[p.provincia] = (provCount[p.provincia] || 0) + 1;
+    });
+    const provincias = PROVINCIAS_ORDEN
+      .filter(pr => provCount[pr])
+      .map(pr => ({ name: pr, value: provCount[pr] }))
+      .sort((a, b) => b.value - a.value);
+
+    // Age distribution
+    const ageCount = { "18-25": 0, "26-35": 0, "36-45": 0, "46+": 0 };
+    verificados.forEach(p => {
+      const rango = rangoEdad(calcularEdad(p.fecha_nacimiento));
+      if (rango) ageCount[rango]++;
+    });
+    const edades = Object.entries(ageCount).map(([name, value]) => ({ name, value }));
+
+    // Gender distribution
+    const genCount = {};
+    verificados.forEach(p => {
+      const g = p.genero && GENERO_LABELS[p.genero] ? GENERO_LABELS[p.genero] : "No especifica";
+      genCount[g] = (genCount[g] || 0) + 1;
+    });
+    const generos = Object.entries(genCount).map(([name, value]) => ({ name, value }));
+
+    setData({
+      totalRegistrados: todos.length,
+      totalVerificados: verificados.length,
+      activos7dias: activos,
+      totalPartidas,
+      provincias,
+      edades,
+      generos,
+    });
+    setCargando(false);
+  }
+
+  if (cargando) return <div style={{ textAlign: "center", color: "#4ade80", padding: 40 }}>Cargando métricas...</div>;
+  if (!data) return <div style={{ textAlign: "center", color: "#6b7280", padding: 40 }}>Sin datos</div>;
+
+  const sinDemograficos = data.totalVerificados === 0;
+
+  return (
+    <>
+      {/* Stats generales */}
+      <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>Estadísticas generales</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8, marginBottom: 24 }}>
+        <StatCard label="Registrados" valor={data.totalRegistrados} color="#4ade80" />
+        <StatCard label="Verificados" valor={data.totalVerificados} color="#60a5fa" />
+        <StatCard label="Activos (7 días)" valor={data.activos7dias} color="#fbbf24" />
+        <StatCard label="Partidas jugadas" valor={data.totalPartidas} color="#a78bfa" />
+      </div>
+
+      {sinDemograficos ? (
+        <div style={{ textAlign: "center", color: "#6b7280", padding: 32, fontSize: 13, background: "rgba(0,0,0,0.3)", borderRadius: 12, border: "1px solid #2d6a4f" }}>
+          Aún no hay usuarios verificados con datos demográficos
+        </div>
+      ) : (
+        <>
+          {/* Distribución por provincia */}
+          {data.provincias.length > 0 && (
+            <div style={{ marginBottom: 28 }}>
+              <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
+                Distribución por provincia
+              </div>
+              <div style={{ background: "rgba(0,0,0,0.35)", border: "1px solid #2d6a4f", borderRadius: 12, padding: "16px 8px 8px" }}>
+                <ResponsiveContainer width="100%" height={Math.max(180, data.provincias.length * 28)}>
+                  <BarChart data={data.provincias} layout="vertical" margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
+                    <XAxis type="number" tick={{ fill: "#6b7280", fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <YAxis type="category" dataKey="name" width={130} tick={{ fill: "#9ca3af", fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <Tooltip {...TOOLTIP_STYLE} formatter={(v) => [v, "Usuarios"]} />
+                    <Bar dataKey="value" fill="#4ade80" radius={[0, 4, 4, 0]} maxBarSize={18} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* Distribución por edad */}
+          {data.edades.some(e => e.value > 0) && (
+            <div style={{ marginBottom: 28 }}>
+              <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
+                Distribución por edad
+              </div>
+              <div style={{ background: "rgba(0,0,0,0.35)", border: "1px solid #2d6a4f", borderRadius: 12, padding: "16px 8px 8px" }}>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={data.edades} margin={{ left: 0, right: 10, top: 0, bottom: 0 }}>
+                    <XAxis dataKey="name" tick={{ fill: "#9ca3af", fontSize: 12 }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fill: "#6b7280", fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <Tooltip {...TOOLTIP_STYLE} formatter={(v) => [v, "Usuarios"]} />
+                    <Bar dataKey="value" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* Distribución por género */}
+          {data.generos.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
+                Distribución por género
+              </div>
+              <div style={{ background: "rgba(0,0,0,0.35)", border: "1px solid #2d6a4f", borderRadius: 12, padding: "16px 8px 8px" }}>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie
+                      data={data.generos}
+                      cx="50%"
+                      cy="45%"
+                      outerRadius={75}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      labelLine={{ stroke: "#4b5563" }}
+                    >
+                      {data.generos.map((_, i) => (
+                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={TOOLTIP_STYLE.contentStyle}
+                      itemStyle={TOOLTIP_STYLE.itemStyle}
+                      formatter={(v, name) => [v + " usuarios", name]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
+/* ══════════════════════════════════════════
    ADMIN ROOT
 ══════════════════════════════════════════ */
 const TABS = [
@@ -545,6 +748,7 @@ const TABS = [
   { id: "partidas", label: "Partidas" },
   { id: "finanzas", label: "Finanzas" },
   { id: "soporte", label: "Soporte" },
+  { id: "metricas", label: "Métricas" },
 ];
 
 export default function Admin({ onVolver }) {
@@ -568,8 +772,8 @@ export default function Admin({ onVolver }) {
       <div style={{ display: "flex", borderBottom: "1px solid rgba(45,106,79,0.3)", background: "rgba(5,15,8,0.92)", position: "sticky", top: 57, zIndex: 9 }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
-            flex: 1, padding: "12px 4px", border: "none", background: "none",
-            cursor: "pointer", fontFamily: "'Lato',sans-serif", fontSize: 13, fontWeight: 700,
+            flex: 1, padding: "11px 2px", border: "none", background: "none",
+            cursor: "pointer", fontFamily: "'Lato',sans-serif", fontSize: 11, fontWeight: 700,
             color: tab === t.id ? "#4ade80" : "#4b5563",
             borderBottom: tab === t.id ? "2px solid #4ade80" : "2px solid transparent",
             transition: "color 0.15s, border-color 0.15s",
@@ -585,6 +789,7 @@ export default function Admin({ onVolver }) {
         {tab === "partidas" && <TabPartidas />}
         {tab === "finanzas" && <TabFinanzas />}
         {tab === "soporte" && <TabSoporte />}
+        {tab === "metricas" && <TabMetricas />}
       </div>
 
     </div>
