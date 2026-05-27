@@ -488,11 +488,11 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const nombreJugador = perfil?.nombre || user.email?.split("@")[0] || "Vos";
 
   return (
-    <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",fontFamily:"'Lato',sans-serif",display:"flex",flexDirection:"column",alignItems:"center",padding:"16px 8px",overflow:"hidden" }}>
+    <div style={{ height:"100dvh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",fontFamily:"'Lato',sans-serif",display:"flex",flexDirection:"column",alignItems:"center",padding:"8px 8px 4px",overflow:"hidden",boxSizing:"border-box",gap:4 }}>
 
 
 
-      <div style={{ background:"rgba(0,0,0,0.5)",border:"1px solid #2d6a4f",borderRadius:12,padding:"8px 14px",display:"flex",gap:12,alignItems:"flex-start",marginBottom:12 }}>
+      <div style={{ background:"rgba(0,0,0,0.5)",border:"1px solid #2d6a4f",borderRadius:12,padding:"8px 14px",display:"flex",gap:12,alignItems:"flex-start",flexShrink:0 }}>
         <div>
           <div style={{ display:"flex",alignItems:"center",gap:4,marginBottom:5,maxWidth:128,overflow:"hidden" }}>
             <span style={{ fontSize:13,flexShrink:0 }}>{perfil?.avatar || "👤"}</span>
@@ -516,19 +516,19 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         style={{ position:"fixed",top:14,right:14,zIndex:30,width:36,height:36,borderRadius:10,border:"1px solid #374151",background:"rgba(0,0,0,0.6)",color:"#9ca3af",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1 }}
       >✕</button>
 
-      <div style={{ display:"flex",gap:6,marginBottom:10 }}>
+      <div style={{ display:"flex",gap:6,flexShrink:0 }}>
         {[1,2,3].map(r=>(
           <div key={r} style={{ width:28,height:8,borderRadius:4,background:r<rondaActual?(ganadoresRondas[r-1]==="jugador"?"#4ade80":ganadoresRondas[r-1]==="rival"?"#f87171":"#888"):r===rondaActual?"#fbbf24":"rgba(255,255,255,0.1)",border:r===rondaActual?"1px solid #fbbf24":"1px solid transparent" }} />
         ))}
       </div>
 
-      <div style={{ marginBottom:16,textAlign:"center" }}>
+      <div style={{ flex:1,display:"flex",alignItems:"center",justifyContent:"center",minHeight:0 }}>
         <div style={{ display:"flex",gap:8,justifyContent:"center" }}>
           {manoRival.map((c,i)=><Carta key={i} carta={c} oculta={!jugadasRival.includes(i)} jugada={jugadasRival.includes(i)} />)}
         </div>
       </div>
 
-      <div style={{ background:"rgba(0,0,0,0.25)",border:"1px solid rgba(45,106,79,0.4)",borderRadius:16,padding:"12px 24px",marginBottom:16,minHeight:80,display:"flex",alignItems:"center",justifyContent:"center",gap:24,width:"100%",maxWidth:400,minWidth:280 }}>
+      <div style={{ background:"rgba(0,0,0,0.25)",border:"1px solid rgba(45,106,79,0.4)",borderRadius:16,padding:"8px 24px",display:"flex",alignItems:"center",justifyContent:"center",gap:24,width:"100%",maxWidth:400,minWidth:280,flexShrink:0 }}>
         <div style={{ textAlign:"center" }}>
           {mesaRival.length>0?(<><div style={{ fontSize:9,color:"#9ca",marginBottom:4 }}>RIVAL</div><Carta carta={mesaRival[mesaRival.length-1]} /></>):<div style={{ color:"rgba(255,255,255,0.1)",fontSize:12 }}>—</div>}
         </div>
@@ -538,35 +538,42 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         </div>
       </div>
 
-      <div style={{ background:"rgba(0,0,0,0.35)",border:"1px solid rgba(45,106,79,0.3)",borderRadius:10,padding:"8px 12px",width:"100%",maxWidth:500,marginBottom:12 }}>
+      <div style={{ background:"rgba(0,0,0,0.35)",border:"1px solid rgba(45,106,79,0.3)",borderRadius:10,padding:"8px 12px",width:"100%",maxWidth:500,flexShrink:0 }}>
         {log.slice(-2).map((msg,i)=><div key={i} style={{ fontSize:11,color:"#ffffff",lineHeight:1.6,fontFamily:"'Lato',sans-serif" }}>{msg}</div>)}
       </div>
 
-      <div style={{ marginBottom:14,textAlign:"center" }}>
+      <div style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:0 }}>
         <div style={{ fontSize:10,color:"#4ade80",letterSpacing:2,textTransform:"uppercase",marginBottom:8 }}>{puedeJugar?"👆 Tocá una carta para jugar":turno==="rival"?"Esperando rival...":"Tu mano"}</div>
-        <div style={{ position:"relative", display:"inline-flex", gap:10 }}>
+        <div style={{ display:"inline-flex", gap:10 }}>
           {manoJugador.map((c,i)=>(
-            <Carta key={i} carta={c} jugada={jugadasJugador.includes(i)} seleccionada={cartaSeleccionada===i}
-              onClick={()=>{ if(!puedeJugar||jugadasJugador.includes(i))return; if(cartaSeleccionada===i)jugarCarta(i); else setCartaSeleccionada(i); }} />
+            i===0 ? (
+              <div key={i} style={{ position:"relative" }}>
+                <Carta carta={c} jugada={jugadasJugador.includes(i)} seleccionada={cartaSeleccionada===i}
+                  onClick={()=>{ if(!puedeJugar||jugadasJugador.includes(i))return; if(cartaSeleccionada===i)jugarCarta(i); else setCartaSeleccionada(i); }} />
+                {turno==="jugador"&&fasePartida==="jugando"&&timerSegundos>0&&(
+                  <svg width="44" height="44" style={{ position:"absolute",left:-10,bottom:-10,zIndex:10,filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
+                    <circle cx="22" cy="22" r="17" fill="rgba(0,0,0,0.75)" stroke="rgba(255,255,255,0.06)" strokeWidth="3"/>
+                    <circle cx="22" cy="22" r="17" fill="none"
+                      stroke={timerSegundos>10?"#4ade80":timerSegundos>5?"#fbbf24":"#f87171"} strokeWidth="3"
+                      strokeDasharray={2*Math.PI*17} strokeDashoffset={2*Math.PI*17*(1-timerSegundos/15)}
+                      strokeLinecap="round" style={{transform:"rotate(-90deg)",transformOrigin:"22px 22px"}}/>
+                    <text x="22" y="22" textAnchor="middle" dominantBaseline="middle"
+                      fill={timerSegundos>10?"#4ade80":timerSegundos>5?"#fbbf24":"#f87171"} fontSize="13" fontWeight="700">
+                      {timerSegundos}
+                    </text>
+                  </svg>
+                )}
+              </div>
+            ) : (
+              <Carta key={i} carta={c} jugada={jugadasJugador.includes(i)} seleccionada={cartaSeleccionada===i}
+                onClick={()=>{ if(!puedeJugar||jugadasJugador.includes(i))return; if(cartaSeleccionada===i)jugarCarta(i); else setCartaSeleccionada(i); }} />
+            )
           ))}
-          {turno==="jugador"&&fasePartida==="jugando"&&timerSegundos>0&&(
-            <svg width="44" height="44" style={{ position:"absolute",left:-8,bottom:-8,zIndex:10,filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
-              <circle cx="22" cy="22" r="17" fill="rgba(0,0,0,0.75)" stroke="rgba(255,255,255,0.06)" strokeWidth="3"/>
-              <circle cx="22" cy="22" r="17" fill="none"
-                stroke={timerSegundos>10?"#4ade80":timerSegundos>5?"#fbbf24":"#f87171"} strokeWidth="3"
-                strokeDasharray={2*Math.PI*17} strokeDashoffset={2*Math.PI*17*(1-timerSegundos/15)}
-                strokeLinecap="round" style={{transform:"rotate(-90deg)",transformOrigin:"22px 22px"}}/>
-              <text x="22" y="22" textAnchor="middle" dominantBaseline="middle"
-                fill={timerSegundos>10?"#4ade80":timerSegundos>5?"#fbbf24":"#f87171"} fontSize="13" fontWeight="700">
-                {timerSegundos}
-              </text>
-            </svg>
-          )}
         </div>
         {cartaSeleccionada!==null&&!jugadasJugador.includes(cartaSeleccionada)&&<div style={{ marginTop:6,fontSize:11,color:"#fbbf24" }}>Tocá de nuevo para confirmar</div>}
       </div>
 
-      <div style={{ display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",maxWidth:500,marginBottom:10 }}>
+      <div style={{ display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",maxWidth:500,flexShrink:0,paddingBottom:4 }}>
         {trucoDisponible && <button onClick={cantarTruco} style={btnStyle("#b45309","#fbbf24")}>🗣 Truco</button>}
         {esperandoRespuestaRetruco && <>
           <button onClick={()=>responderRetruco("quiero")} style={btnStyle("#065f46","#4ade80")}>✅ Quiero (3 pts)</button>
