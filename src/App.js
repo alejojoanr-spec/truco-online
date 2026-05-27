@@ -244,6 +244,19 @@ function reproducirSonidoCarta() {
   } catch {}
 }
 
+const _audioPuntoCache = { obj: null };
+function reproducirSonidoPunto() {
+  if (!leerConfig().efectosPuntos) return;
+  try {
+    if (!_audioPuntoCache.obj) {
+      _audioPuntoCache.obj = new Audio("/sounds/punto.wav");
+      _audioPuntoCache.obj.volume = 0.45;
+    }
+    _audioPuntoCache.obj.currentTime = 0;
+    _audioPuntoCache.obj.play().catch(() => {});
+  } catch {}
+}
+
 function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerminos, onVerTorneos, onHome, rivalNombre = "IA", rivalAvatar = "🤖" }) {
   const [manoJugador, setManoJugador] = useState([]);
   const [manoRival, setManoRival] = useState([]);
@@ -419,7 +432,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         actualizarEstadisticas(true);
         addLog("🏆 ¡GANASTE LA PARTIDA!");
       }
-      setPuntosJugador(nuevos);
+      setPuntosJugador(nuevos); reproducirSonidoPunto();
     } else if (ganador === "rival") {
       const nuevos = puntosRival + ptsTruco;
       addLog(`💀 El rival ganó la mano (+${ptsTruco} pts)`);
@@ -429,7 +442,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         actualizarEstadisticas(false);
         addLog("💀 El rival ganó la partida");
       }
-      setPuntosRival(nuevos);
+      setPuntosRival(nuevos); reproducirSonidoPunto();
     } else addLog("🤝 Mano empatada");
     setTimeout(() => {
       if (!juegoTerminado && fasePartida !== "fin") {
@@ -451,7 +464,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       const rand = Math.random();
       if (rand < 0.3) {
         setEstadoTruco("noquiero"); addLog("Rival: No quiero");
-        addLog("✅ Ganaste 1 punto"); setPuntosJugador(p => p + 1);
+        addLog("✅ Ganaste 1 punto"); setPuntosJugador(p => p + 1); reproducirSonidoPunto();
       } else if (rand < 0.55) {
         setEstadoTruco("retruco"); setTrucoCantadoPor("rival"); addLog("Rival: ¡RETRUCO!");
       } else {
@@ -465,7 +478,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       setEstadoTruco("quiero"); setPtsTrucoApostados(3); addLog("Vos: ¡Quiero!");
     } else if (respuesta === "noquiero") {
       setEstadoTruco("noquiero"); addLog("Vos: No quiero");
-      addLog("❌ Rival gana 2 puntos"); setPuntosRival(p => p + 2);
+      addLog("❌ Rival gana 2 puntos"); setPuntosRival(p => p + 2); reproducirSonidoPunto();
     } else {
       setEstadoTruco("valecuatro"); setTrucoCantadoPor("jugador"); addLog("Vos: ¡VALE CUATRO!");
       setTimeout(() => {
@@ -473,7 +486,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
           setEstadoTruco("quiero"); setPtsTrucoApostados(4); addLog("Rival: ¡Quiero!");
         } else {
           setEstadoTruco("noquiero"); addLog("Rival: No quiero");
-          addLog("✅ Ganaste 3 puntos"); setPuntosJugador(p => p + 3);
+          addLog("✅ Ganaste 3 puntos"); setPuntosJugador(p => p + 3); reproducirSonidoPunto();
         }
       }, 1000);
     }
@@ -494,25 +507,25 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         const jugadorGana = envJ >= envidoRival;
         if (tipo === "faltaenvido") {
           const pts = jugadorGana ? 30 - ptsR : 30 - ptsJ;
-          if (jugadorGana) { addLog(`✅ Ganaste Falta Envido (+${pts})`); setPuntosJugador(p => p + pts); }
-          else { addLog(`❌ Rival ganó Falta Envido (+${pts})`); setPuntosRival(p => p + pts); }
+          if (jugadorGana) { addLog(`✅ Ganaste Falta Envido (+${pts})`); setPuntosJugador(p => p + pts); reproducirSonidoPunto(); }
+          else { addLog(`❌ Rival ganó Falta Envido (+${pts})`); setPuntosRival(p => p + pts); reproducirSonidoPunto(); }
         } else if (tipo === "envido-envido") {
-          if (jugadorGana) { addLog("✅ Ganaste Envido Envido (+4)"); setPuntosJugador(p => p + 4); }
-          else { addLog("❌ Rival ganó Envido Envido (+4)"); setPuntosRival(p => p + 4); }
+          if (jugadorGana) { addLog("✅ Ganaste Envido Envido (+4)"); setPuntosJugador(p => p + 4); reproducirSonidoPunto(); }
+          else { addLog("❌ Rival ganó Envido Envido (+4)"); setPuntosRival(p => p + 4); reproducirSonidoPunto(); }
         } else {
-          if (jugadorGana) { addLog("✅ Ganaste envido (+2)"); setPuntosJugador(p => p + 2); }
-          else { addLog("❌ Rival ganó envido (+2)"); setPuntosRival(p => p + 2); }
+          if (jugadorGana) { addLog("✅ Ganaste envido (+2)"); setPuntosJugador(p => p + 2); reproducirSonidoPunto(); }
+          else { addLog("❌ Rival ganó envido (+2)"); setPuntosRival(p => p + 2); reproducirSonidoPunto(); }
         }
       } else {
         const ptsNoQ = tipo === "envido-envido" ? 2 : 1;
         addLog(`✅ Ganaste ${ptsNoQ} punto${ptsNoQ > 1 ? "s" : ""} por envido`);
-        setPuntosJugador(p => p + ptsNoQ);
+        setPuntosJugador(p => p + ptsNoQ); reproducirSonidoPunto();
       }
     }, 1000);
   }
 
   function irseAlMazo() {
-    addLog("Te fuiste al mazo."); setPuntosRival(p=>p+1);
+    addLog("Te fuiste al mazo."); setPuntosRival(p=>p+1); reproducirSonidoPunto();
     setTimeout(()=>resolverMano("rival"),500);
   }
 
