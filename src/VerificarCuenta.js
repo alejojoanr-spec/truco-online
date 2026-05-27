@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "./supabase";
+import Terminos from "./Terminos";
 
 const PROVINCIAS = [
   "Buenos Aires", "CABA", "Catamarca", "Chaco", "Chubut", "Córdoba",
@@ -31,8 +32,11 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
     genero: "",
   });
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
+  const [verTerminos, setVerTerminos] = useState(false);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
+
+  if (verTerminos) return <Terminos onVolver={() => setVerTerminos(false)} />;
 
   function set(field, value) {
     setForm(f => ({ ...f, [field]: value }));
@@ -191,7 +195,12 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
           />
           <span style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>
             Acepto los{" "}
-            <span style={{ color: "#4ade80", textDecoration: "underline" }}>términos y condiciones</span>
+            <span
+              onClick={(e) => { e.preventDefault(); setVerTerminos(true); }}
+              style={{ color: "#4ade80", textDecoration: "underline", cursor: "pointer" }}
+            >
+              términos y condiciones
+            </span>
             {" "}y autorizo el uso de mis datos para la verificación de identidad.
           </span>
         </label>
