@@ -211,7 +211,7 @@ function PalitosPuntaje({ puntos, total=30 }) {
   );
 }
 
-function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerminos, onVerTorneos, onHome, rivalNombre = "IA" }) {
+function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerminos, onVerTorneos, onHome, rivalNombre = "IA", rivalAvatar = "🤖" }) {
   const [manoJugador, setManoJugador] = useState([]);
   const [manoRival, setManoRival] = useState([]);
   const [jugadasJugador, setJugadasJugador] = useState([]);
@@ -508,12 +508,18 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
       <div style={{ background:"rgba(0,0,0,0.5)",border:"1px solid #2d6a4f",borderRadius:12,padding:"8px 14px",display:"flex",gap:12,alignItems:"flex-start",marginBottom:12 }}>
         <div>
-          <div style={{ fontSize:8,color:"#4ade80",letterSpacing:1,marginBottom:5,fontFamily:"'Lato',sans-serif",maxWidth:128,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{nombreJugador} — {puntosJugador} pts</div>
+          <div style={{ display:"flex",alignItems:"center",gap:4,marginBottom:5,maxWidth:128,overflow:"hidden" }}>
+            <span style={{ fontSize:13,flexShrink:0 }}>{perfil?.avatar || "👤"}</span>
+            <span style={{ fontSize:8,color:"#4ade80",letterSpacing:1,fontFamily:"'Lato',sans-serif",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{nombreJugador} — {puntosJugador} pts</span>
+          </div>
           <PalitosPuntaje puntos={puntosJugador} />
         </div>
         <div style={{ width:1,alignSelf:"stretch",background:"#2d6a4f",margin:"0 2px" }}/>
         <div>
-          <div style={{ fontSize:8,color:"#f87171",letterSpacing:1,marginBottom:5,fontFamily:"'Lato',sans-serif",maxWidth:128,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{rivalNombre} — {puntosRival} pts</div>
+          <div style={{ display:"flex",alignItems:"center",gap:4,marginBottom:5,maxWidth:128,overflow:"hidden" }}>
+            <span style={{ fontSize:13,flexShrink:0 }}>{rivalAvatar}</span>
+            <span style={{ fontSize:8,color:"#f87171",letterSpacing:1,fontFamily:"'Lato',sans-serif",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{rivalNombre} — {puntosRival} pts</span>
+          </div>
           <PalitosPuntaje puntos={puntosRival} />
         </div>
       </div>
