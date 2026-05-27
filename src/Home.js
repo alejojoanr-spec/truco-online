@@ -401,10 +401,10 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
             <div>
               <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>CBU</div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <div style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(45,106,79,0.5)", background: "rgba(0,0,0,0.4)", color: "#9ca3af", fontSize: 13, fontFamily: "monospace" }}>
+                <div style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(45,106,79,0.5)", background: "rgba(0,0,0,0.4)", color: "#ffffff", fontSize: 13, fontFamily: "monospace" }}>
                   {CBU}
                 </div>
-                <button onClick={() => copiar(CBU, "CBU")} style={{ padding: "10px 12px", borderRadius: 8, background: copiado === "CBU" ? "rgba(74,222,128,0.2)" : "rgba(0,0,0,0.3)", border: "1px solid rgba(45,106,79,0.5)", color: copiado === "CBU" ? "#4ade80" : "#9ca3af", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", whiteSpace: "nowrap", transition: "all 0.2s" }}>
+                <button onClick={() => copiar(CBU, "CBU")} style={{ padding: "10px 12px", borderRadius: 8, background: copiado === "CBU" ? "rgba(74,222,128,0.2)" : "rgba(0,0,0,0.3)", border: "1px solid rgba(45,106,79,0.5)", color: copiado === "CBU" ? "#4ade80" : "#ffffff", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", whiteSpace: "nowrap", transition: "all 0.2s" }}>
                   {copiado === "CBU" ? "✓ Copiado" : "📋 Copiar"}
                 </button>
               </div>
@@ -414,10 +414,10 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
             <div>
               <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>ALIAS</div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <div style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(45,106,79,0.5)", background: "rgba(0,0,0,0.4)", color: "#9ca3af", fontSize: 13 }}>
+                <div style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(45,106,79,0.5)", background: "rgba(0,0,0,0.4)", color: "#ffffff", fontSize: 13 }}>
                   {ALIAS}
                 </div>
-                <button onClick={() => copiar(ALIAS, "ALIAS")} style={{ padding: "10px 12px", borderRadius: 8, background: copiado === "ALIAS" ? "rgba(74,222,128,0.2)" : "rgba(0,0,0,0.3)", border: "1px solid rgba(45,106,79,0.5)", color: copiado === "ALIAS" ? "#4ade80" : "#9ca3af", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", whiteSpace: "nowrap", transition: "all 0.2s" }}>
+                <button onClick={() => copiar(ALIAS, "ALIAS")} style={{ padding: "10px 12px", borderRadius: 8, background: copiado === "ALIAS" ? "rgba(74,222,128,0.2)" : "rgba(0,0,0,0.3)", border: "1px solid rgba(45,106,79,0.5)", color: copiado === "ALIAS" ? "#4ade80" : "#ffffff", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", whiteSpace: "nowrap", transition: "all 0.2s" }}>
                   {copiado === "ALIAS" ? "✓ Copiado" : "📋 Copiar"}
                 </button>
               </div>
