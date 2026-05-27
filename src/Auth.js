@@ -24,6 +24,7 @@ export default function Auth() {
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [mostrarNuevaPassword, setMostrarNuevaPassword] = useState(false);
   const [mostrarConfirmarPassword, setMostrarConfirmarPassword] = useState(false);
+  const [recibeNovedades, setRecibeNovedades] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
@@ -42,6 +43,7 @@ export default function Auth() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setMensaje("❌ " + error.message);
     } else {
+      localStorage.setItem("truco_mkt_pending", recibeNovedades ? "1" : "0");
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) setMensaje("❌ " + error.message);
       else setMensaje("✅ Revisá tu email para confirmar el registro");
@@ -84,6 +86,9 @@ export default function Auth() {
   }
 
   async function handleGoogle() {
+    if (modo === "registro") {
+      localStorage.setItem("truco_mkt_pending", recibeNovedades ? "1" : "0");
+    }
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: window.location.origin },
@@ -191,6 +196,24 @@ export default function Auth() {
             >
               ¿Olvidaste tu contraseña?
             </button>
+          )}
+
+          {modo === "registro" && (
+            <div
+              onClick={() => setRecibeNovedades(v => !v)}
+              style={{ display:"flex", alignItems:"flex-start", gap:10, cursor:"pointer" }}
+            >
+              <div style={{
+                width:18, height:18, borderRadius:4, flexShrink:0, marginTop:1,
+                border:"1px solid #2d6a4f", background: recibeNovedades ? "#1a472a" : "rgba(0,0,0,0.4)",
+                display:"flex", alignItems:"center", justifyContent:"center", transition:"background 0.15s",
+              }}>
+                {recibeNovedades && <span style={{ color:"#4ade80", fontSize:13, lineHeight:1, fontWeight:700 }}>✓</span>}
+              </div>
+              <span style={{ color:"rgba(255,255,255,0.75)", fontSize:12, lineHeight:1.5, fontFamily:LATO }}>
+                Quiero recibir novedades y promociones de Truco Argentino
+              </span>
+            </div>
           )}
 
           <button onClick={handleSubmit} disabled={cargando} style={{

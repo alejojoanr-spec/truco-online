@@ -32,9 +32,11 @@ export default function ElegirNombre({ user, onPerfilCreado }) {
     if (err) { setError(err); return; }
     setCargando(true);
     setError("");
+    const recibeNovedades = localStorage.getItem("truco_mkt_pending") === "1";
+    localStorage.removeItem("truco_mkt_pending");
     const { data, error: dbError } = await supabase
       .from("perfiles")
-      .insert({ usuario_id: user.id, nombre, partidas_jugadas: 0, partidas_ganadas: 0 })
+      .insert({ usuario_id: user.id, nombre, partidas_jugadas: 0, partidas_ganadas: 0, recibe_novedades: recibeNovedades })
       .select()
       .single();
     if (dbError) {
