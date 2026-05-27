@@ -78,10 +78,16 @@ function repartir() {
 function Carta({ carta, oculta, onClick, jugada, seleccionada }) {
   if (oculta) return (
     <svg width="70" height="110" style={{ cursor:"default", userSelect:"none", opacity: jugada ? 0.5 : 1 }}>
+      <defs>
+        <pattern id="dorso-rombos" x="0" y="0" width="10" height="8" patternUnits="userSpaceOnUse">
+          <polygon points="5,0 10,4 5,8 0,4" fill="#0e2617" stroke="#3a7a55" strokeWidth="0.9"/>
+        </pattern>
+      </defs>
       <rect width="70" height="110" rx="8" fill="#0f3d20"/>
-      <rect x="3" y="3" width="64" height="104" rx="6" fill="none" stroke="#2d6a4f" stroke-width="2"/>
+      <rect x="3" y="3" width="64" height="104" rx="6" fill="none" stroke="#2d6a4f" strokeWidth="2"/>
       <rect x="6" y="6" width="58" height="98" rx="4" fill="#1a472a"/>
-      <text x="35" y="72" fontSize="48" textAnchor="middle" fill="#2d6a4f">🂠</text>
+      <rect x="10" y="15" width="50" height="80" rx="2" fill="url(#dorso-rombos)"/>
+      <rect x="10" y="15" width="50" height="80" rx="2" fill="none" stroke="#2d6a4f" strokeWidth="0.8"/>
     </svg>
   );
 
