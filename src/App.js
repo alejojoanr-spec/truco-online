@@ -435,7 +435,10 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       </div>
 
       <div style={{ marginBottom:16,textAlign:"center" }}>
-        <div style={{ fontSize:10,color:"#f87171",letterSpacing:2,textTransform:"uppercase",marginBottom:8 }}>{turno==="rival"?"⟳ Rival piensa...":"Rival"}</div>
+        <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:8 }}>
+          <span style={{ fontSize:22 }}>🤖</span>
+          <span style={{ fontSize:10,color:"#f87171",letterSpacing:2,textTransform:"uppercase" }}>{turno==="rival"?"⟳ Rival piensa...":"Rival"}</span>
+        </div>
         <div style={{ display:"flex",gap:8,justifyContent:"center" }}>
           {manoRival.map((c,i)=><Carta key={i} carta={c} oculta={!jugadasRival.includes(i)} jugada={jugadasRival.includes(i)} />)}
         </div>
