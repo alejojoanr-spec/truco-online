@@ -270,6 +270,19 @@ function reproducirSonidoVictoria() {
   } catch {}
 }
 
+const _audioDerrotaCache = { obj: null };
+function reproducirSonidoDerrota() {
+  if (!leerConfig().sonidoVictoria) return;
+  try {
+    if (!_audioDerrotaCache.obj) {
+      _audioDerrotaCache.obj = new Audio("/sounds/derrota.wav");
+      _audioDerrotaCache.obj.volume = 0.55;
+    }
+    _audioDerrotaCache.obj.currentTime = 0;
+    _audioDerrotaCache.obj.play().catch(() => {});
+  } catch {}
+}
+
 function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerminos, onVerTorneos, onHome, rivalNombre = "IA", rivalAvatar = "🤖" }) {
   const [manoJugador, setManoJugador] = useState([]);
   const [manoRival, setManoRival] = useState([]);
@@ -457,8 +470,11 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         setFasePartida("fin"); setGanadorPartida("rival");
         actualizarEstadisticas(false);
         addLog("💀 El rival ganó la partida");
+        reproducirSonidoDerrota();
+      } else {
+        reproducirSonidoPunto();
       }
-      setPuntosRival(nuevos); reproducirSonidoPunto();
+      setPuntosRival(nuevos);
     } else addLog("🤝 Mano empatada");
     setTimeout(() => {
       if (!juegoTerminado && fasePartida !== "fin") {
