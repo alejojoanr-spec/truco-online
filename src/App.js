@@ -588,7 +588,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         </>}
         {envidoDisponible && <>
           <button onClick={()=>cantarEnvido("envido")} style={btnStyle("#1d4ed8","#60a5fa")}>Envido</button>
-          <button onClick={()=>cantarEnvido("envido-envido")} style={btnStyle("#1e40af","#93c5fd")}>Envido Envido</button>
           <button onClick={()=>cantarEnvido("realenvido")} style={btnStyle("#5b21b6","#a78bfa")}>Real Envido</button>
           <button onClick={()=>cantarEnvido("faltaenvido")} style={btnStyle("#065f46","#34d399")}>Falta Envido</button>
         </>}
