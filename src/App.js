@@ -661,6 +661,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [perfil, setPerfil] = useState(null);
   const [necesitaNombre, setNecesitaNombre] = useState(false);
+  const [necesitaAvatar, setNecesitaAvatar] = useState(false);
   const [modoJuego, setModoJuego] = useState(null); // null=home, "single"=vs IA, "multi"=multijugador
   const [verTerminos, setVerTerminos] = useState(false);
   const [verTorneos, setVerTorneos] = useState(false);
@@ -682,12 +683,12 @@ export default function App() {
   }, []);
 
   async function cargarPerfil(u) {
-    const { data } = await supabase.from("perfiles").select("*").eq("usuario_id", u.id).single();
-    if (!data) {
-      setNecesitaNombre(true);
-    } else {
+    const { data } = await supabase.from("perfiles").select("*").eq("usuario_id", u.id).maybeSingle();
+    if (data && data.nombre) {
       const avatarLocal = localStorage.getItem(`truco_avatar_${u.id}`);
-      setPerfil(avatarLocal ? { ...data, avatar: avatarLocal } : data);
+      setPerfil({ ...data, avatar: avatarLocal || "👤" });
+    } else {
+      setNecesitaNombre(true);
     }
     setCargando(false);
   }
@@ -698,8 +699,8 @@ export default function App() {
     <div style={{ minHeight:"100vh",background:"#050f08",display:"flex",alignItems:"center",justifyContent:"center",color:"#4ade80",fontFamily:"Georgia",fontSize:18 }}>Cargando...</div>
   );
   if (!user) return <Auth />;
-  if (necesitaNombre) return <ElegirNombre user={user} onPerfilCreado={(p) => { setPerfil(p); setNecesitaNombre(false); }} />;
-  if (perfil && !perfil.avatar) return <ElegirAvatar perfil={perfil} onAvatarGuardado={(p) => setPerfil(p)} />;
+  if (necesitaNombre) return <ElegirNombre user={user} onPerfilCreado={(p) => { setPerfil(p); setNecesitaNombre(false); setNecesitaAvatar(true); }} />;
+  if (necesitaAvatar) return <ElegirAvatar perfil={perfil} onAvatarGuardado={(p) => { setPerfil(p); setNecesitaAvatar(false); }} />;
   if (verTerminos) return <Terminos onVolver={()=>setVerTerminos(false)} />;
   if (verTorneos) return <Torneos user={user} perfil={perfil} onVolver={()=>setVerTorneos(false)} />;
   if (modoJuego === "multi") return <Multijugador user={user} perfil={perfil} onVolver={()=>setModoJuego(null)} />;
