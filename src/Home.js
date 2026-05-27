@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "./supabase";
+import VerificarCuenta from "./VerificarCuenta";
 
 function MenuItem({ icono, label, onClick, peligro }) {
   return (
@@ -39,6 +40,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
   const [cargandoEdit, setCargandoEdit] = useState(false);
   const [saldoVisible, setSaldoVisible] = useState(false);
   const [mostrarDepositar, setMostrarDepositar] = useState(false);
+  const [mostrarVerificar, setMostrarVerificar] = useState(false);
   const [copiado, setCopiado] = useState("");
 
   function abrirEditar() {
@@ -146,7 +148,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
         background: "rgba(0,0,0,0.5)", border: "1px solid #2d6a4f",
         borderRadius: 20, padding: "20px 24px",
         width: "100%", maxWidth: 340,
-        display: "flex", alignItems: "center", gap: 16,
+        display: "flex", flexDirection: "column",
         position: "relative",
       }}>
         <button onClick={abrirEditar} style={{
@@ -155,42 +157,80 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
           borderRadius: 8, width: 28, height: 28, cursor: "pointer",
           color: "#4ade80", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center",
         }}>✏️</button>
-        <div style={{
-          width: 64, height: 64, borderRadius: "50%", flexShrink: 0,
-          background: "radial-gradient(circle,#1a472a,#050f08)",
-          border: "2px solid #4ade80",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 36, boxShadow: "0 0 16px rgba(74,222,128,0.2)",
-        }}>
-          {perfil.avatar || "👤"}
-        </div>
-        <div style={{ textAlign: "left", flex: 1 }}>
-          <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>{perfil.nombre}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-            <span style={{ fontSize: 16, color: "#ffffff", fontWeight: 700, fontFamily: "'Lato', sans-serif", letterSpacing: 0.5 }}>
-              {saldoVisible
-                ? `$ ${(perfil.saldo || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}`
-                : "$ ••••••"}
-            </span>
-            <button onClick={() => setSaldoVisible(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 2, display: "flex", alignItems: "center" }}>
-              {saldoVisible ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                  <line x1="1" y1="1" x2="23" y2="23"/>
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-              )}
+
+        {/* Fila avatar + info */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: "50%", flexShrink: 0,
+            background: "radial-gradient(circle,#1a472a,#050f08)",
+            border: "2px solid #4ade80",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 36, boxShadow: "0 0 16px rgba(74,222,128,0.2)",
+          }}>
+            {perfil.avatar || "👤"}
+          </div>
+          <div style={{ textAlign: "left", flex: 1 }}>
+            <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>{perfil.nombre}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+              <span style={{ fontSize: 16, color: "#ffffff", fontWeight: 700, fontFamily: "'Lato', sans-serif", letterSpacing: 0.5 }}>
+                {saldoVisible
+                  ? `$ ${(perfil.saldo || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}`
+                  : "$ ••••••"}
+              </span>
+              <button onClick={() => setSaldoVisible(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 2, display: "flex", alignItems: "center" }}>
+                {saldoVisible ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                )}
+              </button>
+            </div>
+            <button onClick={() => setMostrarDepositar(true)} style={{ marginTop: 10, padding: "5px 12px", borderRadius: 8, background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ade80", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", fontWeight: 700 }}>
+              + Depositar
             </button>
           </div>
-          <button onClick={() => setMostrarDepositar(true)} style={{ marginTop: 10, padding: "5px 12px", borderRadius: 8, background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ade80", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", fontWeight: 700 }}>
-            + Depositar
-          </button>
         </div>
+
+        {/* Banner verificación — solo si no está verificado */}
+        {!perfil.is_verified && (
+          <div style={{
+            marginTop: 16, paddingTop: 14,
+            borderTop: "1px solid rgba(45,106,79,0.35)",
+            display: "flex", flexDirection: "column", gap: 6,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span style={{ fontSize: 12, color: "#fbbf24", fontWeight: 800, fontFamily: "'Lato', sans-serif", letterSpacing: 0.3 }}>
+                Cuenta incompleta
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.5 }}>
+              Verificá tu identidad para habilitar partidas competitivas
+            </div>
+            <button
+              onClick={() => setMostrarVerificar(true)}
+              style={{
+                alignSelf: "flex-start", marginTop: 4,
+                padding: "6px 14px", borderRadius: 8,
+                background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.45)",
+                color: "#fbbf24", fontSize: 12, cursor: "pointer",
+                fontFamily: "'Lato', sans-serif", fontWeight: 700,
+              }}
+            >
+              Verificar cuenta
+            </button>
+          </div>
+        )}
       </div>
 
       </div>{/* fin grupo logo+card */}
@@ -463,6 +503,18 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── MODAL VERIFICAR CUENTA ── */}
+      {mostrarVerificar && (
+        <VerificarCuenta
+          perfil={perfil}
+          onVerificado={(perfilActualizado) => {
+            onPerfilActualizado(perfilActualizado);
+            setMostrarVerificar(false);
+          }}
+          onCerrar={() => setMostrarVerificar(false)}
+        />
       )}
 
     </div>
