@@ -1,13 +1,19 @@
 import { useState } from "react";
+import { supabase } from "./supabase";
 
 const AVATARES = ["👨","👩","👴","👵","🧔","👱","🧑","👮","🧑‍🍳","🥷","🧙","🤠","👸","🤴","🧛","🧜","🧝","🧞","🤖","👾"];
 
 export default function ElegirAvatar({ perfil, onAvatarGuardado }) {
   const [seleccionado, setSeleccionado] = useState(AVATARES[0]);
+  const [cargando, setCargando] = useState(false);
 
-  function handleGuardar() {
+  async function handleGuardar() {
+    setCargando(true);
+    await supabase.from("perfiles").update({ avatar: seleccionado }).eq("usuario_id", perfil.usuario_id);
+    const perfilActualizado = { ...perfil, avatar: seleccionado };
     localStorage.setItem(`truco_avatar_${perfil.usuario_id}`, seleccionado);
-    onAvatarGuardado({ ...perfil, avatar: seleccionado });
+    localStorage.setItem(`truco_perfil_${perfil.usuario_id}`, JSON.stringify(perfilActualizado));
+    onAvatarGuardado(perfilActualizado);
   }
 
   return (
@@ -71,14 +77,16 @@ export default function ElegirAvatar({ perfil, onAvatarGuardado }) {
         {/* Botón */}
         <button
           onClick={handleGuardar}
+          disabled={cargando}
           style={{
-            width: "100%", padding: "14px", borderRadius: 10, cursor: "pointer",
+            width: "100%", padding: "14px", borderRadius: 10, cursor: cargando ? "not-allowed" : "pointer",
             background: "linear-gradient(135deg,#1a472a,#2d6a4f)",
             border: "1px solid #4ade80", color: "#4ade80",
             fontFamily: "Georgia, serif", fontSize: 16, fontWeight: 700, letterSpacing: 1,
+            opacity: cargando ? 0.7 : 1,
           }}
         >
-          ✅ Guardar
+          {cargando ? "⏳ Guardando..." : "✅ Guardar"}
         </button>
 
       </div>

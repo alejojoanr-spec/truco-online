@@ -739,9 +739,10 @@ export default function App() {
     }
     const { data } = await supabase.from("perfiles").select("*").eq("usuario_id", u.id).maybeSingle();
     if (data && data.nombre) {
-      localStorage.setItem(cacheKey, JSON.stringify(data));
-      const avatar = localStorage.getItem(`truco_avatar_${u.id}`) || "👤";
-      setPerfil({ ...data, avatar });
+      const avatar = data.avatar || localStorage.getItem(`truco_avatar_${u.id}`) || "👤";
+      const perfilCompleto = { ...data, avatar };
+      localStorage.setItem(cacheKey, JSON.stringify(perfilCompleto));
+      setPerfil(perfilCompleto);
     } else {
       setNecesitaNombre(true);
     }

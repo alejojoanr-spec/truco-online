@@ -60,7 +60,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
     setErrorEdit("");
     const { error } = await supabase
       .from("perfiles")
-      .update({ nombre })
+      .update({ nombre, avatar: avatarEdit })
       .eq("usuario_id", perfil.usuario_id);
     if (error) {
       console.error("Error al actualizar perfil:", error);
