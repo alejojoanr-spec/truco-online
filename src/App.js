@@ -182,6 +182,21 @@ function btnStyle(bg, border) {
   return { background:`${bg}88`,border:`1px solid ${border}`,borderRadius:8,padding:"7px 14px",color:border,fontSize:12,cursor:"pointer",fontFamily:"Georgia",letterSpacing:0.5 };
 }
 
+function Palitos({ marcados }) {
+  return (
+    <div style={{ display:"flex",flexDirection:"column",gap:2 }}>
+      {[0,1,2].map(fila=>(
+        <div key={fila} style={{ display:"flex",gap:2 }}>
+          {[0,1,2,3,4].map(col=>{
+            const idx = fila*5+col;
+            return <div key={col} style={{ width:4,height:14,borderRadius:2,background:idx<marcados?"#fbbf24":"rgba(180,40,80,0.4)" }}/>;
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerminos, onVerTorneos, onHome }) {
   const [manoJugador, setManoJugador] = useState([]);
   const [manoRival, setManoRival] = useState([]);
@@ -472,18 +487,18 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",fontFamily:"Georgia,serif",display:"flex",flexDirection:"column",alignItems:"center",padding:"16px 8px",overflow:"hidden" }}>
 
       <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",maxWidth:600,marginBottom:12 }}>
-        <div style={{ textAlign:"center" }}>
-          <div style={{ fontSize:10,color:"#4ade80",letterSpacing:3,textTransform:"uppercase" }}>Truco</div>
-          <div style={{ fontSize:28,color:"#fbbf24",fontWeight:900,lineHeight:1 }}>Argentino</div>
-        </div>
-        <div style={{ background:"rgba(0,0,0,0.5)",border:"1px solid #2d6a4f",borderRadius:12,padding:"8px 20px",textAlign:"center" }}>
-          <div style={{ fontSize:9,color:"#6b9",letterSpacing:2,textTransform:"uppercase" }}>Puntos</div>
-          <div style={{ display:"flex",gap:16,alignItems:"center",marginTop:2 }}>
-            <div><div style={{ fontSize:10,color:"#9ca",marginBottom:2 }}>Vos</div><div style={{ fontSize:28,color:"#4ade80",fontWeight:900,lineHeight:1 }}>{puntosJugador}</div></div>
-            <div style={{ color:"#2d6a4f",fontSize:18 }}>–</div>
-            <div><div style={{ fontSize:10,color:"#9ca",marginBottom:2 }}>Rival</div><div style={{ fontSize:28,color:"#f87171",fontWeight:900,lineHeight:1 }}>{puntosRival}</div></div>
+        <div style={{ background:"rgba(0,0,0,0.5)",border:"1px solid #2d6a4f",borderRadius:12,padding:"8px 14px",display:"flex",gap:12,alignItems:"center" }}>
+          <div>
+            <div style={{ fontSize:8,color:"#4ade80",letterSpacing:2,marginBottom:4,fontFamily:"'Lato',sans-serif" }}>VOS</div>
+            <Palitos marcados={Math.floor(puntosJugador/2)} />
+            <div style={{ fontSize:9,color:"rgba(255,255,255,0.5)",marginTop:3,fontFamily:"'Lato',sans-serif" }}>{puntosJugador} pts</div>
           </div>
-          <div style={{ fontSize:9,color:"#4a7",marginTop:2 }}>Meta: 30 pts</div>
+          <div style={{ color:"#2d6a4f",fontSize:12,fontFamily:"'Lato',sans-serif" }}>VS</div>
+          <div>
+            <div style={{ fontSize:8,color:"#f87171",letterSpacing:2,marginBottom:4,fontFamily:"'Lato',sans-serif" }}>RIVAL</div>
+            <Palitos marcados={Math.floor(puntosRival/2)} />
+            <div style={{ fontSize:9,color:"rgba(255,255,255,0.5)",marginTop:3,fontFamily:"'Lato',sans-serif" }}>{puntosRival} pts</div>
+          </div>
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:6 }}>
           <span style={{ fontSize:18 }}>{perfil?.avatar || "👤"}</span>
