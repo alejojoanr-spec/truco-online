@@ -669,24 +669,40 @@ export default function App() {
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) cargarPerfil(session.user);
-      else setCargando(false);
-    });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) cargarPerfil(session.user);
-      else { setPerfil(null); setCargando(false); }
+      const u = session?.user ?? null;
+      setUser(u);
+      if (u) {
+        cargarPerfil(u);
+      } else {
+        setPerfil(null);
+        setNecesitaNombre(false);
+        setNecesitaAvatar(false);
+        setCargando(false);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
 
   async function cargarPerfil(u) {
+    const cacheKey = `truco_perfil_${u.id}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const p = JSON.parse(cached);
+        if (p && p.nombre) {
+          const avatar = localStorage.getItem(`truco_avatar_${u.id}`) || p.avatar || "👤";
+          setPerfil({ ...p, avatar });
+          setCargando(false);
+          return;
+        }
+      } catch {}
+    }
     const { data } = await supabase.from("perfiles").select("*").eq("usuario_id", u.id).maybeSingle();
     if (data && data.nombre) {
-      const avatarLocal = localStorage.getItem(`truco_avatar_${u.id}`);
-      setPerfil({ ...data, avatar: avatarLocal || "👤" });
+      localStorage.setItem(cacheKey, JSON.stringify(data));
+      const avatar = localStorage.getItem(`truco_avatar_${u.id}`) || "👤";
+      setPerfil({ ...data, avatar });
     } else {
       setNecesitaNombre(true);
     }
@@ -699,7 +715,7 @@ export default function App() {
     <div style={{ minHeight:"100vh",background:"#050f08",display:"flex",alignItems:"center",justifyContent:"center",color:"#4ade80",fontFamily:"Georgia",fontSize:18 }}>Cargando...</div>
   );
   if (!user) return <Auth />;
-  if (necesitaNombre) return <ElegirNombre user={user} onPerfilCreado={(p) => { setPerfil(p); setNecesitaNombre(false); setNecesitaAvatar(true); }} />;
+  if (necesitaNombre) return <ElegirNombre user={user} onPerfilCreado={(p) => { localStorage.setItem(`truco_perfil_${user.id}`, JSON.stringify(p)); setPerfil(p); setNecesitaNombre(false); setNecesitaAvatar(true); }} />;
   if (necesitaAvatar) return <ElegirAvatar perfil={perfil} onAvatarGuardado={(p) => { setPerfil(p); setNecesitaAvatar(false); }} />;
   if (verTerminos) return <Terminos onVolver={()=>setVerTerminos(false)} />;
   if (verTorneos) return <Torneos user={user} perfil={perfil} onVolver={()=>setVerTorneos(false)} />;
