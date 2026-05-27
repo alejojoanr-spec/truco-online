@@ -113,11 +113,11 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
 
   return (
     <div style={{
-      minHeight: "100vh", position: "relative", overflow: "hidden",
+      height: "100dvh", position: "relative", overflow: "hidden",
       background: "radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",
       display: "flex", flexDirection: "column", alignItems: "center",
-      justifyContent: "center", fontFamily: "'Lato', sans-serif",
-      padding: "24px 16px", gap: 20,
+      justifyContent: "space-between", fontFamily: "'Lato', sans-serif",
+      padding: "24px 16px 32px", boxSizing: "border-box",
     }}>
 
       {/* Botón hamburguesa */}
@@ -133,7 +133,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
       >☰</button>
 
       {/* Logo */}
-      <div style={{ textAlign: "center", marginBottom: 4 }}>
+      <div style={{ textAlign: "center" }}>
         <div style={{ fontSize: 10, color: "#4ade80", letterSpacing: 4, textTransform: "uppercase" }}>Bienvenido a</div>
         <div style={{ fontSize: 32, color: "#fbbf24", fontWeight: 900, lineHeight: 1.1 }}>Truco Argentino</div>
       </div>
