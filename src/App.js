@@ -182,14 +182,28 @@ function btnStyle(bg, border) {
   return { background:`${bg}88`,border:`1px solid ${border}`,borderRadius:8,padding:"7px 14px",color:border,fontSize:12,cursor:"pointer",fontFamily:"Georgia",letterSpacing:0.5 };
 }
 
-function Palitos({ marcados }) {
+function CajitaPalito({ marcada }) {
+  const color = marcada ? "#fbbf24" : "rgba(255,140,160,0.55)";
+  const fill  = marcada ? "rgba(251,191,36,0.1)" : "rgba(255,140,160,0.07)";
   return (
-    <div style={{ display:"flex",flexDirection:"column",gap:2 }}>
-      {[0,1,2].map(fila=>(
-        <div key={fila} style={{ display:"flex",gap:2 }}>
-          {[0,1,2,3,4].map(col=>{
-            const idx = fila*5+col;
-            return <div key={col} style={{ width:4,height:14,borderRadius:2,background:idx<marcados?"#fbbf24":"rgba(180,40,80,0.4)" }}/>;
+    <svg width="11" height="11" style={{ flexShrink:0, display:"block" }}>
+      <rect x="0.5" y="0.5" width="10" height="10" rx="1.5" fill={fill} stroke={color} strokeWidth="1"/>
+      <line x1="2.5" y1="8.5" x2="8.5" y2="2.5" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function PalitosPuntaje({ puntos, total=30 }) {
+  const cols = 10;
+  const rows = Math.ceil(total / cols);
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+      {Array.from({ length:rows }, (_,fila) => (
+        <div key={fila} style={{ display:"flex", gap:2 }}>
+          {Array.from({ length:cols }, (_,col) => {
+            const idx = fila*cols+col;
+            if (idx >= total) return null;
+            return <CajitaPalito key={col} marcada={idx < puntos} />;
           })}
         </div>
       ))}
@@ -487,17 +501,15 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",fontFamily:"Georgia,serif",display:"flex",flexDirection:"column",alignItems:"center",padding:"16px 8px",overflow:"hidden" }}>
 
       <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",maxWidth:600,marginBottom:12 }}>
-        <div style={{ background:"rgba(0,0,0,0.5)",border:"1px solid #2d6a4f",borderRadius:12,padding:"8px 14px",display:"flex",gap:12,alignItems:"center" }}>
+        <div style={{ background:"rgba(0,0,0,0.5)",border:"1px solid #2d6a4f",borderRadius:12,padding:"8px 14px",display:"flex",gap:12,alignItems:"flex-start" }}>
           <div>
-            <div style={{ fontSize:8,color:"#4ade80",letterSpacing:2,marginBottom:4,fontFamily:"'Lato',sans-serif" }}>VOS</div>
-            <Palitos marcados={Math.floor(puntosJugador/2)} />
-            <div style={{ fontSize:9,color:"rgba(255,255,255,0.5)",marginTop:3,fontFamily:"'Lato',sans-serif" }}>{puntosJugador} pts</div>
+            <div style={{ fontSize:8,color:"#4ade80",letterSpacing:2,marginBottom:5,fontFamily:"'Lato',sans-serif" }}>VOS — {puntosJugador} pts</div>
+            <PalitosPuntaje puntos={puntosJugador} />
           </div>
-          <div style={{ color:"#2d6a4f",fontSize:12,fontFamily:"'Lato',sans-serif" }}>VS</div>
+          <div style={{ width:1,alignSelf:"stretch",background:"#2d6a4f",margin:"0 2px" }}/>
           <div>
-            <div style={{ fontSize:8,color:"#f87171",letterSpacing:2,marginBottom:4,fontFamily:"'Lato',sans-serif" }}>RIVAL</div>
-            <Palitos marcados={Math.floor(puntosRival/2)} />
-            <div style={{ fontSize:9,color:"rgba(255,255,255,0.5)",marginTop:3,fontFamily:"'Lato',sans-serif" }}>{puntosRival} pts</div>
+            <div style={{ fontSize:8,color:"#f87171",letterSpacing:2,marginBottom:5,fontFamily:"'Lato',sans-serif" }}>RIVAL — {puntosRival} pts</div>
+            <PalitosPuntaje puntos={puntosRival} />
           </div>
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:6 }}>
