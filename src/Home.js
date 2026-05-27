@@ -40,6 +40,12 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
   const [cargandoEdit, setCargandoEdit] = useState(false);
   const [saldoVisible, setSaldoVisible] = useState(false);
   const [mostrarDepositar, setMostrarDepositar] = useState(false);
+  const [mostrarRetirar, setMostrarRetirar] = useState(false);
+  const [retiroMonto, setRetiroMonto] = useState("");
+  const [retiroCbu, setRetiroCbu] = useState("");
+  const [retiroError, setRetiroError] = useState("");
+  const [retiroCargando, setRetiroCargando] = useState(false);
+  const [retiroExito, setRetiroExito] = useState(false);
   const [mostrarVerificar, setMostrarVerificar] = useState(false);
   const [copiado, setCopiado] = useState("");
 
@@ -192,9 +198,14 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
                 )}
               </button>
             </div>
-            <button onClick={() => setMostrarDepositar(true)} style={{ marginTop: 10, padding: "5px 12px", borderRadius: 8, background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ade80", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", fontWeight: 700 }}>
-              + Depositar
-            </button>
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <button onClick={() => setMostrarDepositar(true)} style={{ padding: "5px 12px", borderRadius: 8, background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ade80", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", fontWeight: 700 }}>
+                + Depositar
+              </button>
+              <button onClick={() => { setMostrarRetirar(true); setRetiroMonto(""); setRetiroCbu(""); setRetiroError(""); setRetiroExito(false); }} style={{ padding: "5px 12px", borderRadius: 8, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.4)", color: "#f87171", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", fontWeight: 700 }}>
+                − Retirar
+              </button>
+            </div>
           </div>
         </div>
 
@@ -486,6 +497,115 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
             <button onClick={() => setMostrarDepositar(false)} style={{ width: "100%", padding: "12px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#ffffff", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>
               ← Volver
             </button>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL RETIRAR ── */}
+      {mostrarRetirar && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.88)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 16 }}>
+          <div style={{ background: "radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)", border: "1px solid #2d6a4f", borderRadius: 20, padding: "28px 24px", width: "100%", maxWidth: 380, fontFamily: "'Lato', sans-serif", display: "flex", flexDirection: "column", gap: 16 }}>
+
+            <div style={{ fontSize: 20, color: "#fbbf24", fontWeight: 900 }}>💸 Solicitud de retiro</div>
+
+            {retiroExito ? (
+              <>
+                <div style={{ textAlign: "center", padding: "16px 0" }}>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+                  <div style={{ fontSize: 16, color: "#4ade80", fontWeight: 700, marginBottom: 8 }}>¡Solicitud enviada!</div>
+                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.6 }}>
+                    Tu retiro quedó pendiente de aprobación. Lo verás reflejado en tu cuenta en breve.
+                  </div>
+                </div>
+                <button onClick={() => setMostrarRetirar(false)} style={{ width: "100%", padding: "12px", borderRadius: 10, cursor: "pointer", background: "linear-gradient(135deg,#1a472a,#2d6a4f)", border: "1px solid #4ade80", color: "#4ade80", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700 }}>
+                  Cerrar
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.6 }}>
+                  ¿Querés retirar dinero? Realizá una solicitud por un monto mayor a $500 y en breve lo verás reflejado en tu cuenta.
+                </div>
+
+                <div style={{ fontSize: 11, color: "#fbbf24", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.25)", borderRadius: 8, padding: "8px 12px" }}>
+                  Máximo 2 retiros diarios · Monto mínimo $500
+                </div>
+
+                {/* Monto */}
+                <div>
+                  <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Monto</div>
+                  <div style={{ position: "relative" }}>
+                    <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#9ca3af", fontSize: 15, fontWeight: 700 }}>$</span>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={retiroMonto}
+                      onChange={e => { setRetiroMonto(e.target.value); setRetiroError(""); }}
+                      style={{ width: "100%", padding: "11px 14px 11px 26px", borderRadius: 10, border: "1px solid #2d6a4f", background: "rgba(0,0,0,0.5)", color: "#ffffff", fontFamily: "'Lato', sans-serif", fontSize: 15, outline: "none", boxSizing: "border-box" }}
+                    />
+                  </div>
+                  <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
+                    de ${(perfil.saldo || 0).toFixed(2)} disponibles
+                  </div>
+                </div>
+
+                {/* CBU/CVU o Alias */}
+                <div>
+                  <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>CBU / CVU o Alias destino</div>
+                  <input
+                    type="text"
+                    placeholder="ej: 0000003100012345678901 o mi.alias"
+                    value={retiroCbu}
+                    onChange={e => { setRetiroCbu(e.target.value); setRetiroError(""); }}
+                    style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid #2d6a4f", background: "rgba(0,0,0,0.5)", color: "#ffffff", fontFamily: "'Lato', sans-serif", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                  />
+                </div>
+
+                {retiroError && (
+                  <div style={{ fontSize: 12, color: "#f87171", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
+                    {retiroError}
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={() => setMostrarRetirar(false)} style={{ flex: 1, padding: "12px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const monto = parseFloat(retiroMonto);
+                      if (!retiroMonto || isNaN(monto) || monto < 500) { setRetiroError("El monto mínimo es $500."); return; }
+                      if (monto > (perfil.saldo || 0)) { setRetiroError("No tenés saldo suficiente."); return; }
+                      if (!retiroCbu.trim()) { setRetiroError("Ingresá el CBU, CVU o Alias de destino."); return; }
+                      setRetiroCargando(true);
+                      // Verificar límite diario
+                      const inicioDia = new Date(); inicioDia.setHours(0,0,0,0);
+                      const { count } = await supabase.from("transacciones")
+                        .select("*", { count: "exact", head: true })
+                        .eq("usuario_id", perfil.usuario_id)
+                        .eq("tipo", "retiro")
+                        .gte("created_at", inicioDia.toISOString());
+                      if (count >= 2) { setRetiroError("Alcanzaste el límite de 2 retiros diarios."); setRetiroCargando(false); return; }
+                      const { error } = await supabase.from("transacciones").insert({
+                        usuario_id: perfil.usuario_id,
+                        tipo: "retiro",
+                        monto,
+                        estado: "pendiente",
+                        nota: retiroCbu.trim(),
+                      });
+                      if (error) { setRetiroError("No se pudo enviar la solicitud. Intentá de nuevo."); setRetiroCargando(false); return; }
+                      setRetiroExito(true);
+                      setRetiroCargando(false);
+                    }}
+                    disabled={retiroCargando}
+                    style={{ flex: 2, padding: "12px", borderRadius: 10, cursor: retiroCargando ? "not-allowed" : "pointer", background: "linear-gradient(135deg,#7f1d1d,#991b1b)", border: "1px solid #f87171", color: "#f87171", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700, opacity: retiroCargando ? 0.7 : 1 }}
+                  >
+                    {retiroCargando ? "Enviando..." : "Solicitar"}
+                  </button>
+                </div>
+              </>
+            )}
 
           </div>
         </div>
