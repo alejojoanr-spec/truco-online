@@ -496,7 +496,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         <div>
           <div style={{ display:"flex",alignItems:"center",gap:4,marginBottom:5,maxWidth:128,overflow:"hidden" }}>
             <span style={{ fontSize:13,flexShrink:0 }}>{perfil?.avatar || "👤"}</span>
-            <span style={{ fontSize:8,color:"#4ade80",letterSpacing:1,fontFamily:"'Lato',sans-serif",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{nombreJugador} — {puntosJugador} pts</span>
+            <span style={{ fontSize:12,color:"#4ade80",letterSpacing:0.5,fontFamily:"'Lato',sans-serif",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{nombreJugador}</span>
           </div>
           <PalitosPuntaje puntos={puntosJugador} />
         </div>
@@ -504,7 +504,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         <div>
           <div style={{ display:"flex",alignItems:"center",gap:4,marginBottom:5,maxWidth:128,overflow:"hidden" }}>
             <span style={{ fontSize:13,flexShrink:0 }}>{rivalAvatar}</span>
-            <span style={{ fontSize:8,color:"#f87171",letterSpacing:1,fontFamily:"'Lato',sans-serif",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{rivalNombre} — {puntosRival} pts</span>
+            <span style={{ fontSize:12,color:"#f87171",letterSpacing:0.5,fontFamily:"'Lato',sans-serif",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{rivalNombre}</span>
           </div>
           <PalitosPuntaje puntos={puntosRival} />
         </div>
