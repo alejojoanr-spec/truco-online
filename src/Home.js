@@ -246,9 +246,9 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
             <div style={{ fontSize: 20, color: "#fbbf24", fontWeight: 900, textAlign: "center", marginBottom: 16 }}>Reglas del Truco</div>
             {[
               ["🃏", "El mazo", "Se juega con 40 cartas españolas. Cada jugador recibe 3 cartas por mano."],
-              ["🏆", "Objetivo", "Llegar a 15 puntos antes que el rival ganando manos y cantando envido o truco."],
-              ["⚔️", "El Truco", "Se canta Truco para apostar 1 o 2 puntos. El rival puede aceptar, rechazar o retruco."],
-              ["🎯", "El Envido", "Se juega en la primera ronda. Gana quien tenga más puntos de envido (máx. 33)."],
+              ["🏆", "Objetivo", "Llegar a 30 puntos antes que el rival ganando manos y cantando envido o truco."],
+              ["⚔️", "El Truco", "Truco vale 2 pts (1 si no querido). Retruco vale 3 pts (2 si no querido). Vale Cuatro vale 4 pts (3 si no querido). En la última mano (alguien con 29 pts) no se puede cantar Truco ni Vale Cuatro."],
+              ["🎯", "El Envido", "Se juega en la primera ronda. Opciones: Envido (2 pts), Envido Envido (4 pts, 2 si no querido), Real Envido (2 pts) y Falta Envido (los puntos que le faltan al rival para llegar a 30). Gana quien tenga más puntos de envido (máx. 33)."],
               ["📊", "Jerarquía", "1♠ > 1♣ > 7♠ > 7♦ > 3 > 2 > 1 > 12 > 11 > 10 > 7 > 6 > 5 > 4"],
               ["🤝", "Empate", "Si hay empate en una ronda, gana quien jugó primero. En empate total, es mano empatada."],
             ].map(([icono, titulo, texto]) => (
