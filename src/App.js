@@ -4,7 +4,7 @@ import Auth from "./Auth";
 import Multijugador from "./Multijugador";
 import Terminos from "./Terminos";
 import Torneos from "./Torneos";
-import Configuracion from "./Configuracion";
+import Configuracion, { leerConfig } from "./Configuracion";
 import ElegirNombre from "./ElegirNombre";
 import ElegirAvatar from "./ElegirAvatar";
 import Home from "./Home";
@@ -231,6 +231,19 @@ function PalitosPuntaje({ puntos, total=15 }) {
   );
 }
 
+const _audioCartaCache = { obj: null };
+function reproducirSonidoCarta() {
+  if (!leerConfig().sonidoCartas) return;
+  try {
+    if (!_audioCartaCache.obj) {
+      _audioCartaCache.obj = new Audio("/sounds/carta.wav");
+      _audioCartaCache.obj.volume = 0.45;
+    }
+    _audioCartaCache.obj.currentTime = 0;
+    _audioCartaCache.obj.play().catch(() => {});
+  } catch {}
+}
+
 function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerminos, onVerTorneos, onHome, rivalNombre = "IA", rivalAvatar = "🤖" }) {
   const [manoJugador, setManoJugador] = useState([]);
   const [manoRival, setManoRival] = useState([]);
@@ -324,6 +337,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     const nuevasJugadas = [...jugadasJugador, idx];
     const nuevaMesa = [...mesaJugador, carta];
     setJugadasJugador(nuevasJugadas); setMesaJugador(nuevaMesa);
+    reproducirSonidoCarta();
     addLog(`Vos jugaste: ${carta.num} de ${carta.palo}`);
     setCartaSeleccionada(null); setTurno("rival");
     if (mesaRival.length > 0) {
