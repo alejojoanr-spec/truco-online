@@ -405,7 +405,10 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
           <div style={{ fontSize:9,color:"#4a7",marginTop:2 }}>Meta: 15 pts</div>
         </div>
         <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
-          <div style={{ fontSize:10,color:"#4ade80",textAlign:"right" }}>👤 {perfil?.nombre || user.email?.split("@")[0]}</div>
+          <div style={{ fontSize:10,color:"#4ade80",textAlign:"right",display:"flex",alignItems:"center",justifyContent:"flex-end",gap:4 }}>
+            <span style={{ fontSize:18 }}>{perfil?.avatar || "👤"}</span>
+            {perfil?.nombre || user.email?.split("@")[0]}
+          </div>
           <button onClick={()=>setMostrarPerfil(true)} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:8,padding:"4px 10px",color:"#4ade80",fontSize:10,cursor:"pointer" }}>Mi perfil</button>
           <button onClick={cargarRanking} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #fbbf24",borderRadius:8,padding:"4px 10px",color:"#fbbf24",fontSize:10,cursor:"pointer" }}>🏆 Ranking</button>
           <button onClick={onMultijugador} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #a78bfa",borderRadius:8,padding:"4px 10px",color:"#a78bfa",fontSize:10,cursor:"pointer" }}>👥 2 Jugadores</button>
@@ -471,7 +474,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       {mostrarPerfil&&(
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20 }}>
           <div style={{ background:"#0a2414",border:"1px solid #2d6a4f",borderRadius:16,padding:"32px",textAlign:"center",minWidth:280 }}>
-            <div style={{ fontSize:48,marginBottom:8 }}>👤</div>
+            <div style={{ fontSize:72,marginBottom:8,lineHeight:1 }}>{perfil?.avatar || "👤"}</div>
             <div style={{ fontSize:22,color:"#fbbf24",fontWeight:900,marginBottom:16 }}>{perfil?.nombre || user.email?.split("@")[0]}</div>
             <div style={{ display:"flex",gap:16,justifyContent:"center",marginBottom:16 }}>
               <div style={{ background:"rgba(0,0,0,0.4)",borderRadius:10,padding:"12px 20px" }}>
