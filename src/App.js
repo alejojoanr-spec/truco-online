@@ -10,7 +10,7 @@ import ElegirAvatar from "./ElegirAvatar";
 import Home from "./Home";
 import Admin from "./Admin";
 
-const ADMIN_EMAIL = "alejojoanr@gmail.com";
+const ADMIN_EMAIL = process.env.REACT_APP_ADMIN_EMAIL;
 
 const PALO = { espada: "espada", basto: "basto", copa: "copa", oro: "oro" };
 const MAZO = [
