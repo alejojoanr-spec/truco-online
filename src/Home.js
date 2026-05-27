@@ -107,15 +107,15 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
           <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
             <div>
               <div style={{ fontSize: 16, color: "#4ade80", fontWeight: 700 }}>{perfil.partidas_jugadas || 0}</div>
-              <div style={{ fontSize: 9, color: "#6b9", textTransform: "uppercase", letterSpacing: 1 }}>Jugadas</div>
+              <div style={{ fontSize: 9, color: "#ffffff", textTransform: "uppercase", letterSpacing: 1 }}>Jugadas</div>
             </div>
             <div>
               <div style={{ fontSize: 16, color: "#fbbf24", fontWeight: 700 }}>{perfil.partidas_ganadas || 0}</div>
-              <div style={{ fontSize: 9, color: "#6b9", textTransform: "uppercase", letterSpacing: 1 }}>Ganadas</div>
+              <div style={{ fontSize: 9, color: "#ffffff", textTransform: "uppercase", letterSpacing: 1 }}>Ganadas</div>
             </div>
             <div>
               <div style={{ fontSize: 16, color: "#60a5fa", fontWeight: 700 }}>{winRate}%</div>
-              <div style={{ fontSize: 9, color: "#6b9", textTransform: "uppercase", letterSpacing: 1 }}>Win rate</div>
+              <div style={{ fontSize: 9, color: "#ffffff", textTransform: "uppercase", letterSpacing: 1 }}>Win rate</div>
             </div>
           </div>
         </div>
@@ -135,7 +135,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
           <div>
             <div style={{ fontSize: 20, marginBottom: 4 }}>🃏</div>
             <div style={{ fontSize: 18, color: "#4ade80", fontWeight: 900 }}>Jugar ahora</div>
-            <div style={{ fontSize: 12, color: "#6b9", marginTop: 2 }}>Contra la IA</div>
+            <div style={{ fontSize: 12, color: "#ffffff", marginTop: 2 }}>Contra la IA</div>
           </div>
           <div style={{ fontSize: 28, color: "#4ade80", opacity: 0.6 }}>→</div>
         </button>
@@ -152,7 +152,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
           <div>
             <div style={{ fontSize: 20, marginBottom: 4 }}>👥</div>
             <div style={{ fontSize: 18, color: "#a78bfa", fontWeight: 900 }}>Sala privada</div>
-            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>Conectá con tus amigos</div>
+            <div style={{ fontSize: 12, color: "#ffffff", marginTop: 2 }}>Conectá con tus amigos</div>
           </div>
           <div style={{ fontSize: 28, color: "#a78bfa", opacity: 0.6 }}>→</div>
         </button>
