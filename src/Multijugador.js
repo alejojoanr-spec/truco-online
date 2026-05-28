@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 
 const PALO = { espada: "espada", basto: "basto", copa: "copa", oro: "oro" };
@@ -61,6 +61,25 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const [error, setError] = useState("");
 
   const addLog = (msg) => setLog(prev => [...prev.slice(-6), msg]);
+  const [resultadoPartida, setResultadoPartida] = useState(null);
+  const pagoProcesadoRef = useRef(false);
+
+  async function procesarFinPartida(p) {
+    if (pagoProcesadoRef.current) return;
+    pagoProcesadoRef.current = true;
+    const apuestaPartida = p.apuesta || 0;
+    if (p.ganador_id === user.id && apuestaPartida > 0) {
+      const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+      await supabase.from("perfiles")
+        .update({ saldo: (fresh?.saldo || 0) + apuestaPartida * 2 })
+        .eq("usuario_id", user.id);
+    }
+    setResultadoPartida({
+      ganaste: p.ganador_id === user.id,
+      premio: p.ganador_id === user.id ? apuestaPartida * 2 : 0,
+      apuesta: apuestaPartida,
+    });
+  }
 
   // Auto-unirse si viene del lobby con un código
   useEffect(() => {
@@ -70,6 +89,16 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         const { data, error: err } = await supabase.from("partidas").select("*").eq("codigo", cod).single();
         if (err || !data) { setError("Sala no encontrada"); return; }
         if (data.estado !== "esperando") { setError("La sala ya no está disponible"); return; }
+        const montoSalaLobby = data.apuesta || 0;
+        if (montoSalaLobby > 0) {
+          const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+          const saldoActual = fresh?.saldo || 0;
+          if (saldoActual < montoSalaLobby) { setError("Saldo insuficiente para unirte a esta partida."); return; }
+          const { error: saldoErr } = await supabase.from("perfiles")
+            .update({ saldo: saldoActual - montoSalaLobby })
+            .eq("usuario_id", user.id);
+          if (saldoErr) { setError("Error al procesar el saldo."); return; }
+        }
         await supabase.from("partidas").update({
           jugador2_id: user.id,
           jugador2_nombre: perfil?.nombre || "",
@@ -95,6 +124,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
     function procesarCambio(p) {
       if (!p) return;
+      if (p.ganador_id) { procesarFinPartida(p); return; }
       if (p.estado === "jugando") setPantalla("jugando");
       if (p.mano_jugador1) {
         const mano1 = JSON.parse(p.mano_jugador1);
@@ -112,6 +142,15 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }, [codigo, soyJugador1]);
 
   async function crearSala() {
+    if ((apuesta || 0) > 0) {
+      const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+      const saldoActual = fresh?.saldo || 0;
+      if (saldoActual < apuesta) { setError("Saldo insuficiente."); return; }
+      const { error: saldoErr } = await supabase.from("perfiles")
+        .update({ saldo: saldoActual - apuesta })
+        .eq("usuario_id", user.id);
+      if (saldoErr) { setError("Error al procesar el saldo."); return; }
+    }
     const cod = generarCodigo();
     const mazo = mezclar(MAZO);
     const mano1 = mazo.slice(0, 3);
@@ -143,6 +182,16 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const { data, error: err } = await supabase.from("partidas").select("*").eq("codigo", cod).single();
     if (err || !data) { setError("Sala no encontrada"); return; }
     if (data.estado !== "esperando") { setError("La sala ya está en juego"); return; }
+    const montoSala = data.apuesta || 0;
+    if (montoSala > 0) {
+      const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+      const saldoActual = fresh?.saldo || 0;
+      if (saldoActual < montoSala) { setError("Saldo insuficiente para unirte a esta partida."); return; }
+      const { error: saldoErr } = await supabase.from("perfiles")
+        .update({ saldo: saldoActual - montoSala })
+        .eq("usuario_id", user.id);
+      if (saldoErr) { setError("Error al procesar el saldo."); return; }
+    }
     await supabase.from("partidas").update({
       jugador2_id: user.id,
       jugador2_nombre: perfil?.nombre || "",
@@ -175,8 +224,48 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     setCartaSeleccionada(null);
   }
 
+  async function salirDePartida() {
+    if (partida && partida.estado === "jugando") {
+      const rivalId = soyJugador1 ? partida.jugador2_id : partida.jugador1_id;
+      if (rivalId) {
+        pagoProcesadoRef.current = true;
+        await supabase.from("partidas")
+          .update({ ganador_id: rivalId, estado: "terminada" })
+          .eq("codigo", codigo);
+      }
+    }
+    onVolver();
+  }
+
   const miTurno = partida?.turno === user.id;
   const mesaActual = partida?.mesa ? JSON.parse(partida.mesa) : [];
+
+  if (resultadoPartida) return (
+    <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Lato',sans-serif",padding:24 }}>
+      <div style={{ textAlign:"center",maxWidth:320 }}>
+        <div style={{ fontSize:64,marginBottom:16 }}>{resultadoPartida.ganaste?"🏆":"💀"}</div>
+        <div style={{ fontSize:28,fontWeight:900,color:resultadoPartida.ganaste?"#fbbf24":"#f87171",marginBottom:8 }}>
+          {resultadoPartida.ganaste?"¡Ganaste!":"Perdiste"}
+        </div>
+        {resultadoPartida.ganaste && resultadoPartida.premio > 0 && (
+          <div style={{ fontSize:18,color:"#4ade80",fontWeight:700,marginBottom:8 }}>
+            +${resultadoPartida.premio.toFixed(2)} acreditados
+          </div>
+        )}
+        {!resultadoPartida.ganaste && resultadoPartida.apuesta > 0 && (
+          <div style={{ fontSize:14,color:"#9ca3af",marginBottom:8 }}>
+            Perdiste ${resultadoPartida.apuesta.toFixed(2)}
+          </div>
+        )}
+        <button
+          onClick={onVolver}
+          style={{ marginTop:16,padding:"12px 28px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}
+        >
+          Volver al inicio
+        </button>
+      </div>
+    </div>
+  );
 
   if (pantalla === "menu") return (
     <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"Georgia,serif",gap:20,padding:20 }}>
@@ -206,7 +295,13 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       </div>
       <button
         onClick={async () => {
-          if (codigo) await supabase.from("partidas").delete().eq("codigo", codigo);
+          if (codigo) {
+            if ((apuesta || 0) > 0) {
+              const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+              await supabase.from("perfiles").update({ saldo: (fresh?.saldo || 0) + apuesta }).eq("usuario_id", user.id);
+            }
+            await supabase.from("partidas").delete().eq("codigo", codigo);
+          }
           onVolver();
         }}
         style={{ padding:"10px 20px",borderRadius:10,background:"transparent",border:"1px solid #374151",color:"#6b7280",fontSize:13,cursor:"pointer",fontFamily:"'Lato',sans-serif" }}
@@ -230,7 +325,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             <div><div style={{ fontSize:10,color:"#9ca" }}>Rival</div><div style={{ fontSize:24,color:"#f87171",fontWeight:900 }}>{soyJugador1?partida?.puntos2:partida?.puntos1||0}</div></div>
           </div>
         </div>
-        <button onClick={onVolver} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #7f1d1d",borderRadius:8,padding:"6px 12px",color:"#f87171",fontSize:11,cursor:"pointer" }}>Salir</button>
+        <button onClick={salirDePartida} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #7f1d1d",borderRadius:8,padding:"6px 12px",color:"#f87171",fontSize:11,cursor:"pointer" }}>Salir</button>
       </div>
 
       <div style={{ marginBottom:16,textAlign:"center" }}>

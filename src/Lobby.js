@@ -28,8 +28,10 @@ function CardIA({ onJugar }) {
   );
 }
 
-function CardEsperando({ sala, onUnirse, uniendose }) {
+function CardEsperando({ sala, onUnirse, uniendose, perfil }) {
   const cargando = uniendose === sala.codigo;
+  const saldoInsuficiente = (sala.apuesta || 0) > 0 && (perfil?.saldo || 0) < (sala.apuesta || 0);
+  const bloqueado = cargando || saldoInsuficiente;
   return (
     <div style={{
       background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f",
@@ -56,21 +58,25 @@ function CardEsperando({ sala, onUnirse, uniendose }) {
           <span style={{ fontSize: 11, color: "#4ade80" }}>Disponible</span>
         </div>
       </div>
-      <button
-        onClick={() => onUnirse(sala.codigo)}
-        disabled={cargando}
-        style={{
-          padding: "9px 18px", borderRadius: 10,
-          cursor: cargando ? "not-allowed" : "pointer",
-          background: cargando ? "rgba(0,0,0,0.3)" : "linear-gradient(135deg,#1a472a,#2d6a4f)",
-          border: "1px solid #4ade80", color: "#4ade80",
-          fontFamily: "'Lato',sans-serif", fontSize: 13, fontWeight: 700,
-          flexShrink: 0, opacity: cargando ? 0.7 : 1,
-          transition: "opacity 0.15s",
-        }}
-      >
-        {cargando ? "..." : "Jugar"}
-      </button>
+      <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+        <button
+          onClick={() => !bloqueado && onUnirse(sala.codigo)}
+          disabled={bloqueado}
+          style={{
+            padding: "9px 18px", borderRadius: 10,
+            cursor: bloqueado ? "not-allowed" : "pointer",
+            background: bloqueado ? "rgba(0,0,0,0.3)" : "linear-gradient(135deg,#1a472a,#2d6a4f)",
+            border: "1px solid #4ade80", color: "#4ade80",
+            fontFamily: "'Lato',sans-serif", fontSize: 13, fontWeight: 700,
+            opacity: bloqueado ? 0.5 : 1, transition: "opacity 0.15s",
+          }}
+        >
+          {cargando ? "..." : "Jugar"}
+        </button>
+        {saldoInsuficiente && (
+          <span style={{ fontSize: 10, color: "#f87171" }}>Saldo insuficiente</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -244,7 +250,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onCrearSala, 
         {/* Lista unificada: disponibles + jugando */}
         {lista.map(s =>
           s.estado === "esperando"
-            ? <CardEsperando key={s.id} sala={s} onUnirse={unirse} uniendose={uniendose} />
+            ? <CardEsperando key={s.id} sala={s} onUnirse={unirse} uniendose={uniendose} perfil={perfil} />
             : <CardJugando key={s.id} sala={s} />
         )}
 
