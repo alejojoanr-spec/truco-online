@@ -862,7 +862,7 @@ export default function App() {
   if (verTorneos) return <Torneos user={user} perfil={perfil} onVolver={()=>setVerTorneos(false)} />;
   const esAdmin = user?.email === ADMIN_EMAIL;
   const esAsesor = perfil?.rol === 'asesor';
-  if (verAdmin && (esAdmin || esAsesor)) return <Admin onVolver={()=>setVerAdmin(false)} rol={esAdmin ? 'admin' : 'asesor'} ejecutadoPor={perfil?.nombre || user?.email || ''} />;
+  if (verAdmin && (esAdmin || esAsesor)) return <Admin onVolver={()=>setVerAdmin(false)} rol={esAdmin ? 'admin' : 'asesor'} ejecutadoPor={perfil?.nombre || user?.email || ''} usuarioId={user?.id || ''} />;
   if (modoJuego === "lobby") return (
     <Lobby
       user={user}

@@ -13,7 +13,12 @@ const CARD = {
 const BTN_SM = (color = "#4ade80") => ({
   padding: "6px 12px", borderRadius: 8, cursor: "pointer", fontSize: 12,
   fontWeight: 700, fontFamily: "'Lato',sans-serif",
-  background: `rgba(${color === "#4ade80" ? "74,222,128" : color === "#f87171" ? "248,113,113" : "96,165,250"},0.08)`,
+  background: `rgba(${
+    color === "#4ade80" ? "74,222,128" :
+    color === "#f87171" ? "248,113,113" :
+    color === "#fb923c" ? "251,146,60" :
+    "96,165,250"
+  },0.08)`,
   border: `1px solid ${color}`, color,
 });
 const INPUT_STYLE = {
@@ -56,7 +61,7 @@ const TIPO_SIGNO_POSITIVO = new Set(["deposito", "premio"]);
 /* ══════════════════════════════════════════
    TAB 1 — USUARIOS
 ══════════════════════════════════════════ */
-function TabUsuarios({ rol, ejecutadoPor }) {
+function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
   const [usuarios, setUsuarios] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [cargando, setCargando] = useState(true);
@@ -100,6 +105,7 @@ function TabUsuarios({ rol, ejecutadoPor }) {
   async function ajustarSaldo() {
     const monto = parseFloat(saldoValor);
     if (isNaN(monto) || monto === 0) { setErrorSaldo("Ingresá un monto válido (puede ser negativo)."); return; }
+    if (rol === 'asesor' && modalSaldo.usuario_id === usuarioId) { setErrorSaldo("No podés ajustar tu propio saldo."); return; }
     setProcesandoSaldo(true); setErrorSaldo("");
     const saldoAnterior = modalSaldo.saldo || 0;
     const nuevoSaldo = Math.max(0, saldoAnterior + monto);
@@ -232,7 +238,10 @@ function TabUsuarios({ rol, ejecutadoPor }) {
                 <div style={{ fontSize: 26, flexShrink: 0 }}>{u.avatar || "👤"}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 14, fontWeight: 900, color: u.is_banned ? "#f87171" : "#fbbf24" }}>{u.nombre}</span>
+                    <span
+                      onClick={() => abrirMovimientos(u)}
+                      style={{ fontSize: 14, fontWeight: 900, color: u.is_banned ? "#f87171" : "#fbbf24", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}
+                    >{u.nombre}</span>
                     {u.is_verified && <span style={{ fontSize: 10, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.35)", borderRadius: 4, padding: "1px 6px", color: "#60a5fa", fontWeight: 700 }}>✓ Verificado</span>}
                     {u.is_banned && <span style={{ fontSize: 10, background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.35)", borderRadius: 4, padding: "1px 6px", color: "#f87171", fontWeight: 700 }}>Baneado</span>}
                     {u.rol === 'asesor' && <span style={{ fontSize: 10, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.35)", borderRadius: 4, padding: "1px 6px", color: "#a78bfa", fontWeight: 700 }}>Asesor</span>}
@@ -263,7 +272,7 @@ function TabUsuarios({ rol, ejecutadoPor }) {
                     </button>
                   )}
                   {rol === 'admin' && u.rol !== 'admin' && (
-                    <button onClick={() => cambiarRol(u.usuario_id, u.rol === 'asesor' ? 'usuario' : 'asesor')} style={BTN_SM("#a78bfa")}>
+                    <button onClick={() => cambiarRol(u.usuario_id, u.rol === 'asesor' ? 'usuario' : 'asesor')} style={BTN_SM("#fb923c")}>
                       {u.rol === 'asesor' ? 'Quitar asesor' : 'Asesor'}
                     </button>
                   )}
@@ -930,7 +939,7 @@ const TABS = [
   { id: "metricas", label: "Métricas" },
 ];
 
-export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '' }) {
+export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usuarioId = '' }) {
   const [tab, setTab] = useState("usuarios");
   const tabsVisibles = rol === 'asesor' ? TABS.filter(t => t.id === 'usuarios') : TABS;
 
@@ -965,7 +974,7 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '' }) {
 
       {/* Tab content */}
       <div style={{ padding: "16px", maxWidth: 640, margin: "0 auto" }}>
-        {tab === "usuarios" && <TabUsuarios rol={rol} ejecutadoPor={ejecutadoPor} />}
+        {tab === "usuarios" && <TabUsuarios rol={rol} ejecutadoPor={ejecutadoPor} usuarioId={usuarioId} />}
         {tab === "partidas" && <TabPartidas />}
         {tab === "finanzas" && <TabFinanzas />}
         {tab === "soporte" && <TabSoporte />}
