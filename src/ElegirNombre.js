@@ -36,7 +36,10 @@ export default function ElegirNombre({ user, onPerfilCreado }) {
     localStorage.removeItem("truco_mkt_pending");
     const { data, error: dbError } = await supabase
       .from("perfiles")
-      .insert({ usuario_id: user.id, nombre, email: user.email, partidas_jugadas: 0, partidas_ganadas: 0, recibe_novedades: recibeNovedades })
+      .upsert(
+        { usuario_id: user.id, nombre, email: user.email, partidas_jugadas: 0, partidas_ganadas: 0, recibe_novedades: recibeNovedades },
+        { onConflict: "usuario_id", ignoreDuplicates: false }
+      )
       .select()
       .single();
     if (dbError) {
