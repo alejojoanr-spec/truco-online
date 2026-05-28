@@ -5,6 +5,43 @@ import fondoLogin from "./Gemini_Generated_Image_wq28o3wq28o3wq28.png";
 const CINZEL = "'Cinzel', serif";
 const LATO   = "'Lato', sans-serif";
 
+/* ── Rate limiting ── */
+const MAX_INTENTOS = 5;
+const VENTANA_MS   = 15 * 60 * 1000; // 15 minutos
+
+function rlKey(email) { return `truco_rl_${email.trim().toLowerCase()}`; }
+
+function getRl(email) {
+  try {
+    const raw = localStorage.getItem(rlKey(email));
+    if (!raw) return { intentos: 0, desde: null };
+    const d = JSON.parse(raw);
+    if (Date.now() - d.desde > VENTANA_MS) {
+      localStorage.removeItem(rlKey(email));
+      return { intentos: 0, desde: null };
+    }
+    return d;
+  } catch { return { intentos: 0, desde: null }; }
+}
+
+function incrementarRl(email) {
+  const actual = getRl(email);
+  const nuevo = { intentos: actual.intentos + 1, desde: actual.desde || Date.now() };
+  localStorage.setItem(rlKey(email), JSON.stringify(nuevo));
+  return nuevo;
+}
+
+function resetearRl(email) { localStorage.removeItem(rlKey(email)); }
+
+function verificarRl(email) {
+  const { intentos, desde } = getRl(email);
+  if (intentos >= MAX_INTENTOS && desde) {
+    const restanMs = VENTANA_MS - (Date.now() - desde);
+    if (restanMs > 0) return { bloqueado: true, minutos: Math.ceil(restanMs / 60000) };
+  }
+  return { bloqueado: false };
+}
+
 const inputStyle = {
   width:"100%", padding:"12px 14px 12px 34px", borderRadius:10,
   border:"1px solid #2d6a4f", background:"rgba(0,0,0,0.5)",
@@ -25,6 +62,7 @@ export default function Auth() {
   const [mostrarNuevaPassword, setMostrarNuevaPassword] = useState(false);
   const [mostrarConfirmarPassword, setMostrarConfirmarPassword] = useState(false);
   const [recibeNovedades, setRecibeNovedades] = useState(false);
+  const [bloqueado, setBloqueado] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
@@ -36,12 +74,38 @@ export default function Auth() {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (modo !== "login" || !email) { setBloqueado(false); return; }
+    const rl = verificarRl(email);
+    setBloqueado(rl.bloqueado);
+    if (rl.bloqueado) setMensaje(`🔒 Demasiados intentos fallidos. Esperá ${rl.minutos} minuto${rl.minutos !== 1 ? "s" : ""} antes de volver a intentar.`);
+  }, [email, modo]);
+
   async function handleSubmit() {
-    setCargando(true);
     setMensaje("");
+
+    if (modo === "login") {
+      const rl = verificarRl(email);
+      if (rl.bloqueado) {
+        setMensaje(`🔒 Demasiados intentos fallidos. Esperá ${rl.minutos} minuto${rl.minutos !== 1 ? "s" : ""} antes de volver a intentar.`);
+        return;
+      }
+    }
+
+    setCargando(true);
     if (modo === "login") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setMensaje("❌ " + error.message);
+      if (error) {
+        const rl = incrementarRl(email);
+        const restantes = MAX_INTENTOS - rl.intentos;
+        if (rl.intentos >= MAX_INTENTOS) {
+          setMensaje("🔒 Demasiados intentos fallidos. Esperá 15 minutos antes de volver a intentar.");
+        } else {
+          setMensaje(`❌ Email o contraseña incorrectos. ${restantes} intento${restantes !== 1 ? "s" : ""} restante${restantes !== 1 ? "s" : ""}.`);
+        }
+      } else {
+        resetearRl(email);
+      }
     } else {
       localStorage.setItem("truco_mkt_pending", recibeNovedades ? "1" : "0");
       const { error } = await supabase.auth.signUp({ email, password });
@@ -216,11 +280,12 @@ export default function Auth() {
             </div>
           )}
 
-          <button onClick={handleSubmit} disabled={cargando} style={{
-            padding:"14px", borderRadius:10, cursor:"pointer",
+          <button onClick={handleSubmit} disabled={cargando || (modo === "login" && bloqueado)} style={{
+            padding:"14px", borderRadius:10, cursor: (cargando || (modo === "login" && bloqueado)) ? "not-allowed" : "pointer",
             background:"linear-gradient(135deg,#1a472a,#2d6a4f)",
             border:"1px solid #4ade80", color:"#ffffff",
             fontFamily:CINZEL, fontSize:14, fontWeight:700, letterSpacing:1.5,
+            opacity: (cargando || (modo === "login" && bloqueado)) ? 0.6 : 1,
           }}>
             {cargando ? "Cargando..." : modo === "login" ? "🃏 Ingresar a jugar" : "✅ Crear cuenta"}
           </button>
