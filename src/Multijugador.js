@@ -48,7 +48,7 @@ function CartaMulti({ carta, oculta, onClick, jugada, seleccionada }) {
   );
 }
 
-export default function Multijugador({ user, perfil, onVolver, codigoInicial, autoCrear }) {
+export default function Multijugador({ user, perfil, onVolver, codigoInicial, autoCrear, apuesta }) {
   const [pantalla, setPantalla] = useState("menu");
   const [codigo, setCodigo] = useState("");
   const [codigoInput, setCodigoInput] = useState("");
@@ -128,6 +128,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       mesa: JSON.stringify([]),
       puntos1: 0,
       puntos2: 0,
+      apuesta: apuesta || 0,
     });
     if (err) { setError("Error al crear sala"); return; }
     setCodigo(cod);

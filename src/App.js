@@ -771,6 +771,7 @@ export default function App() {
   const [modoJuego, setModoJuego] = useState(null); // null=home, "lobby", "single", "multi"
   const [codigoUnirse, setCodigoUnirse] = useState(null);
   const [autoCrearSala, setAutoCrearSala] = useState(false);
+  const [apuestaInicial, setApuestaInicial] = useState(0);
   const [origenMulti, setOrigenMulti] = useState("home");
   const [verTerminos, setVerTerminos] = useState(false);
   const [verPrivacidad, setVerPrivacidad] = useState(false);
@@ -886,6 +887,7 @@ export default function App() {
       perfil={perfil}
       codigoInicial={codigoUnirse}
       autoCrear={autoCrearSala}
+      apuesta={apuestaInicial}
       onVolver={() => {
         setCodigoUnirse(null);
         setAutoCrearSala(false);
@@ -900,7 +902,8 @@ export default function App() {
       <Home
         perfil={perfil}
         onJugar={() => setModoJuego("lobby")}
-        onSalaPrivada={() => { setCodigoUnirse(null); setAutoCrearSala(false); setOrigenMulti("home"); setModoJuego("multi"); }}
+        onCrearSalaPrivada={(apuesta) => { setCodigoUnirse(null); setApuestaInicial(apuesta); setAutoCrearSala(true); setOrigenMulti("home"); setModoJuego("multi"); }}
+        onUnirsePrivado={(codigo, apuesta) => { setCodigoUnirse(codigo); setApuestaInicial(apuesta); setAutoCrearSala(false); setOrigenMulti("home"); setModoJuego("multi"); }}
         onLogout={handleLogout}
         onVerTerminos={()=>setVerTerminos(true)}
         onVerPrivacidad={()=>setVerPrivacidad(true)}
