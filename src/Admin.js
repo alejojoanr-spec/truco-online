@@ -73,6 +73,7 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
   const [saldoNota, setSaldoNota] = useState("");
   const [procesandoSaldo, setProcesandoSaldo] = useState(false);
   const [errorSaldo, setErrorSaldo] = useState("");
+  const [mostrarBtnTicket, setMostrarBtnTicket] = useState(false);
   const [modalMovimientos, setModalMovimientos] = useState(null);
   const [movimientos, setMovimientos] = useState([]);
   const [cargandoMov, setCargandoMov] = useState(false);
@@ -106,7 +107,7 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
     const monto = parseFloat(saldoValor);
     if (isNaN(monto) || monto === 0) { setErrorSaldo("Ingresá un monto válido (puede ser negativo)."); return; }
     if (rol === 'asesor' && modalSaldo.usuario_id === usuarioId) { setErrorSaldo("No podés ajustar tu propio saldo."); return; }
-    if (rol === 'asesor' && Math.abs(monto) > 50000) { setErrorSaldo("Superás el límite máximo por operación. Contactá al administrador."); return; }
+    if (rol === 'asesor' && Math.abs(monto) > 50000) { setErrorSaldo("Superás el límite máximo por operación."); setMostrarBtnTicket(true); return; }
     const saldoAnterior = modalSaldo.saldo || 0;
     if (saldoAnterior + monto < 0) { setErrorSaldo("El saldo no puede quedar en negativo."); return; }
     setProcesandoSaldo(true); setErrorSaldo("");
@@ -124,8 +125,22 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
       saldo_nuevo: nuevoSaldo,
     });
     setUsuarios(prev => prev.map(u => u.usuario_id === modalSaldo.usuario_id ? { ...u, saldo: nuevoSaldo } : u));
-    setModalSaldo(null); setSaldoValor(""); setSaldoNota("");
+    setModalSaldo(null); setSaldoValor(""); setSaldoNota(""); setMostrarBtnTicket(false);
     setProcesandoSaldo(false);
+  }
+
+  async function solicitarAutorizacion() {
+    const monto = parseFloat(saldoValor);
+    const { error } = await supabase.from("tickets_internos").insert({
+      creado_por: ejecutadoPor,
+      usuario_afectado_id: modalSaldo.usuario_id,
+      monto: Math.abs(monto),
+      descripcion: `Solicitud de autorización: ${ejecutadoPor} solicita ajuste de ${monto >= 0 ? '+' : ''}$${monto.toFixed(2)} en usuario ${modalSaldo.nombre}${saldoNota.trim() ? `. Nota: ${saldoNota.trim()}` : ''}.`,
+      estado: 'pendiente',
+    });
+    if (error) { setErrorSaldo("No se pudo crear el ticket. Intentá de nuevo."); return; }
+    setErrorSaldo("✓ Ticket enviado. El administrador revisará tu solicitud.");
+    setMostrarBtnTicket(false);
   }
 
   async function cambiarRol(usuario_id, nuevoRol) {
@@ -393,7 +408,7 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
                 type="number"
                 placeholder="ej: 100 o -50"
                 value={saldoValor}
-                onChange={e => { setSaldoValor(e.target.value); setErrorSaldo(""); }}
+                onChange={e => { setSaldoValor(e.target.value); setErrorSaldo(""); setMostrarBtnTicket(false); }}
                 style={INPUT_STYLE}
               />
               <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>Usá valores negativos para descontar</div>
@@ -408,9 +423,18 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
                 style={INPUT_STYLE}
               />
             </div>
-            {errorSaldo && <div style={{ fontSize: 12, color: "#f87171", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 8, padding: "8px 12px", marginBottom: 14 }}>{errorSaldo}</div>}
+            {errorSaldo && (
+              <div style={{ fontSize: 12, color: mostrarBtnTicket ? "#fbbf24" : errorSaldo.startsWith("✓") ? "#4ade80" : "#f87171", background: mostrarBtnTicket ? "rgba(251,191,36,0.06)" : errorSaldo.startsWith("✓") ? "rgba(74,222,128,0.06)" : "rgba(248,113,113,0.08)", border: `1px solid ${mostrarBtnTicket ? "rgba(251,191,36,0.3)" : errorSaldo.startsWith("✓") ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.2)"}`, borderRadius: 8, padding: "8px 12px", marginBottom: 14 }}>
+                {errorSaldo}
+                {mostrarBtnTicket && (
+                  <button onClick={solicitarAutorizacion} style={{ display: "block", marginTop: 8, padding: "6px 14px", borderRadius: 8, cursor: "pointer", fontSize: 11, fontWeight: 700, fontFamily: "'Lato',sans-serif", background: "rgba(251,191,36,0.1)", border: "1px solid #fbbf24", color: "#fbbf24" }}>
+                    Solicitar autorización
+                  </button>
+                )}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setModalSaldo(null)} style={{ flex: 1, padding: 11, borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "'Lato',sans-serif", fontSize: 14 }}>Cancelar</button>
+              <button onClick={() => { setModalSaldo(null); setMostrarBtnTicket(false); }} style={{ flex: 1, padding: 11, borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "'Lato',sans-serif", fontSize: 14 }}>Cancelar</button>
               <button onClick={ajustarSaldo} disabled={procesandoSaldo} style={{ flex: 1, padding: 11, borderRadius: 10, cursor: procesandoSaldo ? "not-allowed" : "pointer", background: "linear-gradient(135deg,#1a3a6a,#1e4d8c)", border: "1px solid #60a5fa", color: "#60a5fa", fontFamily: "'Lato',sans-serif", fontSize: 14, fontWeight: 700, opacity: procesandoSaldo ? 0.7 : 1 }}>
                 {procesandoSaldo ? "..." : "Confirmar"}
               </button>
@@ -931,6 +955,207 @@ function TabMetricas() {
 }
 
 /* ══════════════════════════════════════════
+   TAB 6 — EQUIPO (tickets internos)
+══════════════════════════════════════════ */
+function TabEquipo({ rol, ejecutadoPor }) {
+  const [tickets, setTickets] = useState([]);
+  const [filtro, setFiltro] = useState("todos");
+  const [cargando, setCargando] = useState(true);
+  const [ticketSel, setTicketSel] = useState(null);
+  const [comentarios, setComentarios] = useState([]);
+  const [cargandoCom, setCargandoCom] = useState(false);
+  const [texto, setTexto] = useState("");
+  const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => { cargar(); }, []);
+
+  async function cargar() {
+    setCargando(true);
+    const { data } = await supabase
+      .from("tickets_internos")
+      .select("*")
+      .order("created_at", { ascending: false });
+    setTickets(data || []);
+    setCargando(false);
+  }
+
+  async function abrirTicket(t) {
+    setTicketSel(t);
+    setCargandoCom(true);
+    const { data } = await supabase
+      .from("ticket_comentarios")
+      .select("*")
+      .eq("ticket_id", t.id)
+      .order("created_at", { ascending: true });
+    setComentarios(data || []);
+    setCargandoCom(false);
+  }
+
+  async function enviarComentario() {
+    if (!texto.trim() || !ticketSel) return;
+    setEnviando(true);
+    const { data } = await supabase
+      .from("ticket_comentarios")
+      .insert({ ticket_id: ticketSel.id, autor: ejecutadoPor, mensaje: texto.trim() })
+      .select().single();
+    if (data) setComentarios(p => [...p, data]);
+    setTexto("");
+    setEnviando(false);
+  }
+
+  async function cambiarEstado(id, nuevoEstado) {
+    await supabase.from("tickets_internos").update({ estado: nuevoEstado }).eq("id", id);
+    setTickets(p => p.map(t => t.id === id ? { ...t, estado: nuevoEstado } : t));
+    if (ticketSel?.id === id) setTicketSel(p => ({ ...p, estado: nuevoEstado }));
+  }
+
+  const ESTADO_COLOR = { pendiente: "#fbbf24", en_revision: "#60a5fa", resuelto: "#4ade80" };
+  const ESTADO_LABEL = { pendiente: "Pendiente", en_revision: "En revisión", resuelto: "Resuelto" };
+  const filtrados = filtro === "todos" ? tickets : tickets.filter(t => t.estado === filtro);
+  const pendientesCount = tickets.filter(t => t.estado === "pendiente").length;
+
+  if (ticketSel) {
+    const color = ESTADO_COLOR[ticketSel.estado] || "#9ca3af";
+    return (
+      <>
+        <button
+          onClick={() => setTicketSel(null)}
+          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#4ade80", cursor: "pointer", fontSize: 13, fontFamily: "'Lato',sans-serif", marginBottom: 16, padding: 0 }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Volver a la lista
+        </button>
+
+        <div style={{ ...CARD, marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
+            <div style={{ fontSize: 11, color: "#6b7280" }}>#{String(ticketSel.id).slice(0, 8).toUpperCase()}</div>
+            <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, border: `1px solid ${color}`, color, fontWeight: 700, flexShrink: 0 }}>
+              {ESTADO_LABEL[ticketSel.estado] || ticketSel.estado}
+            </span>
+          </div>
+          <div style={{ fontSize: 13, color: "#e2f5e9", lineHeight: 1.7, marginBottom: 12 }}>{ticketSel.descripcion}</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 11, color: "#6b7280" }}>
+            <span>Por: <strong style={{ color: "#fbbf24" }}>{ticketSel.creado_por}</strong></span>
+            <span>·</span>
+            <span>{fechaHora(ticketSel.created_at)}</span>
+            {ticketSel.monto != null && <><span>·</span><span style={{ color: "#4ade80" }}>${Number(ticketSel.monto).toFixed(2)}</span></>}
+          </div>
+        </div>
+
+        {rol === 'admin' && ticketSel.estado !== 'resuelto' && (
+          <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+            {ticketSel.estado === 'pendiente' && (
+              <button onClick={() => cambiarEstado(ticketSel.id, 'en_revision')} style={BTN_SM("#60a5fa")}>
+                Tomar en revisión
+              </button>
+            )}
+            <button onClick={() => cambiarEstado(ticketSel.id, 'resuelto')} style={BTN_SM("#4ade80")}>
+              ✓ Resolver
+            </button>
+          </div>
+        )}
+
+        <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>
+          Notas internas
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+          {cargandoCom && <div style={{ textAlign: "center", color: "#4ade80", padding: 16, fontSize: 12 }}>Cargando...</div>}
+          {!cargandoCom && comentarios.length === 0 && (
+            <div style={{ textAlign: "center", color: "#6b7280", padding: "16px 0", fontSize: 12 }}>Sin notas aún.</div>
+          )}
+          {comentarios.map(c => (
+            <div key={c.id} style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(45,106,79,0.3)", borderRadius: 10, padding: "10px 14px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#fbbf24" }}>{c.autor}</span>
+                <span style={{ fontSize: 10, color: "#6b7280" }}>{fechaHora(c.created_at)}</span>
+              </div>
+              <div style={{ fontSize: 13, color: "#e2f5e9", lineHeight: 1.6 }}>{c.mensaje}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            type="text"
+            placeholder="Agregar nota interna..."
+            value={texto}
+            onChange={e => setTexto(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && !enviando && enviarComentario()}
+            style={{ ...INPUT_STYLE, flex: 1, fontSize: 13 }}
+          />
+          <button
+            onClick={enviarComentario}
+            disabled={enviando || !texto.trim()}
+            style={{ ...BTN_SM("#4ade80"), flexShrink: 0, opacity: !texto.trim() || enviando ? 0.5 : 1 }}
+          >
+            {enviando ? "..." : "Enviar"}
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+        {[["todos", "Todos"], ["pendiente", "Pendientes"], ["en_revision", "En revisión"], ["resuelto", "Resueltos"]].map(([val, lbl]) => (
+          <button key={val} onClick={() => setFiltro(val)} style={{
+            padding: "6px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 700,
+            fontFamily: "'Lato',sans-serif", border: "1px solid",
+            borderColor: filtro === val ? "#4ade80" : "#2d6a4f",
+            background: filtro === val ? "rgba(74,222,128,0.12)" : "rgba(0,0,0,0.3)",
+            color: filtro === val ? "#4ade80" : "#6b7280",
+          }}>
+            {lbl}{val === "pendiente" && pendientesCount > 0 ? ` (${pendientesCount})` : ""}
+          </button>
+        ))}
+      </div>
+
+      {cargando ? (
+        <div style={{ textAlign: "center", color: "#4ade80", padding: 40 }}>Cargando tickets...</div>
+      ) : filtrados.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "32px 0" }}>
+          <div style={{ fontSize: 32, marginBottom: 10 }}>📭</div>
+          <div style={{ fontSize: 13, color: "#6b7280" }}>Sin tickets en esta categoría</div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {filtrados.map(t => {
+            const color = ESTADO_COLOR[t.estado] || "#9ca3af";
+            return (
+              <div
+                key={t.id}
+                onClick={() => abrirTicket(t)}
+                style={{ ...CARD, cursor: "pointer", border: `1px solid ${t.estado === "pendiente" ? "rgba(251,191,36,0.35)" : t.estado === "en_revision" ? "rgba(96,165,250,0.35)" : "rgba(74,222,128,0.25)"}` }}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, border: `1px solid ${color}`, color, fontWeight: 700, flexShrink: 0 }}>
+                        {ESTADO_LABEL[t.estado] || t.estado}
+                      </span>
+                      {t.monto != null && <span style={{ fontSize: 11, color: "#4ade80", fontWeight: 700 }}>${Number(t.monto).toFixed(2)}</span>}
+                    </div>
+                    <div style={{ fontSize: 13, color: "#e2f5e9", lineHeight: 1.5, marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {t.descripcion}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#6b7280" }}>
+                      {t.creado_por} · {fechaHora(t.created_at)}
+                    </div>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 3 }}><path d="M9 18l6-6-6-6"/></svg>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ══════════════════════════════════════════
    ADMIN ROOT
 ══════════════════════════════════════════ */
 const TABS = [
@@ -939,11 +1164,28 @@ const TABS = [
   { id: "finanzas", label: "Finanzas" },
   { id: "soporte", label: "Soporte" },
   { id: "metricas", label: "Métricas" },
+  { id: "equipo", label: "Equipo" },
 ];
 
 export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usuarioId = '' }) {
   const [tab, setTab] = useState("usuarios");
-  const tabsVisibles = rol === 'asesor' ? TABS.filter(t => t.id === 'usuarios') : TABS;
+  const [ticketsBadge, setTicketsBadge] = useState(0);
+  const tabsVisibles = rol === 'asesor' ? TABS.filter(t => t.id === 'usuarios' || t.id === 'equipo') : TABS;
+
+  useEffect(() => {
+    async function cargarBadge() {
+      const { count } = await supabase
+        .from("tickets_internos")
+        .select("*", { count: "exact", head: true })
+        .eq("estado", "pendiente");
+      setTicketsBadge(count || 0);
+    }
+    cargarBadge();
+    const canal = supabase.channel("tickets-badge-admin")
+      .on("postgres_changes", { event: "*", schema: "public", table: "tickets_internos" }, cargarBadge)
+      .subscribe();
+    return () => supabase.removeChannel(canal);
+  }, []);
 
   return (
     <div style={{ minHeight: "100vh", background: "radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)", fontFamily: "'Lato', sans-serif", color: "#e2f5e9" }}>
@@ -968,8 +1210,14 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
             color: tab === t.id ? "#4ade80" : "#4b5563",
             borderBottom: tab === t.id ? "2px solid #4ade80" : "2px solid transparent",
             transition: "color 0.15s, border-color 0.15s",
+            position: "relative",
           }}>
             {t.label}
+            {t.id === "equipo" && ticketsBadge > 0 && (
+              <span style={{ position: "absolute", top: 6, right: "50%", transform: "translateX(calc(50% + 16px))", background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 900, borderRadius: "50%", minWidth: 16, height: 16, display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: "0 3px" }}>
+                {ticketsBadge > 9 ? "9+" : ticketsBadge}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -981,6 +1229,7 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
         {tab === "finanzas" && <TabFinanzas />}
         {tab === "soporte" && <TabSoporte />}
         {tab === "metricas" && <TabMetricas />}
+        {tab === "equipo" && <TabEquipo rol={rol} ejecutadoPor={ejecutadoPor} />}
       </div>
 
     </div>
