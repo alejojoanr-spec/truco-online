@@ -103,7 +103,7 @@ function TabUsuarios() {
     setProcesandoSaldo(true); setErrorSaldo("");
     const nuevoSaldo = Math.max(0, (modalSaldo.saldo || 0) + monto);
     const { error } = await supabase.from("perfiles").update({ saldo: nuevoSaldo }).eq("usuario_id", modalSaldo.usuario_id);
-    if (error) { setErrorSaldo("No se pudo ajustar el saldo."); setProcesandoSaldo(false); return; }
+    if (error) { console.error("[Admin] ajustarSaldo error:", error); setErrorSaldo(`No se pudo ajustar el saldo. (${error.message})`); setProcesandoSaldo(false); return; }
     setUsuarios(prev => prev.map(u => u.usuario_id === modalSaldo.usuario_id ? { ...u, saldo: nuevoSaldo } : u));
     setModalSaldo(null); setSaldoValor(""); setSaldoNota("");
     setProcesandoSaldo(false);
