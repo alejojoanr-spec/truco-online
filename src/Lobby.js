@@ -217,7 +217,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onCrearSala, 
         {/* Separador con contador */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0", marginTop: 2 }}>
           <div style={{ flex: 1, height: 1, background: "rgba(45,106,79,0.3)" }} />
-          <span style={{ fontSize: 11, color: "#4b5563", whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: 11, color: "#9ca3af", whiteSpace: "nowrap" }}>
             {cargando
               ? "Cargando..."
               : `${disponibles.length} disponible${disponibles.length !== 1 ? "s" : ""} · ${jugando.length} jugando`}
@@ -236,8 +236,8 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onCrearSala, 
         {!cargando && lista.length === 0 && (
           <div style={{ textAlign: "center", padding: "28px 0" }}>
             <div style={{ fontSize: 36, marginBottom: 10 }}>🃏</div>
-            <div style={{ fontSize: 14, color: "#6b7280" }}>No hay jugadores disponibles</div>
-            <div style={{ fontSize: 12, color: "#4b5563", marginTop: 4 }}>¡Sé el primero en abrir una sala!</div>
+            <div style={{ fontSize: 14, color: "#e2f5e9" }}>No hay jugadores disponibles</div>
+            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>¡Sé el primero en abrir una sala!</div>
           </div>
         )}
 
