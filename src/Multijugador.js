@@ -48,7 +48,7 @@ function CartaMulti({ carta, oculta, onClick, jugada, seleccionada }) {
   );
 }
 
-export default function Multijugador({ user, perfil, onVolver }) {
+export default function Multijugador({ user, perfil, onVolver, codigoInicial, autoCrear }) {
   const [pantalla, setPantalla] = useState("menu");
   const [codigo, setCodigo] = useState("");
   const [codigoInput, setCodigoInput] = useState("");
@@ -61,6 +61,34 @@ export default function Multijugador({ user, perfil, onVolver }) {
   const [error, setError] = useState("");
 
   const addLog = (msg) => setLog(prev => [...prev.slice(-6), msg]);
+
+  // Auto-unirse si viene del lobby con un código
+  useEffect(() => {
+    if (codigoInicial) {
+      (async () => {
+        const cod = codigoInicial.toUpperCase().trim();
+        const { data, error: err } = await supabase.from("partidas").select("*").eq("codigo", cod).single();
+        if (err || !data) { setError("Sala no encontrada"); return; }
+        if (data.estado !== "esperando") { setError("La sala ya no está disponible"); return; }
+        await supabase.from("partidas").update({
+          jugador2_id: user.id,
+          jugador2_nombre: perfil?.nombre || "",
+          jugador2_avatar: perfil?.avatar || "👤",
+          estado: "jugando",
+        }).eq("codigo", cod);
+        setCodigo(cod);
+        setSoyJugador1(false);
+        setMiMano(JSON.parse(data.mano_jugador2));
+        setManoRival(JSON.parse(data.mano_jugador1));
+        setPartida({ ...data, jugador2_id: user.id, estado: "jugando" });
+        setPantalla("jugando");
+        addLog("¡Partida iniciada!");
+      })();
+    } else if (autoCrear) {
+      crearSala();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!codigo) return;
@@ -92,6 +120,8 @@ export default function Multijugador({ user, perfil, onVolver }) {
       codigo: cod,
       estado: "esperando",
       jugador1_id: user.id,
+      jugador1_nombre: perfil?.nombre || "",
+      jugador1_avatar: perfil?.avatar || "👤",
       mano_jugador1: JSON.stringify(mano1),
       mano_jugador2: JSON.stringify(mano2),
       turno: user.id,
@@ -112,7 +142,12 @@ export default function Multijugador({ user, perfil, onVolver }) {
     const { data, error: err } = await supabase.from("partidas").select("*").eq("codigo", cod).single();
     if (err || !data) { setError("Sala no encontrada"); return; }
     if (data.estado !== "esperando") { setError("La sala ya está en juego"); return; }
-    await supabase.from("partidas").update({ jugador2_id: user.id, estado: "jugando" }).eq("codigo", cod);
+    await supabase.from("partidas").update({
+      jugador2_id: user.id,
+      jugador2_nombre: perfil?.nombre || "",
+      jugador2_avatar: perfil?.avatar || "👤",
+      estado: "jugando",
+    }).eq("codigo", cod);
     setCodigo(cod);
     setSoyJugador1(false);
     setMiMano(JSON.parse(data.mano_jugador2));
@@ -168,7 +203,15 @@ export default function Multijugador({ user, perfil, onVolver }) {
         <div style={{ fontSize:12,color:"#6b9",marginBottom:8 }}>Compartí este código</div>
         <div style={{ fontSize:36,color:"#4ade80",fontWeight:900,letterSpacing:8 }}>{codigo}</div>
       </div>
-      <button onClick={onVolver} style={{ padding:"10px 20px",borderRadius:10,background:"transparent",border:"1px solid #374151",color:"#6b7280",fontSize:13,cursor:"pointer",fontFamily:"Georgia" }}>Cancelar</button>
+      <button
+        onClick={async () => {
+          if (codigo) await supabase.from("partidas").delete().eq("codigo", codigo);
+          onVolver();
+        }}
+        style={{ padding:"10px 20px",borderRadius:10,background:"transparent",border:"1px solid #374151",color:"#6b7280",fontSize:13,cursor:"pointer",fontFamily:"'Lato',sans-serif" }}
+      >
+        Cancelar
+      </button>
     </div>
   );
 

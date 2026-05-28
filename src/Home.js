@@ -259,7 +259,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
         >
           <div>
             <div style={{ fontSize: 21, color: "#4ade80", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>Jugar ahora</div>
-            <div style={{ fontSize: 14, color: "#ffffff", marginTop: 2 }}>Contra la IA</div>
+            <div style={{ fontSize: 14, color: "#ffffff", marginTop: 2 }}>Con jugadores en línea.</div>
           </div>
           <div style={{ width: 36, height: 36, border: "2px solid #4ade80", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 9h10M10 5l4 4-4 4" stroke="#4ade80" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -277,7 +277,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
         >
           <div>
             <div style={{ fontSize: 21, color: "#a78bfa", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>Sala privada</div>
-            <div style={{ fontSize: 14, color: "#ffffff", marginTop: 2 }}>Conectá con tus amigos</div>
+            <div style={{ fontSize: 14, color: "#ffffff", marginTop: 2 }}>Conectá con tus amigos.</div>
           </div>
           <div style={{ width: 36, height: 36, border: "2px solid #a78bfa", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 9h10M10 5l4 4-4 4" stroke="#a78bfa" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>

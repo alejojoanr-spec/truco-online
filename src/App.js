@@ -9,6 +9,7 @@ import Configuracion, { leerConfig } from "./Configuracion";
 import ElegirNombre from "./ElegirNombre";
 import ElegirAvatar from "./ElegirAvatar";
 import Home from "./Home";
+import Lobby from "./Lobby";
 import Admin from "./Admin";
 
 const ADMIN_EMAIL = process.env.REACT_APP_ADMIN_EMAIL;
@@ -767,7 +768,10 @@ export default function App() {
   const [perfil, setPerfil] = useState(null);
   const [necesitaNombre, setNecesitaNombre] = useState(false);
   const [necesitaAvatar, setNecesitaAvatar] = useState(false);
-  const [modoJuego, setModoJuego] = useState(null); // null=home, "single"=vs IA, "multi"=multijugador
+  const [modoJuego, setModoJuego] = useState(null); // null=home, "lobby", "single", "multi"
+  const [codigoUnirse, setCodigoUnirse] = useState(null);
+  const [autoCrearSala, setAutoCrearSala] = useState(false);
+  const [origenMulti, setOrigenMulti] = useState("home");
   const [verTerminos, setVerTerminos] = useState(false);
   const [verPrivacidad, setVerPrivacidad] = useState(false);
   const [verTorneos, setVerTorneos] = useState(false);
@@ -856,11 +860,55 @@ export default function App() {
   if (verPrivacidad) return <Privacidad onVolver={()=>setVerPrivacidad(false)} />;
   if (verTorneos) return <Torneos user={user} perfil={perfil} onVolver={()=>setVerTorneos(false)} />;
   if (verAdmin && user?.email === ADMIN_EMAIL) return <Admin onVolver={()=>setVerAdmin(false)} />;
-  if (modoJuego === "multi") return <Multijugador user={user} perfil={perfil} onVolver={()=>setModoJuego(null)} />;
+  if (modoJuego === "lobby") return (
+    <Lobby
+      user={user}
+      perfil={perfil}
+      onJugarIA={() => setModoJuego("single")}
+      onUnirse={(cod) => {
+        setCodigoUnirse(cod);
+        setOrigenMulti("lobby");
+        setAutoCrearSala(false);
+        setModoJuego("multi");
+      }}
+      onCrearSala={() => {
+        setCodigoUnirse(null);
+        setOrigenMulti("lobby");
+        setAutoCrearSala(true);
+        setModoJuego("multi");
+      }}
+      onVolver={() => setModoJuego(null)}
+    />
+  );
+  if (modoJuego === "multi") return (
+    <Multijugador
+      user={user}
+      perfil={perfil}
+      codigoInicial={codigoUnirse}
+      autoCrear={autoCrearSala}
+      onVolver={() => {
+        setCodigoUnirse(null);
+        setAutoCrearSala(false);
+        setModoJuego(origenMulti === "lobby" ? "lobby" : null);
+        setOrigenMulti("home");
+      }}
+    />
+  );
   if (modoJuego === "single") return <TrucoApp user={user} perfil={perfil} setPerfil={setPerfil} onLogout={handleLogout} onMultijugador={()=>setModoJuego("multi")} onVerTerminos={()=>setVerTerminos(true)} onVerTorneos={()=>setVerTorneos(true)} onHome={()=>setModoJuego(null)} />;
   return (
     <>
-      <Home perfil={perfil} onJugar={()=>setModoJuego("single")} onSalaPrivada={()=>setModoJuego("multi")} onLogout={handleLogout} onVerTerminos={()=>setVerTerminos(true)} onVerPrivacidad={()=>setVerPrivacidad(true)} onConfig={()=>setMostrarConfigHome(true)} onPerfilActualizado={setPerfil} esAdmin={user?.email === ADMIN_EMAIL} onAdmin={()=>setVerAdmin(true)} />
+      <Home
+        perfil={perfil}
+        onJugar={() => setModoJuego("lobby")}
+        onSalaPrivada={() => { setCodigoUnirse(null); setAutoCrearSala(false); setOrigenMulti("home"); setModoJuego("multi"); }}
+        onLogout={handleLogout}
+        onVerTerminos={()=>setVerTerminos(true)}
+        onVerPrivacidad={()=>setVerPrivacidad(true)}
+        onConfig={()=>setMostrarConfigHome(true)}
+        onPerfilActualizado={setPerfil}
+        esAdmin={user?.email === ADMIN_EMAIL}
+        onAdmin={()=>setVerAdmin(true)}
+      />
       {mostrarConfigHome && <Configuracion onCerrar={()=>setMostrarConfigHome(false)} />}
     </>
   );
