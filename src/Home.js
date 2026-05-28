@@ -27,7 +27,7 @@ function MenuItem({ icono, label, onClick, peligro }) {
 const AVATARES = ["👨","👩","👴","👵","🧔","👱","🧑","👮","🧑‍🍳","🥷","🧙","🤠","👸","🤴","🧛","🧜","🧝","🧞","🤖","👾"];
 const REGEX_NOMBRE = /^[a-zA-Z0-9.]{4,13}$/;
 
-export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTerminos, onVerPrivacidad, onConfig, onPerfilActualizado, esAdmin, onAdmin }) {
+export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePrivado, onLogout, onVerTerminos, onVerPrivacidad, onConfig, onPerfilActualizado, esAdmin, onAdmin }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [mostrarRanking, setMostrarRanking] = useState(false);
   const [mostrarReglas, setMostrarReglas] = useState(false);
@@ -48,6 +48,11 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
   const [retiroExito, setRetiroExito] = useState(false);
   const [mostrarVerificar, setMostrarVerificar] = useState(false);
   const [copiado, setCopiado] = useState("");
+  const [mostrarSalaPrivada, setMostrarSalaPrivada] = useState(false);
+  const [salaCrearApuesta, setSalaCrearApuesta] = useState("");
+  const [salaUnirseCodigo, setSalaUnirseCodigo] = useState("");
+  const [salaUnirseApuesta, setSalaUnirseApuesta] = useState("");
+  const [salaError, setSalaError] = useState("");
 
   function abrirEditar() {
     setNombreEdit(perfil.nombre);
@@ -259,7 +264,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
           </div>
         </button>
 
-        <button onClick={onSalaPrivada} style={{
+        <button onClick={() => { setSalaCrearApuesta(""); setSalaUnirseCodigo(""); setSalaUnirseApuesta(""); setSalaError(""); setMostrarSalaPrivada(true); }} style={{
           background: "rgba(0,0,0,0.4)",
           border: "1px solid #a78bfa", borderRadius: 16, padding: "20px 24px",
           cursor: "pointer", textAlign: "left", width: "100%",
@@ -616,6 +621,109 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
               <button onClick={() => setMostrarConfirmSalir(false)} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>Cancelar</button>
               <button onClick={onLogout} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: "pointer", background: "linear-gradient(135deg,#7f1d1d,#991b1b)", border: "1px solid #f87171", color: "#f87171", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700 }}>Salir</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL SALA PRIVADA ── */}
+      {mostrarSalaPrivada && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.88)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 60, padding: "16px 16px 32px", overflowY: "auto" }}>
+          <div style={{ background: "radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)", border: "1px solid #2d6a4f", borderRadius: 20, padding: "28px 24px", width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", gap: 20, fontFamily: "'Lato', sans-serif", marginTop: 16 }}>
+
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontSize: 9, color: "#a78bfa", letterSpacing: 3, textTransform: "uppercase" }}>Truco Argentino</div>
+                <div style={{ fontSize: 20, color: "#fbbf24", fontWeight: 900 }}>¿Cómo querés jugar?</div>
+              </div>
+              <button onClick={() => setMostrarSalaPrivada(false)} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+            </div>
+
+            {/* SECCIÓN 1 — Crear partida */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ fontSize: 14, color: "#a78bfa", fontWeight: 900 }}>Jugar partida personalizada</div>
+
+              <div>
+                <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Monto</div>
+                <div style={{ position: "relative" }}>
+                  <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "#9ca3af", fontSize: 15, fontWeight: 700 }}>$</span>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={salaCrearApuesta}
+                    onChange={e => setSalaCrearApuesta(e.target.value)}
+                    style={{ width: "100%", padding: "11px 14px 11px 28px", borderRadius: 10, border: `1px solid ${parseFloat(salaCrearApuesta) > (perfil.saldo || 0) ? "#f87171" : "#2d6a4f"}`, background: "rgba(0,0,0,0.5)", color: "#ffffff", fontFamily: "'Lato',sans-serif", fontSize: 15, outline: "none", boxSizing: "border-box" }}
+                  />
+                </div>
+                {parseFloat(salaCrearApuesta) > (perfil.saldo || 0) ? (
+                  <div style={{ fontSize: 12, color: "#f87171", marginTop: 5 }}>Saldo insuficiente.</div>
+                ) : (!salaCrearApuesta || parseFloat(salaCrearApuesta) === 0) ? (
+                  <div style={{ fontSize: 12, color: "#4ade80", marginTop: 5 }}>Vas a jugar GRATIS</div>
+                ) : null}
+              </div>
+
+              <button
+                onClick={() => { onCrearSalaPrivada(parseFloat(salaCrearApuesta) || 0); setMostrarSalaPrivada(false); }}
+                disabled={parseFloat(salaCrearApuesta) > (perfil.saldo || 0)}
+                style={{ width: "100%", padding: "13px", borderRadius: 10, cursor: parseFloat(salaCrearApuesta) > (perfil.saldo || 0) ? "not-allowed" : "pointer", background: "linear-gradient(135deg,#3b0764,#5b21b6)", border: "1px solid #a78bfa", color: "#a78bfa", fontFamily: "'Lato',sans-serif", fontSize: 15, fontWeight: 700, opacity: parseFloat(salaCrearApuesta) > (perfil.saldo || 0) ? 0.45 : 1, transition: "opacity 0.15s" }}
+              >
+                ¡Crear partida!
+              </button>
+            </div>
+
+            {/* Separador */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ flex: 1, height: 1, background: "rgba(45,106,79,0.35)" }} />
+              <span style={{ fontSize: 12, color: "#6b7280", whiteSpace: "nowrap" }}>¿Ya tenés un código?</span>
+              <div style={{ flex: 1, height: 1, background: "rgba(45,106,79,0.35)" }} />
+            </div>
+
+            {/* SECCIÓN 2 — Unirse con código */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ fontSize: 14, color: "#a78bfa", fontWeight: 900 }}>Jugar partida por código</div>
+              <div style={{ fontSize: 13, color: "#9ca3af" }}>Ingresá el código de la partida aquí:</div>
+
+              <div>
+                <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Código</div>
+                <input
+                  type="text"
+                  placeholder="ej: XKCD42"
+                  value={salaUnirseCodigo}
+                  onChange={e => { setSalaUnirseCodigo(e.target.value.toUpperCase()); setSalaError(""); }}
+                  style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid #2d6a4f", background: "rgba(0,0,0,0.5)", color: "#ffffff", fontFamily: "'Lato',sans-serif", fontSize: 15, outline: "none", boxSizing: "border-box", letterSpacing: 2 }}
+                />
+              </div>
+
+              <div>
+                <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Monto</div>
+                <div style={{ position: "relative" }}>
+                  <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "#9ca3af", fontSize: 15, fontWeight: 700 }}>$</span>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={salaUnirseApuesta}
+                    onChange={e => setSalaUnirseApuesta(e.target.value)}
+                    style={{ width: "100%", padding: "11px 14px 11px 28px", borderRadius: 10, border: "1px solid #2d6a4f", background: "rgba(0,0,0,0.5)", color: "#ffffff", fontFamily: "'Lato',sans-serif", fontSize: 15, outline: "none", boxSizing: "border-box" }}
+                  />
+                </div>
+              </div>
+
+              {salaError && (
+                <div style={{ fontSize: 12, color: "#f87171", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 8, padding: "8px 12px" }}>{salaError}</div>
+              )}
+
+              <button
+                onClick={() => {
+                  if (!salaUnirseCodigo.trim()) { setSalaError("Ingresá el código de la partida."); return; }
+                  onUnirsePrivado(salaUnirseCodigo.trim(), parseFloat(salaUnirseApuesta) || 0);
+                  setMostrarSalaPrivada(false);
+                }}
+                style={{ width: "100%", padding: "13px", borderRadius: 10, cursor: "pointer", background: "rgba(167,139,250,0.08)", border: "1px solid #a78bfa", color: "#a78bfa", fontFamily: "'Lato',sans-serif", fontSize: 15, fontWeight: 700 }}
+              >
+                Entrar a la partida
+              </button>
+            </div>
+
           </div>
         </div>
       )}
