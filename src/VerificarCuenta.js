@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "./supabase";
+import { PRIVACIDAD_SECCIONES } from "./Privacidad";
 
 const PROVINCIAS = [
   "Buenos Aires", "CABA", "Catamarca", "Chaco", "Chubut", "Córdoba",
@@ -84,6 +85,7 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
   });
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const [verTerminos, setVerTerminos] = useState(false);
+  const [verPrivacidad, setVerPrivacidad] = useState(false);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
 
@@ -257,7 +259,13 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
               >
                 términos y condiciones
               </span>
-              {" "}y autorizo el uso de mis datos para la verificación de identidad.
+              {" "}y autorizo el uso de mis datos para la verificación de identidad. Leé nuestra{" "}
+              <span
+                onClick={e => { e.preventDefault(); e.stopPropagation(); setVerPrivacidad(true); }}
+                style={{ color: "#4ade80", textDecoration: "underline", cursor: "pointer" }}
+              >
+                Política de Privacidad
+              </span>.
             </span>
           </label>
 
@@ -304,6 +312,33 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
       </div>
 
       {/* Modal Términos y Condiciones — encima del formulario */}
+      {verPrivacidad && (
+        <div
+          onClick={() => setVerPrivacidad(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70, padding: 16 }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: "radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)", border: "1px solid #2d6a4f", borderRadius: 20, width: "100%", maxWidth: 420, maxHeight: "80vh", display: "flex", flexDirection: "column", fontFamily: "'Lato', sans-serif" }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px 14px", borderBottom: "1px solid rgba(45,106,79,0.4)", flexShrink: 0 }}>
+              <div style={{ fontSize: 17, color: "#fbbf24", fontWeight: 900 }}>Política de Privacidad</div>
+              <button onClick={() => setVerPrivacidad(false)} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>✕</button>
+            </div>
+            <div style={{ overflowY: "auto", padding: "16px 22px 24px", flex: 1 }}>
+              <div style={{ fontSize: 11, color: "#4ade80", marginBottom: 16 }}>Última actualización: Mayo de 2026 · Ley N° 25.326</div>
+              {PRIVACIDAD_SECCIONES.map((s, i) => (
+                <div key={i} style={{ borderBottom: i < PRIVACIDAD_SECCIONES.length - 1 ? "1px solid rgba(45,106,79,0.2)" : "none", paddingBottom: 14, marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 6, color: s.destacado ? "#fbbf24" : "#4ade80" }}>{s.titulo}</div>
+                  <div style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.7, whiteSpace: "pre-line" }}>{s.texto}</div>
+                </div>
+              ))}
+              <div style={{ fontSize: 11, color: "#4b5563", textAlign: "center", marginTop: 8 }}>Truco Online © 2026. Todos los derechos reservados.</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {verTerminos && (
         <div
           onClick={() => setVerTerminos(false)}

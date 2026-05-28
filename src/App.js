@@ -3,6 +3,7 @@ import { supabase } from "./supabase";
 import Auth from "./Auth";
 import Multijugador from "./Multijugador";
 import Terminos from "./Terminos";
+import Privacidad from "./Privacidad";
 import Torneos from "./Torneos";
 import Configuracion, { leerConfig } from "./Configuracion";
 import ElegirNombre from "./ElegirNombre";
@@ -768,6 +769,7 @@ export default function App() {
   const [necesitaAvatar, setNecesitaAvatar] = useState(false);
   const [modoJuego, setModoJuego] = useState(null); // null=home, "single"=vs IA, "multi"=multijugador
   const [verTerminos, setVerTerminos] = useState(false);
+  const [verPrivacidad, setVerPrivacidad] = useState(false);
   const [verTorneos, setVerTorneos] = useState(false);
   const [mostrarConfigHome, setMostrarConfigHome] = useState(false);
   const [esBaneado, setEsBaneado] = useState(false);
@@ -851,13 +853,14 @@ export default function App() {
   if (necesitaNombre) return <ElegirNombre user={user} onPerfilCreado={(p) => { localStorage.setItem(`truco_perfil_${user.id}`, JSON.stringify(p)); setPerfil(p); setNecesitaNombre(false); setNecesitaAvatar(true); }} />;
   if (necesitaAvatar) return <ElegirAvatar perfil={perfil} onAvatarGuardado={(p) => { setPerfil(p); setNecesitaAvatar(false); }} />;
   if (verTerminos) return <Terminos onVolver={()=>setVerTerminos(false)} />;
+  if (verPrivacidad) return <Privacidad onVolver={()=>setVerPrivacidad(false)} />;
   if (verTorneos) return <Torneos user={user} perfil={perfil} onVolver={()=>setVerTorneos(false)} />;
   if (verAdmin && user?.email === ADMIN_EMAIL) return <Admin onVolver={()=>setVerAdmin(false)} />;
   if (modoJuego === "multi") return <Multijugador user={user} perfil={perfil} onVolver={()=>setModoJuego(null)} />;
   if (modoJuego === "single") return <TrucoApp user={user} perfil={perfil} setPerfil={setPerfil} onLogout={handleLogout} onMultijugador={()=>setModoJuego("multi")} onVerTerminos={()=>setVerTerminos(true)} onVerTorneos={()=>setVerTorneos(true)} onHome={()=>setModoJuego(null)} />;
   return (
     <>
-      <Home perfil={perfil} onJugar={()=>setModoJuego("single")} onSalaPrivada={()=>setModoJuego("multi")} onLogout={handleLogout} onVerTerminos={()=>setVerTerminos(true)} onConfig={()=>setMostrarConfigHome(true)} onPerfilActualizado={setPerfil} esAdmin={user?.email === ADMIN_EMAIL} onAdmin={()=>setVerAdmin(true)} />
+      <Home perfil={perfil} onJugar={()=>setModoJuego("single")} onSalaPrivada={()=>setModoJuego("multi")} onLogout={handleLogout} onVerTerminos={()=>setVerTerminos(true)} onVerPrivacidad={()=>setVerPrivacidad(true)} onConfig={()=>setMostrarConfigHome(true)} onPerfilActualizado={setPerfil} esAdmin={user?.email === ADMIN_EMAIL} onAdmin={()=>setVerAdmin(true)} />
       {mostrarConfigHome && <Configuracion onCerrar={()=>setMostrarConfigHome(false)} />}
     </>
   );
