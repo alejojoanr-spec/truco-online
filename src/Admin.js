@@ -61,7 +61,7 @@ function TabUsuarios() {
     const { data, error, status, statusText } = await supabase
       .from("perfiles")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("nombre", { ascending: true });
     console.log("[Admin] cargarUsuarios →", { status, statusText, rows: data?.length, data, error });
     if (error) console.error("[Admin] error:", error.message, error.code, error.details);
     setUsuarios(data || []);
