@@ -38,6 +38,21 @@ function fecha(ts) {
   return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
 }
 
+function fechaHora(ts) {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+}
+
+const TIPO_LABEL = {
+  deposito: "Depósito",
+  retiro: "Retiro",
+  ajuste: "Ajuste manual",
+  premio: "Ganancia de partida",
+  apuesta: "Apuesta",
+};
+const TIPO_SIGNO_POSITIVO = new Set(["deposito", "premio"]);
+
 /* ══════════════════════════════════════════
    TAB 1 — USUARIOS
 ══════════════════════════════════════════ */
@@ -53,6 +68,9 @@ function TabUsuarios() {
   const [saldoNota, setSaldoNota] = useState("");
   const [procesandoSaldo, setProcesandoSaldo] = useState(false);
   const [errorSaldo, setErrorSaldo] = useState("");
+  const [modalMovimientos, setModalMovimientos] = useState(null);
+  const [movimientos, setMovimientos] = useState([]);
+  const [cargandoMov, setCargandoMov] = useState(false);
 
   useEffect(() => { cargar(); }, []);
 
@@ -89,6 +107,19 @@ function TabUsuarios() {
     setUsuarios(prev => prev.map(u => u.usuario_id === modalSaldo.usuario_id ? { ...u, saldo: nuevoSaldo } : u));
     setModalSaldo(null); setSaldoValor(""); setSaldoNota("");
     setProcesandoSaldo(false);
+  }
+
+  async function abrirMovimientos(u) {
+    setModalMovimientos(u);
+    setMovimientos([]);
+    setCargandoMov(true);
+    const { data } = await supabase
+      .from("transacciones")
+      .select("*")
+      .eq("usuario_id", u.usuario_id)
+      .order("created_at", { ascending: false });
+    setMovimientos(data || []);
+    setCargandoMov(false);
   }
 
   const filtrados = usuarios.filter(u => {
@@ -197,6 +228,9 @@ function TabUsuarios() {
                   </div>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                  <button onClick={() => abrirMovimientos(u)} style={BTN_SM("#a78bfa")}>
+                    Historial
+                  </button>
                   <button onClick={() => { setModalSaldo(u); setSaldoValor(""); setSaldoNota(""); setErrorSaldo(""); }} style={BTN_SM("#60a5fa")}>
                     Saldo
                   </button>
@@ -228,6 +262,70 @@ function TabUsuarios() {
                 {procesandoBan ? "..." : confirmBan.is_banned ? "Restaurar" : "Banear"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal historial de movimientos */}
+      {modalMovimientos && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.88)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 60, padding: "16px 16px 32px", overflowY: "auto" }}>
+          <div style={{ background: "radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)", border: "1px solid rgba(167,139,250,0.4)", borderRadius: 20, padding: "24px", width: "100%", maxWidth: 480, fontFamily: "'Lato',sans-serif", marginTop: 16 }}>
+
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 9, color: "#a78bfa", letterSpacing: 3, textTransform: "uppercase" }}>Historial</div>
+                <div style={{ fontSize: 17, color: "#fbbf24", fontWeight: 900 }}>
+                  {modalMovimientos.avatar || "👤"} {modalMovimientos.nombre}
+                </div>
+              </div>
+              <button onClick={() => setModalMovimientos(null)} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+            </div>
+
+            {cargandoMov ? (
+              <div style={{ textAlign: "center", color: "#a78bfa", padding: 40 }}>Cargando movimientos...</div>
+            ) : movimientos.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "32px 0" }}>
+                <div style={{ fontSize: 32, marginBottom: 10 }}>📭</div>
+                <div style={{ fontSize: 13, color: "#6b7280" }}>Sin movimientos registrados</div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {movimientos.map(m => {
+                  const esPositivo = TIPO_SIGNO_POSITIVO.has(m.tipo);
+                  const colorMonto = esPositivo ? "#4ade80" : "#f87171";
+                  const signo = esPositivo ? "+" : "−";
+                  const tipoLabel = TIPO_LABEL[m.tipo] || m.tipo;
+                  return (
+                    <div key={m.id} style={{ background: "rgba(0,0,0,0.35)", border: `1px solid ${esPositivo ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+                      <div style={{ fontSize: 20, lineHeight: 1, flexShrink: 0, marginTop: 2 }}>
+                        {esPositivo ? "💚" : "🔴"}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                          <span style={{ fontSize: 18, fontWeight: 900, color: colorMonto }}>
+                            {signo}${parseFloat(m.monto).toFixed(2)}
+                          </span>
+                          <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, background: "rgba(0,0,0,0.4)", border: `1px solid ${esPositivo ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)"}`, color: esPositivo ? "#4ade80" : "#f87171", fontWeight: 700 }}>
+                            {tipoLabel}
+                          </span>
+                          {m.estado && m.estado !== "aprobado" && (
+                            <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, background: "rgba(0,0,0,0.4)", border: `1px solid ${m.estado === "pendiente" ? "rgba(251,191,36,0.4)" : "rgba(107,114,128,0.4)"}`, color: m.estado === "pendiente" ? "#fbbf24" : "#6b7280" }}>
+                              {m.estado}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 11, color: "#9ca3af" }}>{fechaHora(m.created_at)}</div>
+                        {m.nota && (
+                          <div style={{ fontSize: 11, color: "#6b7280", marginTop: 3, fontStyle: "italic" }}>"{m.nota}"</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
           </div>
         </div>
       )}
