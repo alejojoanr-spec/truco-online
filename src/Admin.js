@@ -106,9 +106,11 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
     const monto = parseFloat(saldoValor);
     if (isNaN(monto) || monto === 0) { setErrorSaldo("Ingresá un monto válido (puede ser negativo)."); return; }
     if (rol === 'asesor' && modalSaldo.usuario_id === usuarioId) { setErrorSaldo("No podés ajustar tu propio saldo."); return; }
-    setProcesandoSaldo(true); setErrorSaldo("");
+    if (rol === 'asesor' && Math.abs(monto) > 50000) { setErrorSaldo("Superás el límite máximo por operación. Contactá al administrador."); return; }
     const saldoAnterior = modalSaldo.saldo || 0;
-    const nuevoSaldo = Math.max(0, saldoAnterior + monto);
+    if (saldoAnterior + monto < 0) { setErrorSaldo("El saldo no puede quedar en negativo."); return; }
+    setProcesandoSaldo(true); setErrorSaldo("");
+    const nuevoSaldo = saldoAnterior + monto;
     const { error } = await supabase.from("perfiles").update({ saldo: nuevoSaldo }).eq("usuario_id", modalSaldo.usuario_id);
     if (error) { console.error("[Admin] ajustarSaldo error:", error); setErrorSaldo(`No se pudo ajustar el saldo. (${error.message})`); setProcesandoSaldo(false); return; }
     await supabase.from("transacciones").insert({

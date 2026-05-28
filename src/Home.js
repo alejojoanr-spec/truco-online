@@ -67,11 +67,23 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
       setErrorEdit("Entre 4 y 13 caracteres. Solo letras, números o puntos.");
       return;
     }
+    const cambioNombre = nombre !== perfil.nombre;
+    if (cambioNombre && perfil.nombre_cambiado_en) {
+      const diasTranscurridos = (Date.now() - new Date(perfil.nombre_cambiado_en).getTime()) / (1000 * 60 * 60 * 24);
+      const diasRestantes = Math.ceil(30 - diasTranscurridos);
+      if (diasRestantes > 0) {
+        setErrorEdit(`Podés cambiar tu nombre de usuario en ${diasRestantes} día${diasRestantes !== 1 ? "s" : ""}.`);
+        return;
+      }
+    }
     setCargandoEdit(true);
     setErrorEdit("");
+    const ahora = new Date().toISOString();
+    const updateData = { nombre, avatar: avatarEdit };
+    if (cambioNombre) updateData.nombre_cambiado_en = ahora;
     const { error } = await supabase
       .from("perfiles")
-      .update({ nombre, avatar: avatarEdit })
+      .update(updateData)
       .eq("usuario_id", perfil.usuario_id);
     if (error) {
       console.error("Error al actualizar perfil:", error);
@@ -82,7 +94,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
       setCargandoEdit(false);
       return;
     }
-    const perfilActualizado = { ...perfil, nombre, avatar: avatarEdit };
+    const perfilActualizado = { ...perfil, nombre, avatar: avatarEdit, ...(cambioNombre ? { nombre_cambiado_en: ahora } : {}) };
     localStorage.setItem(`truco_avatar_${perfil.usuario_id}`, avatarEdit);
     localStorage.setItem(`truco_perfil_${perfil.usuario_id}`, JSON.stringify(perfilActualizado));
     onPerfilActualizado(perfilActualizado);
