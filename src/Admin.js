@@ -60,7 +60,7 @@ function TabUsuarios() {
     setCargando(true);
     const { data, error } = await supabase
       .from("perfiles")
-      .select("usuario_id,nombre,email,avatar,created_at,is_verified,is_banned,partidas_jugadas,partidas_ganadas,saldo")
+      .select("*")
       .order("created_at", { ascending: false });
     if (error) console.error("Admin/cargarUsuarios:", error.message, error.code);
     setUsuarios(data || []);
