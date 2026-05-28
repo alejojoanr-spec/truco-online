@@ -540,7 +540,8 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                       type="number"
                       placeholder="0"
                       value={retiroMonto}
-                      onChange={e => { setRetiroMonto(e.target.value); setRetiroError(""); }}
+                      min="0"
+                      onChange={e => { setRetiroMonto(e.target.value < 0 ? "0" : e.target.value); setRetiroError(""); }}
                       style={{ width: "100%", padding: "11px 14px 11px 26px", borderRadius: 10, border: "1px solid #2d6a4f", background: "rgba(0,0,0,0.5)", color: "#ffffff", fontFamily: "'Lato', sans-serif", fontSize: 15, outline: "none", boxSizing: "border-box" }}
                     />
                   </div>
