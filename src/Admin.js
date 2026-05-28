@@ -56,7 +56,7 @@ const TIPO_SIGNO_POSITIVO = new Set(["deposito", "premio"]);
 /* ══════════════════════════════════════════
    TAB 1 — USUARIOS
 ══════════════════════════════════════════ */
-function TabUsuarios() {
+function TabUsuarios({ rol, ejecutadoPor }) {
   const [usuarios, setUsuarios] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [cargando, setCargando] = useState(true);
@@ -101,9 +101,20 @@ function TabUsuarios() {
     const monto = parseFloat(saldoValor);
     if (isNaN(monto) || monto === 0) { setErrorSaldo("Ingresá un monto válido (puede ser negativo)."); return; }
     setProcesandoSaldo(true); setErrorSaldo("");
-    const nuevoSaldo = Math.max(0, (modalSaldo.saldo || 0) + monto);
+    const saldoAnterior = modalSaldo.saldo || 0;
+    const nuevoSaldo = Math.max(0, saldoAnterior + monto);
     const { error } = await supabase.from("perfiles").update({ saldo: nuevoSaldo }).eq("usuario_id", modalSaldo.usuario_id);
     if (error) { console.error("[Admin] ajustarSaldo error:", error); setErrorSaldo(`No se pudo ajustar el saldo. (${error.message})`); setProcesandoSaldo(false); return; }
+    await supabase.from("transacciones").insert({
+      usuario_id: modalSaldo.usuario_id,
+      tipo: "ajuste",
+      monto,
+      estado: "aprobado",
+      nota: saldoNota.trim() || null,
+      ejecutado_por: ejecutadoPor || null,
+      saldo_anterior: saldoAnterior,
+      saldo_nuevo: nuevoSaldo,
+    });
     setUsuarios(prev => prev.map(u => u.usuario_id === modalSaldo.usuario_id ? { ...u, saldo: nuevoSaldo } : u));
     setModalSaldo(null); setSaldoValor(""); setSaldoNota("");
     setProcesandoSaldo(false);
@@ -234,9 +245,11 @@ function TabUsuarios() {
                   <button onClick={() => { setModalSaldo(u); setSaldoValor(""); setSaldoNota(""); setErrorSaldo(""); }} style={BTN_SM("#60a5fa")}>
                     Saldo
                   </button>
-                  <button onClick={() => { setErrorBan(""); setConfirmBan(u); }} style={BTN_SM(u.is_banned ? "#4ade80" : "#f87171")}>
-                    {u.is_banned ? "Desbanear" : "Banear"}
-                  </button>
+                  {rol !== 'asesor' && (
+                    <button onClick={() => { setErrorBan(""); setConfirmBan(u); }} style={BTN_SM(u.is_banned ? "#4ade80" : "#f87171")}>
+                      {u.is_banned ? "Desbanear" : "Banear"}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -292,9 +305,10 @@ function TabUsuarios() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {movimientos.map(m => {
-                  const esPositivo = TIPO_SIGNO_POSITIVO.has(m.tipo);
+                  const esPositivo = m.tipo === 'ajuste' ? parseFloat(m.monto) >= 0 : TIPO_SIGNO_POSITIVO.has(m.tipo);
                   const colorMonto = esPositivo ? "#4ade80" : "#f87171";
                   const signo = esPositivo ? "+" : "−";
+                  const montoAbs = Math.abs(parseFloat(m.monto)).toFixed(2);
                   const tipoLabel = TIPO_LABEL[m.tipo] || m.tipo;
                   return (
                     <div key={m.id} style={{ background: "rgba(0,0,0,0.35)", border: `1px solid ${esPositivo ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -304,7 +318,7 @@ function TabUsuarios() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
                           <span style={{ fontSize: 18, fontWeight: 900, color: colorMonto }}>
-                            {signo}${parseFloat(m.monto).toFixed(2)}
+                            {signo}${montoAbs}
                           </span>
                           <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, background: "rgba(0,0,0,0.4)", border: `1px solid ${esPositivo ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)"}`, color: esPositivo ? "#4ade80" : "#f87171", fontWeight: 700 }}>
                             {tipoLabel}
@@ -318,6 +332,12 @@ function TabUsuarios() {
                         <div style={{ fontSize: 11, color: "#9ca3af" }}>{fechaHora(m.created_at)}</div>
                         {m.nota && (
                           <div style={{ fontSize: 11, color: "#6b7280", marginTop: 3, fontStyle: "italic" }}>"{m.nota}"</div>
+                        )}
+                        {m.tipo === 'ajuste' && m.ejecutado_por && (
+                          <div style={{ fontSize: 11, color: "#a78bfa", marginTop: 3 }}>Por: {m.ejecutado_por}</div>
+                        )}
+                        {m.tipo === 'ajuste' && m.saldo_anterior != null && m.saldo_nuevo != null && (
+                          <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>${Number(m.saldo_anterior).toFixed(2)} → ${Number(m.saldo_nuevo).toFixed(2)}</div>
                         )}
                       </div>
                     </div>
@@ -559,10 +579,18 @@ function TabFinanzas() {
                     <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, border: `1px solid ${colorEstado(t.estado)}`, color: colorEstado(t.estado), background: `rgba(0,0,0,0.3)` }}>{t.estado}</span>
                     <span style={{ fontSize: 10, color: "#6b7280", background: "rgba(0,0,0,0.3)", border: "1px solid #374151", borderRadius: 4, padding: "1px 6px" }}>{t.tipo}</span>
                   </div>
-                  <div style={{ fontSize: 12, color: "#4ade80", fontWeight: 900, marginTop: 3 }}>${parseFloat(t.monto).toFixed(2)}</div>
-                  <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
-                    {fecha(t.created_at)}{t.nota ? ` · ${t.nota}` : ""}
+                  <div style={{ fontSize: 12, fontWeight: 900, marginTop: 3, color: t.tipo === 'ajuste' ? (parseFloat(t.monto) >= 0 ? "#4ade80" : "#f87171") : "#4ade80" }}>
+                    {t.tipo === 'ajuste' ? (parseFloat(t.monto) >= 0 ? `+$${parseFloat(t.monto).toFixed(2)}` : `−$${Math.abs(parseFloat(t.monto)).toFixed(2)}`) : `$${parseFloat(t.monto).toFixed(2)}`}
                   </div>
+                  <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+                    {fechaHora(t.created_at)}{t.nota ? ` · ${t.nota}` : ""}
+                  </div>
+                  {t.tipo === 'ajuste' && t.ejecutado_por && (
+                    <div style={{ fontSize: 11, color: "#a78bfa", marginTop: 2 }}>Por: {t.ejecutado_por}</div>
+                  )}
+                  {t.tipo === 'ajuste' && t.saldo_anterior != null && t.saldo_nuevo != null && (
+                    <div style={{ fontSize: 11, color: "#6b7280", marginTop: 1 }}>${Number(t.saldo_anterior).toFixed(2)} → ${Number(t.saldo_nuevo).toFixed(2)}</div>
+                  )}
                 </div>
                 {t.estado === "pendiente" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 }}>
@@ -885,8 +913,9 @@ const TABS = [
   { id: "metricas", label: "Métricas" },
 ];
 
-export default function Admin({ onVolver }) {
+export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '' }) {
   const [tab, setTab] = useState("usuarios");
+  const tabsVisibles = rol === 'asesor' ? TABS.filter(t => t.id === 'usuarios') : TABS;
 
   return (
     <div style={{ minHeight: "100vh", background: "radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)", fontFamily: "'Lato', sans-serif", color: "#e2f5e9" }}>
@@ -895,7 +924,7 @@ export default function Admin({ onVolver }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 0", position: "sticky", top: 0, background: "rgba(5,15,8,0.96)", backdropFilter: "blur(8px)", zIndex: 10, borderBottom: "1px solid rgba(45,106,79,0.4)" }}>
         <div style={{ paddingBottom: 14 }}>
           <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 3, textTransform: "uppercase" }}>Truco Online</div>
-          <div style={{ fontSize: 19, color: "#fbbf24", fontWeight: 900 }}>Panel de administrador</div>
+          <div style={{ fontSize: 19, color: "#fbbf24", fontWeight: 900 }}>{rol === 'asesor' ? 'Panel de asesor' : 'Panel de administrador'}</div>
         </div>
         <button onClick={onVolver} style={{ background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 8, padding: "8px 14px", color: "#4ade80", fontSize: 13, cursor: "pointer", fontFamily: "'Lato',sans-serif", marginBottom: 14 }}>
           ← Volver
@@ -904,7 +933,7 @@ export default function Admin({ onVolver }) {
 
       {/* Tab bar */}
       <div style={{ display: "flex", borderBottom: "1px solid rgba(45,106,79,0.3)", background: "rgba(5,15,8,0.92)", position: "sticky", top: 57, zIndex: 9 }}>
-        {TABS.map(t => (
+        {tabsVisibles.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             flex: 1, padding: "11px 2px", border: "none", background: "none",
             cursor: "pointer", fontFamily: "'Lato',sans-serif", fontSize: 11, fontWeight: 700,
@@ -919,7 +948,7 @@ export default function Admin({ onVolver }) {
 
       {/* Tab content */}
       <div style={{ padding: "16px", maxWidth: 640, margin: "0 auto" }}>
-        {tab === "usuarios" && <TabUsuarios />}
+        {tab === "usuarios" && <TabUsuarios rol={rol} ejecutadoPor={ejecutadoPor} />}
         {tab === "partidas" && <TabPartidas />}
         {tab === "finanzas" && <TabFinanzas />}
         {tab === "soporte" && <TabSoporte />}

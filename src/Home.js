@@ -27,7 +27,7 @@ function MenuItem({ icono, label, onClick, peligro }) {
 const AVATARES = ["👨","👩","👴","👵","🧔","👱","🧑","👮","🧑‍🍳","🥷","🧙","🤠","👸","🤴","🧛","🧜","🧝","🧞","🤖","👾"];
 const REGEX_NOMBRE = /^[a-zA-Z0-9.]{4,13}$/;
 
-export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePrivado, onLogout, onVerTerminos, onVerPrivacidad, onConfig, onPerfilActualizado, esAdmin, onAdmin }) {
+export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePrivado, onLogout, onVerTerminos, onVerPrivacidad, onConfig, onPerfilActualizado, esAdmin, esAsesor, onAdmin }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [mostrarRanking, setMostrarRanking] = useState(false);
   const [mostrarReglas, setMostrarReglas] = useState(false);
@@ -332,6 +332,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
           <MenuItem icono="🔒" label="Política de privacidad"  onClick={() => { setMenuAbierto(false); onVerPrivacidad(); }} />
           <MenuItem icono="💬" label="Soporte"                 onClick={abrirSoporte} />
           {esAdmin && <MenuItem icono="🛡️" label="Panel de administrador" onClick={() => { setMenuAbierto(false); onAdmin(); }} />}
+          {esAsesor && !esAdmin && <MenuItem icono="👔" label="Panel de asesor" onClick={() => { setMenuAbierto(false); onAdmin(); }} />}
         </div>
 
         {/* Cerrar sesión al fondo */}

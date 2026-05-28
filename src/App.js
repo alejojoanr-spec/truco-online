@@ -860,7 +860,9 @@ export default function App() {
   if (verTerminos) return <Terminos onVolver={()=>setVerTerminos(false)} />;
   if (verPrivacidad) return <Privacidad onVolver={()=>setVerPrivacidad(false)} />;
   if (verTorneos) return <Torneos user={user} perfil={perfil} onVolver={()=>setVerTorneos(false)} />;
-  if (verAdmin && user?.email === ADMIN_EMAIL) return <Admin onVolver={()=>setVerAdmin(false)} />;
+  const esAdmin = user?.email === ADMIN_EMAIL;
+  const esAsesor = perfil?.rol === 'asesor';
+  if (verAdmin && (esAdmin || esAsesor)) return <Admin onVolver={()=>setVerAdmin(false)} rol={esAdmin ? 'admin' : 'asesor'} ejecutadoPor={perfil?.nombre || user?.email || ''} />;
   if (modoJuego === "lobby") return (
     <Lobby
       user={user}
@@ -909,7 +911,8 @@ export default function App() {
         onVerPrivacidad={()=>setVerPrivacidad(true)}
         onConfig={()=>setMostrarConfigHome(true)}
         onPerfilActualizado={setPerfil}
-        esAdmin={user?.email === ADMIN_EMAIL}
+        esAdmin={esAdmin}
+        esAsesor={esAsesor}
         onAdmin={()=>setVerAdmin(true)}
       />
       {mostrarConfigHome && <Configuracion onCerrar={()=>setMostrarConfigHome(false)} />}
