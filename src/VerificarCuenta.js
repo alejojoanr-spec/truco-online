@@ -84,6 +84,7 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
     genero: "",
   });
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
+  const [recibeNovedades, setRecibeNovedades] = useState(false);
   const [verTerminos, setVerTerminos] = useState(false);
   const [verPrivacidad, setVerPrivacidad] = useState(false);
   const [error, setError] = useState("");
@@ -109,14 +110,18 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
     const err = validar();
     if (err) { setError(err); return; }
     setCargando(true);
+    const updatePayload = {
+      is_verified: true,
+      provincia: form.provincia || null,
+      fecha_nacimiento: form.fecha_nacimiento || null,
+      genero: form.genero || null,
+    };
+    if (recibeNovedades && !perfil.recibe_novedades) {
+      updatePayload.recibe_novedades = true;
+    }
     const { error: dbError } = await supabase
       .from("perfiles")
-      .update({
-        is_verified: true,
-        provincia: form.provincia || null,
-        fecha_nacimiento: form.fecha_nacimiento || null,
-        genero: form.genero || null,
-      })
+      .update(updatePayload)
       .eq("usuario_id", perfil.usuario_id);
     if (dbError) {
       setError("No se pudo completar la verificación. Intentá de nuevo.");
@@ -266,6 +271,20 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
               >
                 Política de Privacidad
               </span>.
+            </span>
+          </label>
+
+          {/* Novedades opt-in */}
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={recibeNovedades}
+              onChange={e => setRecibeNovedades(e.target.checked)}
+              style={{ marginTop: 3, accentColor: "#4ade80", width: 16, height: 16, flexShrink: 0 }}
+            />
+            <span style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>
+              Quiero recibir novedades y promociones de Truco Argentino{" "}
+              <span style={{ color: "#6b7280" }}>(opcional)</span>
             </span>
           </label>
 

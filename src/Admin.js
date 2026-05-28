@@ -101,7 +101,22 @@ function TabUsuarios() {
     total: usuarios.length,
     verificados: usuarios.filter(u => u.is_verified).length,
     baneados: usuarios.filter(u => u.is_banned).length,
+    novedades: usuarios.filter(u => u.recibe_novedades).length,
   };
+
+  function exportarEmailsMarketing() {
+    const suscriptores = usuarios.filter(u => u.recibe_novedades && u.email);
+    if (!suscriptores.length) { alert("No hay usuarios suscritos a novedades."); return; }
+    const filas = suscriptores.map(u => `"${(u.nombre || "").replace(/"/g, '""')}","${u.email.replace(/"/g, '""')}"`);
+    const csv = "Nombre,Email\n" + filas.join("\n");
+    const blob = new Blob(["﻿" + csv, ""], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `suscriptores_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   function winrate(u) {
     if (!u.partidas_jugadas) return "—";
@@ -110,10 +125,28 @@ function TabUsuarios() {
 
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 8 }}>
         <StatCard label="Usuarios" valor={stats.total} color="#4ade80" />
         <StatCard label="Verificados" valor={stats.verificados} color="#60a5fa" />
         <StatCard label="Baneados" valor={stats.baneados} color="#f87171" />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+        <div style={{ flex: 1 }}>
+          <StatCard label="Suscritos a novedades" valor={stats.novedades} color="#fbbf24" />
+        </div>
+        <button
+          onClick={exportarEmailsMarketing}
+          style={{
+            ...BTN_SM("#fbbf24"),
+            padding: "10px 14px", fontSize: 12, whiteSpace: "nowrap", height: "100%",
+            display: "flex", alignItems: "center", gap: 6,
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Exportar CSV
+        </button>
       </div>
 
       {/* Buscador */}
@@ -150,6 +183,7 @@ function TabUsuarios() {
                     <span style={{ fontSize: 14, fontWeight: 900, color: u.is_banned ? "#f87171" : "#fbbf24" }}>{u.nombre}</span>
                     {u.is_verified && <span style={{ fontSize: 10, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.35)", borderRadius: 4, padding: "1px 6px", color: "#60a5fa", fontWeight: 700 }}>✓ Verificado</span>}
                     {u.is_banned && <span style={{ fontSize: 10, background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.35)", borderRadius: 4, padding: "1px 6px", color: "#f87171", fontWeight: 700 }}>Baneado</span>}
+                    {u.recibe_novedades && <span style={{ fontSize: 10, background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 4, padding: "1px 6px", color: "#fbbf24", fontWeight: 700 }}>📧 Novedades</span>}
                   </div>
                   <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email || <span style={{ fontStyle: "italic" }}>email no disponible</span>}</div>
                   <div style={{ display: "flex", gap: 8, marginTop: 5, fontSize: 11, color: "#4b5563", flexWrap: "wrap" }}>
