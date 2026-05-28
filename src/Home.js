@@ -152,7 +152,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
       {/* Card usuario */}
       <div style={{
         background: "rgba(0,0,0,0.5)", border: "1px solid #2d6a4f",
-        borderRadius: 20, padding: "20px 24px",
+        borderRadius: 20, padding: "24px 24px",
         width: "100%", maxWidth: 340,
         display: "flex", flexDirection: "column",
         position: "relative",
@@ -164,8 +164,8 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
           color: "#4ade80", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center",
         }}>✏️</button>
 
-        {/* Fila avatar + info */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        {/* Fila avatar + nombre */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 18 }}>
           <div style={{
             width: 64, height: 64, borderRadius: "50%", flexShrink: 0,
             background: "radial-gradient(circle,#1a472a,#050f08)",
@@ -175,38 +175,40 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
           }}>
             {perfil.avatar || "👤"}
           </div>
-          <div style={{ textAlign: "left", flex: 1 }}>
-            <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>{perfil.nombre}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-              <span style={{ fontSize: 16, color: "#ffffff", fontWeight: 700, fontFamily: "'Lato', sans-serif", letterSpacing: 0.5 }}>
-                {saldoVisible
-                  ? `$ ${(perfil.saldo || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}`
-                  : "$ ••••••"}
-              </span>
-              <button onClick={() => setSaldoVisible(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 2, display: "flex", alignItems: "center" }}>
-                {saldoVisible ? (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                    <line x1="1" y1="1" x2="23" y2="23"/>
-                  </svg>
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                )}
-              </button>
-            </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <button onClick={() => setMostrarDepositar(true)} style={{ padding: "5px 12px", borderRadius: 8, background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ade80", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", fontWeight: 700 }}>
-                + Depositar
-              </button>
-              <button onClick={() => { setMostrarRetirar(true); setRetiroMonto(""); setRetiroCbu(""); setRetiroError(""); setRetiroExito(false); }} style={{ padding: "5px 12px", borderRadius: 8, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.4)", color: "#f87171", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", fontWeight: 700 }}>
-                − Retirar
-              </button>
-            </div>
-          </div>
+          <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>{perfil.nombre}</div>
+        </div>
+
+        {/* Saldo centrado */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 16 }}>
+          <span style={{ fontSize: 21, color: "#ffffff", fontWeight: 700, fontFamily: "'Lato', sans-serif", letterSpacing: 0.5 }}>
+            {saldoVisible
+              ? `$ ${(perfil.saldo || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}`
+              : "$ ••••••"}
+          </span>
+          <button onClick={() => setSaldoVisible(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 2, display: "flex", alignItems: "center" }}>
+            {saldoVisible ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            )}
+          </button>
+        </div>
+
+        {/* Botones centrados */}
+        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+          <button onClick={() => setMostrarDepositar(true)} style={{ padding: "7px 16px", borderRadius: 8, background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ade80", fontSize: 14, cursor: "pointer", fontFamily: "'Lato', sans-serif", fontWeight: 700 }}>
+            + Depositar
+          </button>
+          <button onClick={() => { setMostrarRetirar(true); setRetiroMonto(""); setRetiroCbu(""); setRetiroError(""); setRetiroExito(false); }} style={{ padding: "7px 16px", borderRadius: 8, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.4)", color: "#f87171", fontSize: 14, cursor: "pointer", fontFamily: "'Lato', sans-serif", fontWeight: 700 }}>
+            − Retirar
+          </button>
         </div>
 
         {/* Banner verificación — solo si no está verificado */}
