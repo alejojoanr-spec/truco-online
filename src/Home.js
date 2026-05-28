@@ -247,7 +247,7 @@ export default function Home({ perfil, onJugar, onSalaPrivada, onLogout, onVerTe
       </div>{/* fin grupo logo+card */}
 
       {/* Opciones principales */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 340, marginTop: "auto" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 340, marginTop: 24 }}>
         <button onClick={onJugar} style={{
           background: "linear-gradient(135deg,#1a472a,#2d6a4f)",
           border: "1px solid #4ade80", borderRadius: 16, padding: "20px 24px",
