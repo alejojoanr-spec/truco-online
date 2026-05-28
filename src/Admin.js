@@ -58,11 +58,12 @@ function TabUsuarios() {
 
   async function cargar() {
     setCargando(true);
-    const { data, error } = await supabase
+    const { data, error, status, statusText } = await supabase
       .from("perfiles")
       .select("*")
       .order("created_at", { ascending: false });
-    if (error) console.error("Admin/cargarUsuarios:", error.message, error.code);
+    console.log("[Admin] cargarUsuarios →", { status, statusText, rows: data?.length, data, error });
+    if (error) console.error("[Admin] error:", error.message, error.code, error.details);
     setUsuarios(data || []);
     setCargando(false);
   }
