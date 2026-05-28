@@ -120,6 +120,13 @@ function TabUsuarios({ rol, ejecutadoPor }) {
     setProcesandoSaldo(false);
   }
 
+  async function cambiarRol(usuario_id, nuevoRol) {
+    const { error } = await supabase.from("perfiles").update({ rol: nuevoRol }).eq("usuario_id", usuario_id);
+    if (!error) {
+      setUsuarios(prev => prev.map(u => u.usuario_id === usuario_id ? { ...u, rol: nuevoRol } : u));
+    }
+  }
+
   async function abrirMovimientos(u) {
     setModalMovimientos(u);
     setMovimientos([]);
@@ -135,8 +142,11 @@ function TabUsuarios({ rol, ejecutadoPor }) {
 
   const filtrados = usuarios.filter(u => {
     if (!busqueda.trim()) return true;
-    const q = busqueda.toLowerCase();
-    return u.nombre?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
+    const q = busqueda.trim();
+    const esNumero = /^\d+/.test(q);
+    if (esNumero) return u.dni?.includes(q);
+    const ql = q.toLowerCase();
+    return u.nombre?.toLowerCase().includes(ql) || u.email?.toLowerCase().includes(ql) || u.dni?.includes(q);
   });
 
   const stats = {
@@ -194,7 +204,7 @@ function TabUsuarios({ rol, ejecutadoPor }) {
       {/* Buscador */}
       <div style={{ position: "relative", marginBottom: 16 }}>
         <input
-          type="text" placeholder="Buscar por nombre o email..."
+          type="text" placeholder="Buscar por nombre, email o DNI..."
           value={busqueda} onChange={e => setBusqueda(e.target.value)}
           style={{ ...INPUT_STYLE, paddingLeft: 40 }}
         />
@@ -225,6 +235,7 @@ function TabUsuarios({ rol, ejecutadoPor }) {
                     <span style={{ fontSize: 14, fontWeight: 900, color: u.is_banned ? "#f87171" : "#fbbf24" }}>{u.nombre}</span>
                     {u.is_verified && <span style={{ fontSize: 10, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.35)", borderRadius: 4, padding: "1px 6px", color: "#60a5fa", fontWeight: 700 }}>✓ Verificado</span>}
                     {u.is_banned && <span style={{ fontSize: 10, background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.35)", borderRadius: 4, padding: "1px 6px", color: "#f87171", fontWeight: 700 }}>Baneado</span>}
+                    {u.rol === 'asesor' && <span style={{ fontSize: 10, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.35)", borderRadius: 4, padding: "1px 6px", color: "#a78bfa", fontWeight: 700 }}>Asesor</span>}
                     {u.recibe_novedades && <span style={{ fontSize: 10, background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 4, padding: "1px 6px", color: "#fbbf24", fontWeight: 700 }}>📧 Novedades</span>}
                   </div>
                   <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email || <span style={{ fontStyle: "italic" }}>email no disponible</span>}</div>
@@ -236,6 +247,7 @@ function TabUsuarios({ rol, ejecutadoPor }) {
                     <span>{u.partidas_jugadas || 0} partidas</span>
                     <span>·</span>
                     <span>Saldo: ${(u.saldo || 0).toFixed(2)}</span>
+                    {u.dni && <><span>·</span><span style={{ color: "#6b7280" }}>DNI: {u.dni}</span></>}
                   </div>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
@@ -248,6 +260,11 @@ function TabUsuarios({ rol, ejecutadoPor }) {
                   {rol !== 'asesor' && (
                     <button onClick={() => { setErrorBan(""); setConfirmBan(u); }} style={BTN_SM(u.is_banned ? "#4ade80" : "#f87171")}>
                       {u.is_banned ? "Desbanear" : "Banear"}
+                    </button>
+                  )}
+                  {rol === 'admin' && u.rol !== 'admin' && (
+                    <button onClick={() => cambiarRol(u.usuario_id, u.rol === 'asesor' ? 'usuario' : 'asesor')} style={BTN_SM("#a78bfa")}>
+                      {u.rol === 'asesor' ? 'Quitar asesor' : 'Asesor'}
                     </button>
                   )}
                 </div>

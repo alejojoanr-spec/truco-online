@@ -115,6 +115,7 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
       provincia: form.provincia || null,
       fecha_nacimiento: form.fecha_nacimiento || null,
       genero: form.genero || null,
+      dni: form.dni.replace(/\D/g, "") || null,
     };
     if (recibeNovedades && !perfil.recibe_novedades) {
       updatePayload.recibe_novedades = true;
@@ -213,7 +214,7 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
               style={INPUT}
             />
             <div style={{ fontSize: 11, color: "#6b7280", marginTop: 5 }}>
-              Solo para verificación — no se almacena ni se comparte
+              Solo para verificación de identidad
             </div>
           </div>
 
