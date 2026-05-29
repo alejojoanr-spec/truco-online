@@ -139,6 +139,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         (payload) => { setPartida(payload.new); procesarCambio(payload.new); }
       ).subscribe();
     return () => supabase.removeChannel(channel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codigo, soyJugador1]);
 
   async function crearSala() {
