@@ -257,6 +257,8 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
   const [eliminandoSala, setEliminandoSala] = useState(false);
   const navegandoRef = useRef(false);
   const canalRef = useRef(null);
+  const salaAbiertaRef = useRef(null);
+  const timerSalaRef = useRef(null);
 
   useEffect(() => {
     cargar();
@@ -287,10 +289,55 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
     const iniciada = salas.find(s => s.codigo === miCodigoSala && s.estado === "jugando");
     if (iniciada) {
       navegandoRef.current = true;
+      salaAbiertaRef.current = null; // partida iniciada, no cancelar en unmount
       onPartidaIniciada(miCodigoSala);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [salas, miCodigoSala]);
+
+  // Sincroniza salaAbiertaRef con la sala abierta actual
+  useEffect(() => {
+    if (!miCodigoSala) { salaAbiertaRef.current = null; return; }
+    const sala = salas.find(s => s.codigo === miCodigoSala);
+    if (sala?.estado === "esperando") {
+      salaAbiertaRef.current = { codigo: sala.codigo, apuesta: sala.apuesta || 0 };
+    } else {
+      salaAbiertaRef.current = null;
+    }
+  }, [miCodigoSala, salas]);
+
+  // Auto-cancelar sala después de 30 minutos sin rival
+  useEffect(() => {
+    if (timerSalaRef.current) { clearTimeout(timerSalaRef.current); timerSalaRef.current = null; }
+    if (!miCodigoSala) return;
+    timerSalaRef.current = setTimeout(async () => {
+      const info = salaAbiertaRef.current;
+      if (!info) return;
+      await cancelarSalaConReembolso(info.codigo, info.apuesta);
+      setMiCodigoSala(null);
+      cargar();
+      canalRef.current?.send({ type: "broadcast", event: "sala_actualizada", payload: {} });
+    }, 30 * 60 * 1000);
+    return () => { if (timerSalaRef.current) { clearTimeout(timerSalaRef.current); timerSalaRef.current = null; } };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [miCodigoSala]);
+
+  // Cancelar sala abierta si el usuario abandona el lobby sin unirse a partida
+  useEffect(() => {
+    return () => {
+      if (navegandoRef.current) return;
+      const info = salaAbiertaRef.current;
+      if (!info) return;
+      supabase.from("partidas").update({ estado: "cancelada" }).eq("codigo", info.codigo);
+      if (info.apuesta > 0) {
+        supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single()
+          .then(({ data }) => {
+            if (data) supabase.from("perfiles").update({ saldo: data.saldo + info.apuesta }).eq("usuario_id", user.id);
+          });
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function cargar() {
     const { data } = await supabase
@@ -303,26 +350,27 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
     setCargando(false);
   }
 
+  async function cancelarSalaConReembolso(codigo, apuesta) {
+    if ((apuesta || 0) > 0) {
+      const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+      if (fresh) await supabase.from("perfiles").update({ saldo: fresh.saldo + apuesta }).eq("usuario_id", user.id);
+    }
+    await supabase.from("partidas").update({ estado: "cancelada" }).eq("codigo", codigo);
+  }
+
   async function crearSalaPublica() {
     setErrorCrear("");
     setCreandoSala(true);
+    // 1. Verificar saldo sin descontar todavía
     if (apuestaCrear > 0) {
       const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-      const saldoActual = fresh?.saldo || 0;
-      if (saldoActual < apuestaCrear) {
+      if ((fresh?.saldo || 0) < apuestaCrear) {
         setErrorCrear("Saldo insuficiente");
         setCreandoSala(false);
         return;
       }
-      const { error: saldoErr } = await supabase.from("perfiles")
-        .update({ saldo: saldoActual - apuestaCrear })
-        .eq("usuario_id", user.id);
-      if (saldoErr) {
-        setErrorCrear("Error al procesar el saldo");
-        setCreandoSala(false);
-        return;
-      }
     }
+    // 2. INSERT primero
     const cod = generarCodigoLobby();
     const mazo = mezclarLobby(MAZO_LOBBY);
     const mano1 = mazo.slice(0, 3);
@@ -344,13 +392,28 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
       es_torneo: esTorneoCrear,
     });
     if (err) {
-      if (apuestaCrear > 0) {
-        const { data: fresh2 } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-        await supabase.from("perfiles").update({ saldo: (fresh2?.saldo || 0) + apuestaCrear }).eq("usuario_id", user.id);
-      }
       setErrorCrear(`Error al crear la sala: ${err.message}`);
       setCreandoSala(false);
       return;
+    }
+    // 3. Descontar saldo solo después del INSERT exitoso
+    if (apuestaCrear > 0) {
+      const { data: fresh, error: fetchErr } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+      if (fetchErr || !fresh || fresh.saldo < apuestaCrear) {
+        await supabase.from("partidas").update({ estado: "cancelada" }).eq("codigo", cod);
+        setErrorCrear("Error al procesar el saldo. Intentá de nuevo.");
+        setCreandoSala(false);
+        return;
+      }
+      const { error: saldoErr } = await supabase.from("perfiles")
+        .update({ saldo: fresh.saldo - apuestaCrear })
+        .eq("usuario_id", user.id);
+      if (saldoErr) {
+        await supabase.from("partidas").update({ estado: "cancelada" }).eq("codigo", cod);
+        setErrorCrear("Error al procesar el saldo. Intentá de nuevo.");
+        setCreandoSala(false);
+        return;
+      }
     }
     setMiCodigoSala(cod);
     setCreandoSala(false);
@@ -361,13 +424,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
 
   async function eliminarSala(sala) {
     setEliminandoSala(true);
-    if ((sala.apuesta || 0) > 0) {
-      const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-      await supabase.from("perfiles")
-        .update({ saldo: (fresh?.saldo || 0) + sala.apuesta })
-        .eq("usuario_id", user.id);
-    }
-    await supabase.from("partidas").update({ estado: "cancelada" }).eq("codigo", sala.codigo);
+    await cancelarSalaConReembolso(sala.codigo, sala.apuesta || 0);
     setMiCodigoSala(null);
     setEliminandoSala(false);
     cargar();
