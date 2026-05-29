@@ -129,7 +129,7 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
     const nuevoSaldo = saldoAnterior + monto;
     const { error } = await supabase.from("perfiles").update({ saldo: nuevoSaldo }).eq("usuario_id", modalSaldo.usuario_id);
     if (error) { console.error("[Admin] ajustarSaldo error:", error); setErrorSaldo(`No se pudo ajustar el saldo. (${error.message})`); setProcesandoSaldo(false); return; }
-    await supabase.from("transacciones").insert({
+    const { data: txInsert, error: txErr } = await supabase.from("transacciones").insert({
       usuario_id: modalSaldo.usuario_id,
       tipo: "ajuste",
       monto,
@@ -138,7 +138,8 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
       ejecutado_por: ejecutadoPor || null,
       saldo_anterior: saldoAnterior,
       saldo_nuevo: nuevoSaldo,
-    });
+    }).select();
+    console.log("[ajustarSaldo] insert transaccion →", { data: txInsert, error: txErr });
     setUsuarios(prev => prev.map(u => u.usuario_id === modalSaldo.usuario_id ? { ...u, saldo: nuevoSaldo } : u));
     setModalSaldo(null); setSaldoValor(""); setSaldoNota(""); setMostrarBtnTicket(false);
     setProcesandoSaldo(false);
@@ -169,11 +170,12 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
     setModalMovimientos(u);
     setMovimientos([]);
     setCargandoMov(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("transacciones")
       .select("*")
       .eq("usuario_id", u.usuario_id)
       .order("created_at", { ascending: false });
+    console.log("[abrirMovimientos] usuario_id:", u.usuario_id, "→ data:", data, "error:", error);
     setMovimientos(data || []);
     setCargandoMov(false);
   }
@@ -879,11 +881,12 @@ function TabFinanzas({ rol = 'admin' }) {
     setModalMov(u);
     setMovimientos([]);
     setCargandoMov(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("transacciones")
       .select("*")
       .eq("usuario_id", u.usuario_id)
       .order("created_at", { ascending: false });
+    console.log("[abrirMovimientos/Finanzas] usuario_id:", u.usuario_id, "→ data:", data, "error:", error);
     setMovimientos(data || []);
     setCargandoMov(false);
   }
