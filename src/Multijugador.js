@@ -59,6 +59,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const [cartaSeleccionada, setCartaSeleccionada] = useState(null);
   const [log, setLog] = useState([]);
   const [error, setError] = useState("");
+  const [copiado, setCopiado] = useState(false);
 
   const addLog = (msg) => setLog(prev => [...prev.slice(-6), msg]);
   const [resultadoPartida, setResultadoPartida] = useState(null);
@@ -327,7 +328,27 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       <div style={{ fontSize:22,color:"#fbbf24",fontWeight:900 }}>Esperando rival...</div>
       <div style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:12,padding:"16px 32px",textAlign:"center" }}>
         <div style={{ fontSize:12,color:"#6b9",marginBottom:8 }}>Compartí este código</div>
-        <div style={{ fontSize:36,color:"#4ade80",fontWeight:900,letterSpacing:8 }}>{codigo}</div>
+        <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:12 }}>
+          <div style={{ fontSize:36,color:"#4ade80",fontWeight:900,letterSpacing:8 }}>{codigo}</div>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(codigo).then(() => {
+                setCopiado(true);
+                setTimeout(() => setCopiado(false), 2000);
+              });
+            }}
+            title="Copiar código"
+            style={{ background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.4)",borderRadius:8,padding:"6px 8px",cursor:"pointer",color:"#4ade80",display:"flex",alignItems:"center",flexShrink:0 }}
+          >
+            {copiado
+              ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            }
+          </button>
+        </div>
+        {copiado && (
+          <div style={{ fontSize:12,color:"#4ade80",marginTop:6,fontFamily:"'Lato',sans-serif" }}>¡Copiado!</div>
+        )}
       </div>
       <button
         onClick={async () => {
