@@ -293,13 +293,12 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
   }, [salas, miCodigoSala]);
 
   async function cargar() {
-    const desde = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
     const { data } = await supabase
       .from("partidas")
-      .select("id, codigo, estado, jugador1_id, jugador1_nombre, jugador1_avatar, jugador2_id, jugador2_nombre, jugador2_avatar, apuesta, puntos, es_torneo, created_at")
+      .select("id, codigo, estado, jugador1_id, jugador1_nombre, jugador1_avatar, jugador2_id, jugador2_nombre, jugador2_avatar, apuesta, puntos, es_torneo")
       .in("estado", ["esperando", "jugando"])
-      .gte("created_at", desde)
-      .order("created_at", { ascending: false });
+      .order("id", { ascending: false })
+      .limit(50);
     setSalas(data || []);
     setCargando(false);
   }
