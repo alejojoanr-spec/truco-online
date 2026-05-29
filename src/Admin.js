@@ -587,6 +587,19 @@ function TabFinanzas() {
     setProcesando(id);
     const { error } = await supabase.from("transacciones").update({ estado: nuevoEstado }).eq("id", id);
     if (error) { console.error("[TabFinanzas] cambiarEstado error:", error); setProcesando(null); return; }
+
+    if (nuevoEstado === 'aprobado') {
+      const tx = transacciones.find(t => t.id === id);
+      if (tx && tx.tipo === 'retiro' && tx.usuario_id) {
+        const { data: perfil } = await supabase
+          .from("perfiles").select("saldo").eq("usuario_id", tx.usuario_id).single();
+        if (perfil) {
+          const nuevoSaldo = (perfil.saldo || 0) - parseFloat(tx.monto);
+          await supabase.from("perfiles").update({ saldo: nuevoSaldo }).eq("usuario_id", tx.usuario_id);
+        }
+      }
+    }
+
     setTransacciones(prev => prev.map(t => t.id === id ? { ...t, estado: nuevoEstado } : t));
     setProcesando(null);
   }
