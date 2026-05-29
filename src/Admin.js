@@ -475,6 +475,9 @@ function TabPartidas() {
   const [partidas, setPartidas] = useState([]);
   const [sospechosos, setSospechosos] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [vistaFiltro, setVistaFiltro] = useState(null); // null | 'partidas' | 'sospechosos'
+
+  function toggleVista(v) { setVistaFiltro(f => f === v ? null : v); }
 
   useEffect(() => { cargar(); }, []);
 
@@ -503,12 +506,12 @@ function TabPartidas() {
     <>
       {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8, marginBottom: 20 }}>
-        <StatCard label="Partidas (últimas 50)" valor={partidas.length} color="#4ade80" />
-        <StatCard label="Jugadores sospechosos" valor={sospechosos.length} color="#f87171" />
+        <StatCard label="Partidas (últimas 50)" valor={partidas.length} color="#4ade80" onClick={() => toggleVista('partidas')} activo={vistaFiltro === 'partidas'} />
+        <StatCard label="Jugadores sospechosos" valor={sospechosos.length} color="#f87171" onClick={() => toggleVista('sospechosos')} activo={vistaFiltro === 'sospechosos'} />
       </div>
 
       {/* Sospechosos */}
-      {sospechosos.length > 0 && (
+      {sospechosos.length > 0 && vistaFiltro !== 'partidas' && (
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 11, color: "#f87171", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>
             ⚠ Winrate {">"} 80% con ≥10 partidas
@@ -536,7 +539,7 @@ function TabPartidas() {
       )}
 
       {/* Últimas partidas */}
-      <div>
+      {vistaFiltro === 'sospechosos' ? null : <div>
         <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>
           Últimas 50 partidas
         </div>
@@ -566,7 +569,7 @@ function TabPartidas() {
             ))}
           </div>
         )}
-      </div>
+      </div>}
     </>
   );
 }
@@ -645,24 +648,22 @@ function TabFinanzas() {
   return (
     <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 16 }}>
-        <StatCard label="Pendientes" valor={stats.pendientes} color="#fbbf24" />
-        <StatCard label="Aprobado total" valor={`$${stats.aprobados.toFixed(0)}`} color="#4ade80" />
-        <StatCard label="Volumen total" valor={`$${stats.volumen.toFixed(0)}`} color="#60a5fa" />
+        <StatCard label="Pendientes" valor={stats.pendientes} color="#fbbf24" onClick={() => setFiltro(f => f === "pendiente" ? "todas" : "pendiente")} activo={filtro === "pendiente"} />
+        <StatCard label="Aprobado total" valor={`$${stats.aprobados.toFixed(0)}`} color="#4ade80" onClick={() => setFiltro(f => f === "aprobado" ? "todas" : "aprobado")} activo={filtro === "aprobado"} />
+        <StatCard label="Volumen total" valor={`$${stats.volumen.toFixed(0)}`} color="#60a5fa" onClick={() => setFiltro("todas")} activo={filtro === "todas"} />
       </div>
 
-      {/* Filtro */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
-        {["todas", "pendiente", "aprobado", "rechazado"].map(f => (
-          <button key={f} onClick={() => setFiltro(f)} style={{
-            padding: "6px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 700,
-            fontFamily: "'Lato',sans-serif", border: "1px solid",
-            borderColor: filtro === f ? "#4ade80" : "#2d6a4f",
-            background: filtro === f ? "rgba(74,222,128,0.12)" : "rgba(0,0,0,0.3)",
-            color: filtro === f ? "#4ade80" : "#6b7280",
-          }}>
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-          </button>
-        ))}
+      {/* Filtro rechazado */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+        <button onClick={() => setFiltro(f => f === "rechazado" ? "todas" : "rechazado")} style={{
+          padding: "6px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 700,
+          fontFamily: "'Lato',sans-serif", border: "1px solid",
+          borderColor: filtro === "rechazado" ? "#f87171" : "#2d6a4f",
+          background: filtro === "rechazado" ? "rgba(248,113,113,0.12)" : "rgba(0,0,0,0.3)",
+          color: filtro === "rechazado" ? "#f87171" : "#6b7280",
+        }}>
+          Ver rechazados
+        </button>
       </div>
 
       {filtradas.length === 0 ? (
@@ -749,23 +750,8 @@ function TabSoporte() {
   return (
     <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8, marginBottom: 16 }}>
-        <StatCard label="Pendientes" valor={pendientes} color="#fbbf24" />
-        <StatCard label="Resueltos" valor={resueltos} color="#4ade80" />
-      </div>
-
-      {/* Filtro */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-        {[["pendiente", "Pendientes"], ["resuelto", "Resueltos"], ["todos", "Todos"]].map(([val, lbl]) => (
-          <button key={val} onClick={() => setFiltro(val)} style={{
-            padding: "6px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 700,
-            fontFamily: "'Lato',sans-serif", border: "1px solid",
-            borderColor: filtro === val ? "#4ade80" : "#2d6a4f",
-            background: filtro === val ? "rgba(74,222,128,0.12)" : "rgba(0,0,0,0.3)",
-            color: filtro === val ? "#4ade80" : "#6b7280",
-          }}>
-            {lbl}
-          </button>
-        ))}
+        <StatCard label="Pendientes" valor={pendientes} color="#fbbf24" onClick={() => setFiltro(f => f === "pendiente" ? "todos" : "pendiente")} activo={filtro === "pendiente"} />
+        <StatCard label="Resueltos" valor={resueltos} color="#4ade80" onClick={() => setFiltro(f => f === "resuelto" ? "todos" : "resuelto")} activo={filtro === "resuelto"} />
       </div>
 
       {filtrados.length === 0 ? (
