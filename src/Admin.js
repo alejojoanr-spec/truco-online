@@ -139,9 +139,7 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
       saldo_anterior: saldoAnterior,
       saldo_nuevo: nuevoSaldo,
     }).select();
-    console.log("[ajustarSaldo] insert transaccion →", { data: txInsert, error: txErr });
     if (txErr) {
-      console.error("[ajustarSaldo] ERROR al insertar transaccion:", txErr);
       setErrorSaldo(`Saldo ajustado pero no se pudo registrar la transacción: ${txErr.message}`);
       setProcesandoSaldo(false);
       return;
@@ -181,7 +179,6 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
       .select("*")
       .eq("usuario_id", u.usuario_id)
       .order("created_at", { ascending: false });
-    console.log("[abrirMovimientos] usuario_id:", u.usuario_id, "→ data:", data, "error:", error);
     setMovimientos(data || []);
     setCargandoMov(false);
   }
@@ -892,7 +889,6 @@ function TabFinanzas({ rol = 'admin' }) {
       .select("*")
       .eq("usuario_id", u.usuario_id)
       .order("created_at", { ascending: false });
-    console.log("[abrirMovimientos/Finanzas] usuario_id:", u.usuario_id, "→ data:", data, "error:", error);
     setMovimientos(data || []);
     setCargandoMov(false);
   }
