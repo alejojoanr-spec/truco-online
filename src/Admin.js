@@ -585,7 +585,8 @@ function TabFinanzas() {
 
   async function cambiarEstado(id, nuevoEstado) {
     setProcesando(id);
-    await supabase.from("transacciones").update({ estado: nuevoEstado }).eq("id", id);
+    const { error } = await supabase.from("transacciones").update({ estado: nuevoEstado }).eq("id", id);
+    if (error) { console.error("[TabFinanzas] cambiarEstado error:", error); setProcesando(null); return; }
     setTransacciones(prev => prev.map(t => t.id === id ? { ...t, estado: nuevoEstado } : t));
     setProcesando(null);
   }
