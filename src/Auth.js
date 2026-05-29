@@ -234,7 +234,7 @@ export default function Auth() {
           <div style={{ position:"relative" }}>
             <div style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"#4ade80" }}>✉</div>
             <input
-              type="email" placeholder="Correo electrónico" value={email}
+              type="email" autoComplete="email" placeholder="Correo electrónico" value={email}
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
               className="auth-input" style={inputStyle}
@@ -244,7 +244,7 @@ export default function Auth() {
           <div style={{ position:"relative" }}>
             <div style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"#4ade80" }}>🔒</div>
             <input
-              type={mostrarPassword ? "text" : "password"} placeholder="Contraseña" value={password}
+              type={mostrarPassword ? "text" : "password"} autoComplete="current-password" placeholder="Contraseña" value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
               className="auth-input" style={inputConOjoStyle}
@@ -324,7 +324,7 @@ export default function Auth() {
           <div style={{ position:"relative" }}>
             <div style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"#4ade80" }}>✉</div>
             <input
-              type="email" placeholder="Correo electrónico" value={email}
+              type="email" autoComplete="email" placeholder="Correo electrónico" value={email}
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleRecuperar()}
               className="auth-input" style={inputStyle}
