@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -973,9 +973,210 @@ function TabMetricas() {
 }
 
 /* ══════════════════════════════════════════
-   TAB 6 — EQUIPO (tickets internos)
+   TAB 6 — EQUIPO (tickets + chat)
 ══════════════════════════════════════════ */
+
+function localHoy() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function rangoLocal(fechaStr) {
+  const [y, m, d] = fechaStr.split('-').map(Number);
+  const inicio = new Date(y, m-1, d, 0, 0, 0, 0);
+  const fin    = new Date(y, m-1, d+1, 0, 0, 0, 0);
+  return [inicio.toISOString(), fin.toISOString()];
+}
+
+function soloHora(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function BurbujaMensaje({ m, esPropio }) {
+  return (
+    <div style={{ display:"flex", flexDirection:"column", alignItems: esPropio ? "flex-end" : "flex-start" }}>
+      <div style={{ maxWidth:"85%" }}>
+        {!esPropio && (
+          <div style={{ fontSize:10, color:"#fbbf24", fontWeight:700, marginBottom:2, paddingLeft:4 }}>
+            {m.autor}
+          </div>
+        )}
+        <div style={{
+          background: esPropio ? "rgba(74,222,128,0.12)" : "rgba(0,0,0,0.35)",
+          border: `1px solid ${esPropio ? "rgba(74,222,128,0.3)" : "rgba(45,106,79,0.4)"}`,
+          borderRadius: esPropio ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
+          padding:"8px 12px",
+        }}>
+          <div style={{ fontSize:13, color:"#e2f5e9", lineHeight:1.5, wordBreak:"break-word" }}>{m.mensaje}</div>
+        </div>
+        <div style={{ fontSize:10, color:"#4b5563", marginTop:2, textAlign: esPropio ? "right" : "left", paddingLeft: esPropio ? 0 : 4 }}>
+          {soloHora(m.created_at)}{esPropio && <span style={{ marginLeft:4, color:"#6b7280" }}> · Vos</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChatEquipo({ ejecutadoPor }) {
+  const [mensajes, setMensajes]             = useState([]);
+  const [texto, setTexto]                   = useState("");
+  const [enviando, setEnviando]             = useState(false);
+  const [cargando, setCargando]             = useState(true);
+  const [vistaChat, setVistaChat]           = useState("hoy"); // "hoy" | "diasList" | "diaDetalle"
+  const [diasConMensajes, setDiasConMensajes] = useState([]);
+  const [diaSeleccionado, setDiaSeleccionado] = useState(null);
+  const [mensajesHistorial, setMensajesHistorial] = useState([]);
+  const [cargandoHist, setCargandoHist]     = useState(false);
+  const bottomRef = useRef(null);
+
+  useEffect(() => { cargarHoy(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (vistaChat !== "hoy") return;
+    const hoy = localHoy();
+    const canal = supabase.channel("chat-equipo-live")
+      .on("postgres_changes", { event:"INSERT", schema:"public", table:"chat_equipo" }, (payload) => {
+        const msg = payload.new;
+        const d = new Date(msg.created_at);
+        const diaMsg = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        if (diaMsg === hoy) setMensajes(prev => [...prev, msg]);
+      })
+      .subscribe();
+    return () => supabase.removeChannel(canal);
+  }, [vistaChat]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (vistaChat === "hoy") bottomRef.current?.scrollIntoView({ behavior:"smooth" });
+  }, [mensajes, vistaChat]);
+
+  async function cargarHoy() {
+    setCargando(true);
+    const [inicio, fin] = rangoLocal(localHoy());
+    const { data } = await supabase.from("chat_equipo").select("*")
+      .gte("created_at", inicio).lt("created_at", fin)
+      .order("created_at", { ascending:true });
+    setMensajes(data || []);
+    setCargando(false);
+  }
+
+  async function abrirHistorial() {
+    setVistaChat("diasList");
+    setCargandoHist(true);
+    const [inicioHoy] = rangoLocal(localHoy());
+    const { data } = await supabase.from("chat_equipo").select("created_at")
+      .lt("created_at", inicioHoy).order("created_at", { ascending:false });
+    if (data) {
+      const dias = [...new Set(data.map(m => {
+        const d = new Date(m.created_at);
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      }))];
+      setDiasConMensajes(dias);
+    }
+    setCargandoHist(false);
+  }
+
+  async function abrirDia(dia) {
+    setDiaSeleccionado(dia);
+    setVistaChat("diaDetalle");
+    setCargandoHist(true);
+    const [inicio, fin] = rangoLocal(dia);
+    const { data } = await supabase.from("chat_equipo").select("*")
+      .gte("created_at", inicio).lt("created_at", fin)
+      .order("created_at", { ascending:true });
+    setMensajesHistorial(data || []);
+    setCargandoHist(false);
+  }
+
+  async function enviar() {
+    if (!texto.trim() || enviando) return;
+    setEnviando(true);
+    await supabase.from("chat_equipo").insert({ autor: ejecutadoPor, mensaje: texto.trim() });
+    setTexto("");
+    setEnviando(false);
+  }
+
+  const BTN_BACK = { display:"flex", alignItems:"center", gap:6, background:"none", border:"none", color:"#4ade80", cursor:"pointer", fontSize:13, fontFamily:"'Lato',sans-serif", marginBottom:16, padding:0 };
+  const BACK_ICON = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>;
+
+  if (vistaChat === "diasList") return (
+    <>
+      <button onClick={() => setVistaChat("hoy")} style={BTN_BACK}>{BACK_ICON} Chat de hoy</button>
+      <div style={{ fontSize:11, color:"#4ade80", letterSpacing:2, textTransform:"uppercase", marginBottom:12 }}>Historial de chats</div>
+      {cargandoHist ? (
+        <div style={{ textAlign:"center", color:"#4ade80", padding:24 }}>Cargando...</div>
+      ) : diasConMensajes.length === 0 ? (
+        <div style={{ textAlign:"center", color:"#6b7280", padding:24, fontSize:13 }}>No hay chats anteriores</div>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+          {diasConMensajes.map(dia => (
+            <button key={dia} onClick={() => abrirDia(dia)} style={{ ...CARD, cursor:"pointer", textAlign:"left", display:"flex", alignItems:"center", justifyContent:"space-between", border:"1px solid rgba(45,106,79,0.5)", fontFamily:"'Lato',sans-serif" }}>
+              <span style={{ fontSize:14, color:"#e2f5e9" }}>{fecha(dia + "T12:00:00")}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+
+  if (vistaChat === "diaDetalle") return (
+    <>
+      <button onClick={() => { setVistaChat("diasList"); setDiaSeleccionado(null); }} style={BTN_BACK}>{BACK_ICON} Historial</button>
+      <div style={{ fontSize:11, color:"#4ade80", letterSpacing:2, textTransform:"uppercase", marginBottom:12 }}>
+        {diaSeleccionado ? fecha(diaSeleccionado + "T12:00:00") : ""}
+      </div>
+      {cargandoHist ? (
+        <div style={{ textAlign:"center", color:"#4ade80", padding:24 }}>Cargando...</div>
+      ) : mensajesHistorial.length === 0 ? (
+        <div style={{ textAlign:"center", color:"#6b7280", padding:24, fontSize:13 }}>Sin mensajes ese día</div>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          {mensajesHistorial.map(m => <BurbujaMensaje key={m.id} m={m} esPropio={m.autor === ejecutadoPor} />)}
+        </div>
+      )}
+    </>
+  );
+
+  return (
+    <>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+        <div style={{ fontSize:11, color:"#4ade80", letterSpacing:2, textTransform:"uppercase" }}>Chat de hoy</div>
+        <button onClick={abrirHistorial} style={{ background:"none", border:"1px solid #2d6a4f", borderRadius:6, color:"#6b7280", fontSize:11, cursor:"pointer", padding:"4px 10px", fontFamily:"'Lato',sans-serif" }}>
+          Ver historial
+        </button>
+      </div>
+      <div style={{ background:"rgba(0,0,0,0.3)", border:"1px solid #2d6a4f", borderRadius:12, padding:12, minHeight:180, maxHeight:320, overflowY:"auto", display:"flex", flexDirection:"column", gap:8, marginBottom:10 }}>
+        {cargando ? (
+          <div style={{ textAlign:"center", color:"#4ade80", padding:20 }}>Cargando...</div>
+        ) : mensajes.length === 0 ? (
+          <div style={{ textAlign:"center", color:"#4b5563", padding:20, fontSize:13 }}>No hay mensajes hoy. ¡Empezá la conversación!</div>
+        ) : (
+          mensajes.map(m => <BurbujaMensaje key={m.id} m={m} esPropio={m.autor === ejecutadoPor} />)
+        )}
+        <div ref={bottomRef} />
+      </div>
+      <div style={{ display:"flex", gap:8 }}>
+        <input
+          type="text"
+          placeholder="Escribí un mensaje..."
+          value={texto}
+          onChange={e => setTexto(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) enviar(); }}
+          style={{ ...INPUT_STYLE, flex:1, fontSize:13 }}
+        />
+        <button onClick={enviar} disabled={!texto.trim() || enviando}
+          style={{ ...BTN_SM("#4ade80"), flexShrink:0, opacity: !texto.trim() || enviando ? 0.5 : 1 }}>
+          {enviando ? "..." : "Enviar"}
+        </button>
+      </div>
+    </>
+  );
+}
+
 function TabEquipo({ rol, ejecutadoPor }) {
+  const [subtab, setSubtab] = useState("tickets"); // "tickets" | "chat"
   const [tickets, setTickets] = useState([]);
   const [filtro, setFiltro] = useState("todos");
   const [cargando, setCargando] = useState(true);
@@ -1116,6 +1317,23 @@ function TabEquipo({ rol, ejecutadoPor }) {
 
   return (
     <>
+      {/* Sub-tabs: Tickets | Chat */}
+      <div style={{ display:"flex", gap:6, marginBottom:16 }}>
+        {[["tickets","Tickets"], ["chat","Chat del equipo"]].map(([val, lbl]) => (
+          <button key={val} onClick={() => setSubtab(val)} style={{
+            padding:"6px 14px", borderRadius:8, cursor:"pointer", fontSize:12, fontWeight:700,
+            fontFamily:"'Lato',sans-serif", border:"1px solid",
+            borderColor: subtab === val ? "#a78bfa" : "#2d6a4f",
+            background: subtab === val ? "rgba(167,139,250,0.12)" : "rgba(0,0,0,0.3)",
+            color: subtab === val ? "#a78bfa" : "#6b7280",
+          }}>
+            {lbl}{val === "tickets" && pendientesCount > 0 ? ` (${pendientesCount})` : ""}
+          </button>
+        ))}
+      </div>
+
+      {subtab === "chat" ? <ChatEquipo ejecutadoPor={ejecutadoPor} /> : (
+      <>
       <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
         {[["todos", "Todos"], ["pendiente", "Pendientes"], ["en_revision", "En revisión"], ["resuelto", "Resueltos"]].map(([val, lbl]) => (
           <button key={val} onClick={() => setFiltro(val)} style={{
@@ -1169,6 +1387,7 @@ function TabEquipo({ rol, ejecutadoPor }) {
           })}
         </div>
       )}
+      </>)}
     </>
   );
 }
