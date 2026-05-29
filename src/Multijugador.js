@@ -38,6 +38,23 @@ function generarCodigo() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+function valorTruco(c) {
+  if (c.num === 1  && c.palo === 'espada') return 13;
+  if (c.num === 1  && c.palo === 'basto')  return 12;
+  if (c.num === 7  && c.palo === 'espada') return 11;
+  if (c.num === 7  && c.palo === 'oro')    return 10;
+  if (c.num === 3)  return 9;
+  if (c.num === 2)  return 8;
+  if (c.num === 1)  return 7;  // copa u oro
+  if (c.num === 12) return 6;
+  if (c.num === 11) return 5;
+  if (c.num === 10) return 4;
+  if (c.num === 7)  return 3;  // basto o copa
+  if (c.num === 6)  return 2;
+  if (c.num === 5)  return 1;
+  return 0; // 4
+}
+
 const SIMBOLO = { espada: "⚔", basto: "🪄", copa: "🏆", oro: "⭕" };
 const COLOR_PALO = { espada: "#60a5fa", basto: "#4ade80", copa: "#f472b6", oro: "#fbbf24" };
 
@@ -177,6 +194,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       if (p.mano_jugador1) {
         const mano1 = JSON.parse(p.mano_jugador1);
         const mano2 = JSON.parse(p.mano_jugador2);
+        setCartaSeleccionada(null);
         if (soyJugador1) { setMiMano(mano1); setManoRival(mano2); }
         else { setMiMano(mano2); setManoRival(mano1); }
       }
@@ -268,19 +286,85 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   async function jugarCarta(idx) {
     if (!partida) return;
-    const esMiTurno = partida.turno === user.id;
-    if (!esMiTurno) { addLog("No es tu turno"); return; }
+    if (partida.turno !== user.id) { addLog("No es tu turno"); return; }
     if (cartaSeleccionada !== idx) { setCartaSeleccionada(idx); return; }
+
     const carta = miMano[idx];
     const mesaActual = JSON.parse(partida.mesa || "[]");
     const nuevaMesa = [...mesaActual, { carta, jugador: user.id }];
     const rivalId = soyJugador1 ? partida.jugador2_id : partida.jugador1_id;
-    await supabase.from("partidas").update({
+    const nuevaMiMano = miMano.filter((_, i) => i !== idx);
+    const manoField = soyJugador1 ? 'mano_jugador1' : 'mano_jugador2';
+
+    // Optimistic update: remove played card immediately
+    setMiMano(nuevaMiMano);
+    setCartaSeleccionada(null);
+    addLog(`Jugaste: ${carta.num} de ${carta.palo}`);
+
+    let updateData = {
       mesa: JSON.stringify(nuevaMesa),
       turno: rivalId,
-    }).eq("codigo", codigo);
-    addLog(`Jugaste: ${carta.num} de ${carta.palo}`);
-    setCartaSeleccionada(null);
+      [manoField]: JSON.stringify(nuevaMiMano),
+    };
+
+    // When both players have played in this round, resolve it
+    if (nuevaMesa.length % 2 === 0) {
+      const nRondas = nuevaMesa.length / 2;
+      const cardA = nuevaMesa[nuevaMesa.length - 2];
+      const cardB = nuevaMesa[nuevaMesa.length - 1];
+      const vA = valorTruco(cardA.carta), vB = valorTruco(cardB.carta);
+      const ganadorRonda = vA > vB ? cardA.jugador : vB > vA ? cardB.jugador : null;
+
+      addLog(ganadorRonda
+        ? `Ronda ${nRondas}: ganó ${ganadorRonda === user.id ? 'vos' : 'el rival'}`
+        : `Ronda ${nRondas}: empate`
+      );
+
+      // Tally all rounds in this hand
+      const g = { [partida.jugador1_id]: 0, [partida.jugador2_id]: 0 };
+      for (let i = 0; i < nuevaMesa.length; i += 2) {
+        const a = nuevaMesa[i], b = nuevaMesa[i + 1];
+        const va = valorTruco(a.carta), vb = valorTruco(b.carta);
+        if (va > vb) g[a.jugador] = (g[a.jugador] || 0) + 1;
+        else if (vb > va) g[b.jugador] = (g[b.jugador] || 0) + 1;
+      }
+      const g1 = g[partida.jugador1_id] || 0;
+      const g2 = g[partida.jugador2_id] || 0;
+
+      let ganadorMano = null;
+      if (g1 >= 2) ganadorMano = partida.jugador1_id;
+      else if (g2 >= 2) ganadorMano = partida.jugador2_id;
+      else if (nRondas === 3) {
+        // After 3 rounds: most wins, empate total goes to jugador1 (mano)
+        ganadorMano = g2 > g1 ? partida.jugador2_id : partida.jugador1_id;
+      }
+
+      if (ganadorMano) {
+        const nuevoPuntos1 = (partida.puntos1 || 0) + (ganadorMano === partida.jugador1_id ? 1 : 0);
+        const nuevoPuntos2 = (partida.puntos2 || 0) + (ganadorMano === partida.jugador2_id ? 1 : 0);
+        const puntosObjetivo = partida.puntos || 15;
+        addLog(`¡${ganadorMano === user.id ? 'Ganaste' : 'Perdiste'} la mano!`);
+
+        if (nuevoPuntos1 >= puntosObjetivo || nuevoPuntos2 >= puntosObjetivo) {
+          const ganadorId = nuevoPuntos1 >= puntosObjetivo ? partida.jugador1_id : partida.jugador2_id;
+          updateData = { ...updateData, puntos1: nuevoPuntos1, puntos2: nuevoPuntos2, ganador_id: ganadorId, estado: "terminada" };
+        } else {
+          // New hand: deal fresh cards, jugador1 starts
+          const nuevoMazo = mezclar(MAZO);
+          updateData = {
+            ...updateData,
+            puntos1: nuevoPuntos1,
+            puntos2: nuevoPuntos2,
+            mesa: JSON.stringify([]),
+            mano_jugador1: JSON.stringify(nuevoMazo.slice(0, 3)),
+            mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
+            turno: partida.jugador1_id,
+          };
+        }
+      }
+    }
+
+    await supabase.from("partidas").update(updateData).eq("codigo", codigo);
   }
 
   async function salirDePartida() {
