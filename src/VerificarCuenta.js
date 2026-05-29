@@ -172,6 +172,7 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
             <input
               type="text"
               placeholder="ej: Juan Pérez"
+              autoComplete="name"
               value={form.nombre_completo}
               onChange={e => set("nombre_completo", e.target.value)}
               style={INPUT}
@@ -183,6 +184,7 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
             <label style={LABEL}>Fecha de nacimiento</label>
             <input
               type="date"
+              autoComplete="bday"
               value={form.fecha_nacimiento}
               onChange={e => set("fecha_nacimiento", e.target.value)}
               style={{ ...INPUT, colorScheme: "dark" }}
@@ -209,6 +211,7 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
               type="text"
               inputMode="numeric"
               placeholder="ej: 38123456"
+              autoComplete="off"
               value={form.dni}
               onChange={e => set("dni", e.target.value.replace(/\D/g, "").slice(0, 8))}
               style={INPUT}
@@ -224,6 +227,7 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
             <input
               type="tel"
               placeholder="ej: 1123456789"
+              autoComplete="tel"
               value={form.telefono}
               onChange={e => set("telefono", e.target.value)}
               style={INPUT}
@@ -238,6 +242,7 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
             </label>
             <select
               value={form.genero}
+              autoComplete="sex"
               onChange={e => set("genero", e.target.value)}
               style={{ ...INPUT, cursor: "pointer" }}
             >
