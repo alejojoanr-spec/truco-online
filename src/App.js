@@ -772,6 +772,8 @@ export default function App() {
   const [codigoUnirse, setCodigoUnirse] = useState(null);
   const [autoCrearSala, setAutoCrearSala] = useState(false);
   const [apuestaInicial, setApuestaInicial] = useState(0);
+  const [puntosInicial, setPuntosInicial] = useState(15);
+  const [esTorneoInicial, setEsTorneoInicial] = useState(false);
   const [origenMulti, setOrigenMulti] = useState("home");
   const [verTerminos, setVerTerminos] = useState(false);
   const [verPrivacidad, setVerPrivacidad] = useState(false);
@@ -880,8 +882,11 @@ export default function App() {
         setAutoCrearSala(false);
         setModoJuego("multi");
       }}
-      onCrearSala={() => {
+      onCrearSala={(apuesta, puntos, esTorneo) => {
         setCodigoUnirse(null);
+        setApuestaInicial(apuesta);
+        setPuntosInicial(puntos);
+        setEsTorneoInicial(esTorneo);
         setOrigenMulti("lobby");
         setAutoCrearSala(true);
         setModoJuego("multi");
@@ -896,6 +901,8 @@ export default function App() {
       codigoInicial={codigoUnirse}
       autoCrear={autoCrearSala}
       apuesta={apuestaInicial}
+      puntos={puntosInicial}
+      esTorneo={esTorneoInicial}
       onVolver={() => {
         setCodigoUnirse(null);
         setAutoCrearSala(false);
