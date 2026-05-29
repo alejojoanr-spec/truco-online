@@ -55,6 +55,27 @@ function valorTruco(c) {
   return 0; // 4
 }
 
+function getCantoLabel(acc) {
+  if (!acc) return '';
+  if (acc.tipo === 'truco') return ['', 'Truco', 'Retruco', 'Vale cuatro'][acc.nivel] || 'Truco';
+  return { envido: 'Envido', real_envido: 'Real Envido', falta_envido: 'Falta Envido' }[acc.subtipo] || acc.subtipo;
+}
+
+function valorEnvido(mano) {
+  const g = {};
+  for (const c of mano) {
+    const v = c.num <= 7 ? c.num : 0;
+    (g[c.palo] = g[c.palo] || []).push(v);
+  }
+  let max = 0;
+  for (const nums of Object.values(g)) {
+    const s = [...nums].sort((a, b) => b - a);
+    const v = s.length >= 2 ? s[0] + s[1] + 20 : s[0];
+    if (v > max) max = v;
+  }
+  return max;
+}
+
 const SIMBOLO = { espada: "⚔", basto: "🪄", copa: "🏆", oro: "⭕" };
 const COLOR_PALO = { espada: "#60a5fa", basto: "#4ade80", copa: "#f472b6", oro: "#fbbf24" };
 
@@ -87,6 +108,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const addLog = (msg) => setLog(prev => [...prev.slice(-6), msg]);
   const [resultadoPartida, setResultadoPartida] = useState(null);
   const pagoProcesadoRef = useRef(false);
+  const accionLogueadaRef = useRef(null);
 
   async function procesarFinPartida(p) {
     if (pagoProcesadoRef.current) return;
@@ -198,6 +220,15 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         if (soyJugador1) { setMiMano(mano1); setManoRival(mano2); }
         else { setMiMano(mano2); setManoRival(mano1); }
       }
+      if (p.accion_pendiente && p.accion_pendiente.cantado_por !== user.id) {
+        const key = p.accion_pendiente.tipo + (p.accion_pendiente.nivel || '') + (p.accion_pendiente.subtipo || '');
+        if (accionLogueadaRef.current !== key) {
+          accionLogueadaRef.current = key;
+          addLog(`¡El rival canta ${getCantoLabel(p.accion_pendiente)}!`);
+        }
+      } else if (!p.accion_pendiente) {
+        accionLogueadaRef.current = null;
+      }
     }
 
     const channel = supabase.channel(`partida-${codigo}`)
@@ -286,6 +317,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   async function jugarCarta(idx) {
     if (!partida) return;
+    if (partida.accion_pendiente) { setCartaSeleccionada(null); return; }
     if (partida.turno !== user.id) { addLog("No es tu turno"); return; }
     if (cartaSeleccionada !== idx) { setCartaSeleccionada(idx); return; }
 
@@ -340,14 +372,15 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       }
 
       if (ganadorMano) {
-        const nuevoPuntos1 = (partida.puntos1 || 0) + (ganadorMano === partida.jugador1_id ? 1 : 0);
-        const nuevoPuntos2 = (partida.puntos2 || 0) + (ganadorMano === partida.jugador2_id ? 1 : 0);
+        const puntosMano = partida.puntos_mano || 1;
+        const nuevoPuntos1 = (partida.puntos1 || 0) + (ganadorMano === partida.jugador1_id ? puntosMano : 0);
+        const nuevoPuntos2 = (partida.puntos2 || 0) + (ganadorMano === partida.jugador2_id ? puntosMano : 0);
         const puntosObjetivo = partida.puntos || 15;
-        addLog(`¡${ganadorMano === user.id ? 'Ganaste' : 'Perdiste'} la mano!`);
+        addLog(`¡${ganadorMano === user.id ? 'Ganaste' : 'Perdiste'} la mano! (+${puntosMano} pt${puntosMano > 1 ? 's' : ''})`);
 
         if (nuevoPuntos1 >= puntosObjetivo || nuevoPuntos2 >= puntosObjetivo) {
           const ganadorId = nuevoPuntos1 >= puntosObjetivo ? partida.jugador1_id : partida.jugador2_id;
-          updateData = { ...updateData, puntos1: nuevoPuntos1, puntos2: nuevoPuntos2, ganador_id: ganadorId, estado: "terminada" };
+          updateData = { ...updateData, puntos1: nuevoPuntos1, puntos2: nuevoPuntos2, puntos_mano: 1, accion_pendiente: null, ganador_id: ganadorId, estado: "terminada" };
         } else {
           // New hand: deal fresh cards, jugador1 starts
           const nuevoMazo = mezclar(MAZO);
@@ -355,6 +388,10 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             ...updateData,
             puntos1: nuevoPuntos1,
             puntos2: nuevoPuntos2,
+            puntos_mano: 1,
+            envido_jugado: false,
+            truco_jugado: false,
+            accion_pendiente: null,
             mesa: JSON.stringify([]),
             mano_jugador1: JSON.stringify(nuevoMazo.slice(0, 3)),
             mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
@@ -378,6 +415,107 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       }
     }
     onVolver();
+  }
+
+  async function cantarTruco() {
+    if (!partida || partida.accion_pendiente || partida.truco_jugado) return;
+    await supabase.from("partidas").update({
+      accion_pendiente: { tipo: 'truco', nivel: 1, cantado_por: user.id, si_quiero: 2, si_no: 1 },
+      truco_jugado: true,
+    }).eq("codigo", codigo);
+    addLog("¡Truco!");
+  }
+
+  async function subirTruco() {
+    const acc = partida?.accion_pendiente;
+    if (!acc || acc.tipo !== 'truco' || acc.cantado_por === user.id || acc.nivel >= 3) return;
+    const nuevoNivel = acc.nivel + 1;
+    const labels = { 2: 'Retruco', 3: 'Vale cuatro' };
+    await supabase.from("partidas").update({
+      accion_pendiente: { tipo: 'truco', nivel: nuevoNivel, cantado_por: user.id, si_quiero: nuevoNivel + 1, si_no: nuevoNivel },
+    }).eq("codigo", codigo);
+    addLog(`¡${labels[nuevoNivel]}!`);
+  }
+
+  async function cantarEnvido(subtipo) {
+    if (!partida || partida.accion_pendiente || partida.envido_jugado) return;
+    if (JSON.parse(partida.mesa || "[]").length > 0) return;
+    const puntosObj = partida.puntos || 15;
+    const falta = Math.max(1, puntosObj - Math.max(partida.puntos1 || 0, partida.puntos2 || 0));
+    const cfg = { envido: { si_quiero: 2, si_no: 1 }, real_envido: { si_quiero: 3, si_no: 1 }, falta_envido: { si_quiero: falta, si_no: 1 } };
+    const { si_quiero, si_no } = cfg[subtipo];
+    const labels = { envido: 'Envido', real_envido: 'Real Envido', falta_envido: 'Falta Envido' };
+    await supabase.from("partidas").update({
+      accion_pendiente: { tipo: 'envido', subtipo, cantado_por: user.id, si_quiero, si_no },
+      envido_jugado: true,
+    }).eq("codigo", codigo);
+    addLog(`¡${labels[subtipo]}!`);
+  }
+
+  async function quiero() {
+    const acc = partida?.accion_pendiente;
+    if (!acc || acc.cantado_por === user.id) return;
+    const puntosObj = partida.puntos || 15;
+
+    if (acc.tipo === 'truco') {
+      await supabase.from("partidas").update({ accion_pendiente: null, puntos_mano: acc.si_quiero }).eq("codigo", codigo);
+      addLog(`Quiero. Mano vale ${acc.si_quiero} pt${acc.si_quiero > 1 ? 's' : ''}.`);
+      return;
+    }
+
+    // Envido: comparar valores
+    const mano1 = JSON.parse(partida.mano_jugador1);
+    const mano2 = JSON.parse(partida.mano_jugador2);
+    const v1 = valorEnvido(mano1), v2 = valorEnvido(mano2);
+    const ganadorEnv = v1 > v2 ? partida.jugador1_id : v2 > v1 ? partida.jugador2_id : partida.jugador1_id;
+    const miVal = soyJugador1 ? v1 : v2, rivalVal = soyJugador1 ? v2 : v1;
+    addLog(`Quiero. Vos: ${miVal} | Rival: ${rivalVal}. +${acc.si_quiero} para ${ganadorEnv === user.id ? 'vos' : 'rival'}`);
+
+    const np1 = (partida.puntos1 || 0) + (ganadorEnv === partida.jugador1_id ? acc.si_quiero : 0);
+    const np2 = (partida.puntos2 || 0) + (ganadorEnv === partida.jugador2_id ? acc.si_quiero : 0);
+    if (np1 >= puntosObj || np2 >= puntosObj) {
+      const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
+      await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
+    } else {
+      await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2 }).eq("codigo", codigo);
+    }
+  }
+
+  async function noQuiero() {
+    const acc = partida?.accion_pendiente;
+    if (!acc || acc.cantado_por === user.id) return;
+    const puntosObj = partida.puntos || 15;
+    const callerEsJ1 = acc.cantado_por === partida.jugador1_id;
+    const np1 = (partida.puntos1 || 0) + (callerEsJ1 ? acc.si_no : 0);
+    const np2 = (partida.puntos2 || 0) + (!callerEsJ1 ? acc.si_no : 0);
+    addLog(`No quiero. El rival suma ${acc.si_no} pt${acc.si_no > 1 ? 's' : ''}.`);
+
+    const gameOver = np1 >= puntosObj || np2 >= puntosObj;
+    const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
+
+    if (acc.tipo === 'envido') {
+      if (gameOver) {
+        await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
+      } else {
+        await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2 }).eq("codigo", codigo);
+      }
+      return;
+    }
+
+    // Truco rechazado: termina la mano
+    if (gameOver) {
+      await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
+    } else {
+      const nuevoMazo = mezclar(MAZO);
+      await supabase.from("partidas").update({
+        accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1,
+        envido_jugado: false, truco_jugado: false,
+        mesa: JSON.stringify([]),
+        mano_jugador1: JSON.stringify(nuevoMazo.slice(0, 3)),
+        mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
+        turno: partida.jugador1_id,
+      }).eq("codigo", codigo);
+    }
   }
 
   const miTurno = partida?.turno === user.id;
@@ -515,22 +653,72 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         ))}
       </div>
 
-      <div style={{ background:"rgba(0,0,0,0.35)",border:"1px solid rgba(45,106,79,0.3)",borderRadius:10,padding:"8px 12px",width:"100%",maxWidth:500,marginBottom:12,maxHeight:70,overflowY:"auto" }}>
+      <div style={{ background:"rgba(0,0,0,0.35)",border:"1px solid rgba(45,106,79,0.3)",borderRadius:10,padding:"8px 12px",width:"100%",maxWidth:500,marginBottom:10,maxHeight:70,overflowY:"auto" }}>
         {log.slice(-3).map((msg,i)=><div key={i} style={{ fontSize:11,color:i===log.slice(-3).length-1?"#e2f5e9":"rgba(180,220,190,0.5)",lineHeight:1.6 }}>{msg}</div>)}
       </div>
 
+      {/* Botones de canto */}
+      {!partida?.accion_pendiente && (
+        <div style={{ display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center",marginBottom:10,width:"100%",maxWidth:500 }}>
+          {mesaActual.length === 0 && !partida?.envido_jugado && (
+            <>
+              {[{l:"Envido",s:"envido"},{l:"Real Envido",s:"real_envido"},{l:"Falta Envido",s:"falta_envido"}].map(({l,s})=>(
+                <button key={s} onClick={()=>cantarEnvido(s)} style={{ padding:"6px 12px",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Lato',sans-serif",background:"rgba(167,139,250,0.12)",border:"1px solid rgba(167,139,250,0.45)",color:"#a78bfa" }}>{l}</button>
+              ))}
+            </>
+          )}
+          {!partida?.truco_jugado && (
+            <button onClick={cantarTruco} style={{ padding:"6px 12px",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Lato',sans-serif",background:"rgba(251,191,36,0.12)",border:"1px solid rgba(251,191,36,0.45)",color:"#fbbf24" }}>Truco</button>
+          )}
+        </div>
+      )}
+
+      {/* Indicador: esperando respuesta */}
+      {partida?.accion_pendiente?.cantado_por === user.id && (
+        <div style={{ padding:"8px 16px",borderRadius:10,background:"rgba(251,191,36,0.08)",border:"1px solid rgba(251,191,36,0.3)",color:"#fbbf24",fontSize:12,fontWeight:700,textAlign:"center",marginBottom:10,width:"100%",maxWidth:500 }}>
+          {getCantoLabel(partida.accion_pendiente)} — Esperando respuesta...
+        </div>
+      )}
+
       <div style={{ marginBottom:14,textAlign:"center" }}>
         <div style={{ fontSize:10,color:"#4ade80",letterSpacing:2,textTransform:"uppercase",marginBottom:8 }}>
-          {miTurno?"👆 Tu turno — tocá una carta":"⏳ Turno del rival..."}
+          {partida?.accion_pendiente?"⏳ Canto pendiente...":miTurno?"👆 Tu turno — tocá una carta":"⏳ Turno del rival..."}
         </div>
         <div style={{ display:"flex",gap:10,justifyContent:"center" }}>
           {miMano.map((c,i)=>(
             <CartaMulti key={i} carta={c} seleccionada={cartaSeleccionada===i}
-              onClick={()=>miTurno&&jugarCarta(i)} />
+              onClick={()=>miTurno&&!partida?.accion_pendiente&&jugarCarta(i)} />
           ))}
         </div>
         {cartaSeleccionada!==null&&<div style={{ marginTop:6,fontSize:11,color:"#fbbf24" }}>Tocá de nuevo para confirmar</div>}
       </div>
+
+      {/* Overlay: el rival cantó algo, tengo que responder */}
+      {partida?.accion_pendiente && partida.accion_pendiente.cantado_por !== user.id && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.82)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50,padding:16 }}>
+          <div style={{ background:"radial-gradient(ellipse at top,#1a2a0f 0%,#050f08 100%)",border:`1px solid ${partida.accion_pendiente.tipo==='truco'?"rgba(251,191,36,0.5)":"rgba(167,139,250,0.5)"}`,borderRadius:20,padding:"28px 24px",maxWidth:300,width:"100%",textAlign:"center",fontFamily:"'Lato',sans-serif" }}>
+            <div style={{ fontSize:40,marginBottom:8 }}>{partida.accion_pendiente.tipo==='truco'?"🤺":"🃏"}</div>
+            <div style={{ fontSize:10,color:"#6b7280",letterSpacing:3,textTransform:"uppercase",marginBottom:4 }}>El rival canta</div>
+            <div style={{ fontSize:28,fontWeight:900,color:partida.accion_pendiente.tipo==='truco'?"#fbbf24":"#a78bfa",marginBottom:4 }}>
+              ¡{getCantoLabel(partida.accion_pendiente)}!
+            </div>
+            <div style={{ fontSize:12,color:"#6b7280",marginBottom:20 }}>
+              {partida.accion_pendiente.tipo==='truco'
+                ? `Quiero → mano vale ${partida.accion_pendiente.si_quiero} pts · No quiero → rival suma ${partida.accion_pendiente.si_no}`
+                : `Quiero → se comparan envidos · No quiero → rival suma ${partida.accion_pendiente.si_no}`}
+            </div>
+            <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+              <button onClick={quiero} style={{ padding:"12px",borderRadius:10,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>✅ Quiero</button>
+              {partida.accion_pendiente.tipo==='truco' && partida.accion_pendiente.nivel < 3 && (
+                <button onClick={subirTruco} style={{ padding:"12px",borderRadius:10,cursor:"pointer",background:"rgba(251,191,36,0.08)",border:"1px solid #fbbf24",color:"#fbbf24",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
+                  🔥 {partida.accion_pendiente.nivel===1?'Retruco':'Vale cuatro'}
+                </button>
+              )}
+              <button onClick={noQuiero} style={{ padding:"12px",borderRadius:10,cursor:"pointer",background:"rgba(248,113,113,0.08)",border:"1px solid #f87171",color:"#f87171",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>❌ No quiero</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
