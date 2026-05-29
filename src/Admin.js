@@ -472,104 +472,269 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
    TAB 2 — PARTIDAS
 ══════════════════════════════════════════ */
 function TabPartidas() {
-  const [partidas, setPartidas] = useState([]);
+  const [partidas, setPartidas]     = useState([]);
   const [sospechosos, setSospechosos] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  const [vistaFiltro, setVistaFiltro] = useState(null); // null | 'partidas' | 'sospechosos'
-
-  function toggleVista(v) { setVistaFiltro(f => f === v ? null : v); }
+  const [rakeMap, setRakeMap]       = useState({});
+  const [cargando, setCargando]     = useState(true);
+  const [filtroEstado, setFiltroEstado] = useState("todas");
+  const [partidaSel, setPartidaSel] = useState(null);
 
   useEffect(() => { cargar(); }, []);
 
   async function cargar() {
     setCargando(true);
-    const [{ data: p }, { data: perfiles }] = await Promise.all([
-      supabase.from("partidas").select("*").order("created_at", { ascending: false }).limit(50),
+    const [{ data: p }, { data: perfiles }, { data: rakeTxs }] = await Promise.all([
+      supabase.from("partidas").select("*").order("created_at", { ascending: false }).limit(100),
       supabase.from("perfiles").select("usuario_id,nombre,avatar,partidas_jugadas,partidas_ganadas,is_banned"),
+      supabase.from("transacciones").select("monto,nota").eq("tipo", "rake"),
     ]);
     setPartidas(p || []);
+
+    const rm = {};
+    (rakeTxs || []).forEach(t => {
+      if (t.nota?.startsWith("Partida ")) {
+        const cod = t.nota.replace("Partida ", "").trim();
+        if (cod) rm[cod] = (rm[cod] || 0) + parseFloat(t.monto);
+      }
+    });
+    setRakeMap(rm);
+
     const sosp = (perfiles || []).filter(u =>
-      u.partidas_jugadas >= 10 &&
-      (u.partidas_ganadas / u.partidas_jugadas) > 0.8
+      u.partidas_jugadas >= 10 && (u.partidas_ganadas / u.partidas_jugadas) > 0.8
     ).sort((a, b) => (b.partidas_ganadas / b.partidas_jugadas) - (a.partidas_ganadas / a.partidas_jugadas));
     setSospechosos(sosp);
     setCargando(false);
   }
 
-  function winratePct(u) {
-    return Math.round((u.partidas_ganadas / u.partidas_jugadas) * 100);
+  const esEnJuego   = p => p.estado === "jugando" && !p.ganador_id;
+  const esFinalizada = p => !!p.ganador_id;
+  const winratePct  = u => Math.round((u.partidas_ganadas / u.partidas_jugadas) * 100);
+
+  const stats = {
+    total:     partidas.length,
+    enJuego:   partidas.filter(esEnJuego).length,
+    rakeTotal: Object.values(rakeMap).reduce((s, v) => s + v, 0),
+  };
+
+  const filtradas = partidas.filter(p => {
+    if (filtroEstado === "jugando")    return esEnJuego(p);
+    if (filtroEstado === "finalizada") return esFinalizada(p);
+    return true;
+  });
+
+  const BACK_BTN = { display:"flex", alignItems:"center", gap:6, background:"none", border:"none", color:"#4ade80", cursor:"pointer", fontSize:13, fontFamily:"'Lato',sans-serif", marginBottom:16, padding:0 };
+  const BACK_ICON = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>;
+
+  /* ── Detalle de partida ── */
+  if (partidaSel) {
+    const rake = rakeMap[partidaSel.codigo] || 0;
+    const finalizada = esFinalizada(partidaSel);
+    const enJuego    = esEnJuego(partidaSel);
+    const statusColor = finalizada ? "#4ade80" : enJuego ? "#60a5fa" : "#fbbf24";
+    const statusLabel = finalizada ? "Finalizada" : enJuego ? "En juego" : "Esperando";
+    return (
+      <>
+        <button onClick={() => setPartidaSel(null)} style={BACK_BTN}>{BACK_ICON} Volver a partidas</button>
+        <div style={{ fontSize:11, color:"#4ade80", letterSpacing:2, textTransform:"uppercase", marginBottom:12 }}>Detalle de partida</div>
+
+        <div style={{ ...CARD, marginBottom:12 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+            <div style={{ fontSize:11, color:"#6b7280" }}>Código: <strong style={{ color:"#9ca3af" }}>{partidaSel.codigo || "—"}</strong></div>
+            <span style={{ fontSize:10, padding:"2px 8px", borderRadius:4, border:`1px solid ${statusColor}`, color:statusColor, fontWeight:700 }}>{statusLabel}</span>
+          </div>
+
+          {/* Jugadores */}
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:16 }}>
+            <div style={{ flex:1, textAlign:"center" }}>
+              <div style={{ fontSize:28 }}>{partidaSel.jugador1_avatar || "👤"}</div>
+              <div style={{ fontSize:13, fontWeight:900, marginTop:4, color: partidaSel.ganador_id === partidaSel.jugador1_id ? "#fbbf24" : "#e2f5e9" }}>
+                {partidaSel.jugador1_nombre || "—"}
+              </div>
+              {partidaSel.ganador_id === partidaSel.jugador1_id && (
+                <div style={{ fontSize:11, color:"#fbbf24", marginTop:2 }}>🏆 Ganador</div>
+              )}
+            </div>
+            <div style={{ fontSize:13, fontWeight:900, color:"#4b5563" }}>VS</div>
+            <div style={{ flex:1, textAlign:"center" }}>
+              <div style={{ fontSize:28 }}>{partidaSel.jugador2_avatar || "👤"}</div>
+              <div style={{ fontSize:13, fontWeight:900, marginTop:4, color: partidaSel.ganador_id === partidaSel.jugador2_id ? "#fbbf24" : "#e2f5e9" }}>
+                {partidaSel.jugador2_nombre || "—"}
+              </div>
+              {partidaSel.ganador_id === partidaSel.jugador2_id && (
+                <div style={{ fontSize:11, color:"#fbbf24", marginTop:2 }}>🏆 Ganador</div>
+              )}
+            </div>
+          </div>
+
+          {/* Stats grid */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+            <div style={{ background:"rgba(0,0,0,0.3)", borderRadius:8, padding:"10px 12px" }}>
+              <div style={{ fontSize:11, color:"#6b7280" }}>Apuesta</div>
+              <div style={{ fontSize:18, fontWeight:900, color:"#4ade80", marginTop:4 }}>
+                {(partidaSel.apuesta || 0) > 0 ? `$${parseFloat(partidaSel.apuesta).toFixed(2)}` : "Sin apuesta"}
+              </div>
+            </div>
+            <div style={{ background:"rgba(0,0,0,0.3)", borderRadius:8, padding:"10px 12px" }}>
+              <div style={{ fontSize:11, color:"#6b7280" }}>Pozo total</div>
+              <div style={{ fontSize:18, fontWeight:900, color:"#fbbf24", marginTop:4 }}>
+                {(partidaSel.apuesta || 0) > 0 ? `$${(parseFloat(partidaSel.apuesta) * 2).toFixed(2)}` : "—"}
+              </div>
+            </div>
+            <div style={{ background:"rgba(0,0,0,0.3)", borderRadius:8, padding:"10px 12px" }}>
+              <div style={{ fontSize:11, color:"#6b7280" }}>Rake cobrado</div>
+              <div style={{ fontSize:18, fontWeight:900, color:"#a78bfa", marginTop:4 }}>
+                {rake > 0 ? `$${rake.toFixed(2)}` : "—"}
+              </div>
+            </div>
+            <div style={{ background:"rgba(0,0,0,0.3)", borderRadius:8, padding:"10px 12px" }}>
+              <div style={{ fontSize:11, color:"#6b7280" }}>Fecha</div>
+              <div style={{ fontSize:12, fontWeight:700, color:"#9ca3af", marginTop:4 }}>{fechaHora(partidaSel.created_at)}</div>
+            </div>
+          </div>
+
+          {/* Sospechoso warning */}
+          {(finalizada && partidaSel.ganador_id &&
+            sospechosos.some(s => s.usuario_id === partidaSel.ganador_id)) && (
+            <div style={{ marginTop:12, padding:"8px 12px", borderRadius:8, background:"rgba(248,113,113,0.08)", border:"1px solid rgba(248,113,113,0.3)", fontSize:12, color:"#f87171" }}>
+              ⚠️ El ganador tiene winrate sospechoso (&gt;80%)
+            </div>
+          )}
+        </div>
+      </>
+    );
   }
 
-  if (cargando) return <div style={{ textAlign: "center", color: "#4ade80", padding: 40 }}>Cargando partidas...</div>;
+  if (cargando) return <div style={{ textAlign:"center", color:"#4ade80", padding:40 }}>Cargando partidas...</div>;
 
   return (
     <>
-      {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8, marginBottom: 20 }}>
-        <StatCard label="Partidas (últimas 50)" valor={partidas.length} color="#4ade80" onClick={() => toggleVista('partidas')} activo={vistaFiltro === 'partidas'} />
-        <StatCard label="Jugadores sospechosos" valor={sospechosos.length} color="#f87171" onClick={() => toggleVista('sospechosos')} activo={vistaFiltro === 'sospechosos'} />
+      {/* Stats clickeables */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:16 }}>
+        <StatCard label="Total" valor={stats.total} color="#4ade80"
+          onClick={() => setFiltroEstado("todas")} activo={filtroEstado === "todas"} />
+        <StatCard label="En juego" valor={stats.enJuego} color="#60a5fa"
+          onClick={() => setFiltroEstado(f => f === "jugando" ? "todas" : "jugando")} activo={filtroEstado === "jugando"} />
+        <StatCard label="Rake total" valor={`$${stats.rakeTotal.toFixed(0)}`} color="#a78bfa" />
       </div>
 
-      {/* Sospechosos */}
-      {sospechosos.length > 0 && vistaFiltro !== 'partidas' && (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 11, color: "#f87171", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>
-            ⚠ Winrate {">"} 80% con ≥10 partidas
+      {/* Alerta sospechosos */}
+      {sospechosos.length > 0 && (
+        <button
+          onClick={() => setFiltroEstado(f => f === "sospechosos" ? "todas" : "sospechosos")}
+          style={{ width:"100%", marginBottom:14, ...CARD, cursor:"pointer", textAlign:"left",
+            border:`1px solid ${filtroEstado === "sospechosos" ? "#f87171" : "rgba(248,113,113,0.4)"}`,
+            background: filtroEstado === "sospechosos" ? "rgba(248,113,113,0.08)" : "rgba(248,113,113,0.03)",
+            display:"flex", alignItems:"center", justifyContent:"space-between", fontFamily:"'Lato',sans-serif",
+            padding:"10px 14px",
+          }}
+        >
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <span>⚠️</span>
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, color:"#f87171" }}>
+                {sospechosos.length} jugador{sospechosos.length > 1 ? "es" : ""} con winrate sospechoso
+              </div>
+              <div style={{ fontSize:11, color:"#6b7280", marginTop:1 }}>Winrate &gt; 80% con ≥10 partidas</div>
+            </div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {sospechosos.map(u => (
-              <div key={u.usuario_id} style={{ ...CARD, border: "1px solid rgba(248,113,113,0.35)", background: "rgba(248,113,113,0.04)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ fontSize: 24 }}>{u.avatar || "👤"}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 900, color: "#fbbf24" }}>{u.nombre}</div>
-                    <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>
-                      {u.partidas_jugadas} partidas · {u.partidas_ganadas} ganadas
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: "#f87171" }}>{winratePct(u)}%</div>
-                    <div style={{ fontSize: 10, color: "#6b7280" }}>winrate</div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={filtroEstado === "sospechosos" ? "#f87171" : "#4b5563"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      )}
+
+      {/* Lista sospechosos */}
+      {filtroEstado === "sospechosos" && (
+        <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:16 }}>
+          {sospechosos.map(u => (
+            <div key={u.usuario_id} style={{ ...CARD, border:"1px solid rgba(248,113,113,0.35)", background:"rgba(248,113,113,0.04)" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ fontSize:24 }}>{u.avatar || "👤"}</div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:14, fontWeight:900, color:"#fbbf24" }}>{u.nombre}</div>
+                  <div style={{ fontSize:12, color:"#9ca3af", marginTop:2 }}>
+                    {u.partidas_jugadas} partidas · {u.partidas_ganadas} ganadas
                   </div>
                 </div>
+                <div style={{ textAlign:"right" }}>
+                  <div style={{ fontSize:22, fontWeight:900, color:"#f87171" }}>{winratePct(u)}%</div>
+                  <div style={{ fontSize:10, color:"#6b7280" }}>winrate</div>
+                </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Últimas partidas */}
-      {vistaFiltro === 'sospechosos' ? null : <div>
-        <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>
-          Últimas 50 partidas
-        </div>
-        {partidas.length === 0 ? (
-          <div style={{ textAlign: "center", color: "#6b7280", padding: 30, fontSize: 13 }}>No hay partidas registradas</div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {partidas.map(p => (
-              <div key={p.id} style={{ ...CARD, padding: "10px 14px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <div style={{ fontSize: 12, color: "#e2f5e9", fontWeight: 700 }}>
-                      {p.jugador1_nombre || "Jugador 1"} vs {p.jugador2_nombre || "Jugador 2"}
-                    </div>
-                    <div style={{ fontSize: 11, color: "#6b7280", marginTop: 3 }}>{fecha(p.created_at)}</div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    {p.ganador_nombre && (
-                      <div style={{ fontSize: 11, color: "#4ade80" }}>Ganó: {p.ganador_nombre}</div>
-                    )}
-                    <div style={{ fontSize: 10, color: "#4b5563", marginTop: 2 }}>
-                      {p.estado || "—"}
-                    </div>
-                  </div>
-                </div>
-              </div>
+      {/* Filtros + lista de partidas */}
+      {filtroEstado !== "sospechosos" && (
+        <>
+          <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+            {[["todas","Todas"], ["jugando","En juego"], ["finalizada","Finalizadas"]].map(([v, label]) => (
+              <button key={v} onClick={() => setFiltroEstado(v)} style={{
+                flex:1, padding:"7px 4px", borderRadius:8, cursor:"pointer", fontSize:11, fontWeight:700,
+                fontFamily:"'Lato',sans-serif",
+                border:`1px solid ${filtroEstado === v ? "#4ade80" : "#2d6a4f"}`,
+                background: filtroEstado === v ? "rgba(74,222,128,0.1)" : "rgba(0,0,0,0.3)",
+                color: filtroEstado === v ? "#4ade80" : "#6b7280",
+              }}>
+                {label}
+              </button>
             ))}
           </div>
-        )}
-      </div>}
+
+          {filtradas.length === 0 ? (
+            <div style={{ textAlign:"center", color:"#6b7280", padding:30, fontSize:13 }}>
+              {filtroEstado === "jugando" ? "No hay partidas en curso" :
+               filtroEstado === "finalizada" ? "No hay partidas finalizadas" :
+               "No hay partidas registradas"}
+            </div>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              {filtradas.map(p => {
+                const rake = rakeMap[p.codigo] || 0;
+                const finalizada = esFinalizada(p);
+                const enJuego    = esEnJuego(p);
+                const statusColor = finalizada ? "#4ade80" : enJuego ? "#60a5fa" : "#fbbf24";
+                const statusLabel = finalizada ? "Finalizada" : enJuego ? "En juego" : "Esperando";
+                const ganadorSosp = finalizada && sospechosos.some(s => s.usuario_id === p.ganador_id);
+                return (
+                  <div key={p.id} onClick={() => setPartidaSel(p)}
+                    style={{ ...CARD, padding:"10px 14px", cursor:"pointer" }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = "#4ade80"}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = "#2d6a4f"}
+                  >
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                          <span style={{ fontSize:13, fontWeight:700, color:"#e2f5e9" }}>
+                            {p.jugador1_nombre || "—"} vs {p.jugador2_nombre || "—"}
+                          </span>
+                          <span style={{ fontSize:10, padding:"1px 6px", borderRadius:4, border:`1px solid ${statusColor}`, color:statusColor }}>
+                            {statusLabel}
+                          </span>
+                          {ganadorSosp && <span style={{ fontSize:11 }}>⚠️</span>}
+                        </div>
+                        <div style={{ display:"flex", gap:10, marginTop:5, flexWrap:"wrap" }}>
+                          <span style={{ fontSize:11, color:"#6b7280" }}>{fechaHora(p.created_at)}</span>
+                          {(p.apuesta || 0) > 0 && (
+                            <span style={{ fontSize:11, color:"#fbbf24" }}>Apuesta: ${parseFloat(p.apuesta).toFixed(2)}</span>
+                          )}
+                          {rake > 0 && (
+                            <span style={{ fontSize:11, color:"#a78bfa" }}>Rake: ${rake.toFixed(2)}</span>
+                          )}
+                        </div>
+                        {finalizada && p.ganador_nombre && (
+                          <div style={{ fontSize:11, color:"#4ade80", marginTop:3 }}>Ganó: {p.ganador_nombre}</div>
+                        )}
+                      </div>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0, marginTop:3 }}><path d="M9 18l6-6-6-6"/></svg>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
     </>
   );
 }
