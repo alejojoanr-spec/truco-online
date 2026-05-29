@@ -861,7 +861,7 @@ function DatosTransferenciaConfig() {
   );
 }
 
-function TabFinanzas({ rol = 'admin' }) {
+function TabFinanzas({ rol = 'admin', onVerMovimientos }) {
   const [transacciones, setTransacciones] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState(null);
@@ -987,7 +987,10 @@ function TabFinanzas({ rol = 'admin' }) {
                 <div style={{ fontSize: 22 }}>{t.perfiles?.avatar || "👤"}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 13, fontWeight: 900, color: "#fbbf24" }}>{t.perfiles?.nombre || "—"}</span>
+                    <span
+                      onClick={() => onVerMovimientos && t.usuario_id && onVerMovimientos({ usuario_id: t.usuario_id, nombre: t.perfiles?.nombre || "—", avatar: t.perfiles?.avatar || "👤" })}
+                      style={{ fontSize: 13, fontWeight: 900, color: "#fbbf24", cursor: onVerMovimientos ? "pointer" : "default", textDecoration: onVerMovimientos ? "underline" : "none", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}
+                    >{t.perfiles?.nombre || "—"}</span>
                     <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, border: `1px solid ${colorEstado(t.estado)}`, color: colorEstado(t.estado), background: `rgba(0,0,0,0.3)` }}>{t.estado}</span>
                     <span style={{ fontSize: 10, color: "#6b7280", background: "rgba(0,0,0,0.3)", border: "1px solid #374151", borderRadius: 4, padding: "1px 6px" }}>{t.tipo}</span>
                   </div>
@@ -1945,7 +1948,7 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
       <div style={{ padding: "16px", maxWidth: 640, margin: "0 auto" }}>
         {tab === "usuarios" && <TabUsuarios rol={rol} ejecutadoPor={ejecutadoPor} usuarioId={usuarioId} />}
         {tab === "partidas" && <TabPartidas />}
-        {tab === "finanzas" && <TabFinanzas rol={rol} />}
+        {tab === "finanzas" && <TabFinanzas rol={rol} onVerMovimientos={abrirMovimientos} />}
         {tab === "soporte" && <TabSoporte />}
         {tab === "metricas" && <TabMetricas />}
         {tab === "equipo" && <TabEquipo rol={rol} ejecutadoPor={ejecutadoPor} pendientesBadge={ticketsBadge} chatBadge={chatBadge} onChatLeido={marcarChatLeido} />}
