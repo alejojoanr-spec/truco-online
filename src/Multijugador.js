@@ -211,8 +211,6 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       puntos1: 0,
       puntos2: 0,
       apuesta: apuesta || 0,
-      puntos: puntos || 15,
-      es_torneo: esTorneo || false,
     });
     if (err) { setError("Error al crear sala"); return; }
     setCodigo(cod);
