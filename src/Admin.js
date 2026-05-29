@@ -1383,26 +1383,45 @@ function soloHora(ts) {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 
-function BurbujaMensaje({ m, esPropio }) {
+function agruparMensajes(mensajes, miAutor) {
+  const grupos = [];
+  for (const m of mensajes) {
+    const minuto = soloHora(m.created_at);
+    const ultimo = grupos[grupos.length - 1];
+    if (ultimo && ultimo.autor === m.autor && ultimo.minuto === minuto) {
+      ultimo.items.push(m);
+    } else {
+      grupos.push({ autor: m.autor, esPropio: m.autor === miAutor, minuto, items: [m] });
+    }
+  }
+  return grupos;
+}
+
+function GrupoMensajes({ grupo }) {
+  const { esPropio, autor, minuto, items } = grupo;
+  const n = items.length;
+  const radio = (i) => {
+    if (esPropio) return i < n - 1 ? "12px 12px 4px 12px" : "12px 12px 2px 12px";
+    return i < n - 1 ? "12px 12px 12px 4px" : "12px 12px 12px 2px";
+  };
   return (
-    <div style={{ display:"flex", flexDirection:"column", alignItems: esPropio ? "flex-end" : "flex-start" }}>
-      <div style={{ maxWidth:"85%" }}>
-        {!esPropio && (
-          <div style={{ fontSize:10, color:"#fbbf24", fontWeight:700, marginBottom:2, paddingLeft:4 }}>
-            {m.autor}
+    <div style={{ display:"flex", flexDirection:"column", alignItems: esPropio ? "flex-end" : "flex-start", gap:2 }}>
+      {items.map((m, i) => (
+        <div key={m.id} style={{ maxWidth:"85%" }}>
+          <div style={{
+            background: esPropio ? "rgba(74,222,128,0.12)" : "rgba(0,0,0,0.35)",
+            border: `1px solid ${esPropio ? "rgba(74,222,128,0.3)" : "rgba(45,106,79,0.4)"}`,
+            borderRadius: radio(i),
+            padding:"8px 12px",
+          }}>
+            <div style={{ fontSize:13, color:"#e2f5e9", lineHeight:1.5, wordBreak:"break-word" }}>{m.mensaje}</div>
           </div>
-        )}
-        <div style={{
-          background: esPropio ? "rgba(74,222,128,0.12)" : "rgba(0,0,0,0.35)",
-          border: `1px solid ${esPropio ? "rgba(74,222,128,0.3)" : "rgba(45,106,79,0.4)"}`,
-          borderRadius: esPropio ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
-          padding:"8px 12px",
-        }}>
-          <div style={{ fontSize:13, color:"#e2f5e9", lineHeight:1.5, wordBreak:"break-word" }}>{m.mensaje}</div>
         </div>
-        <div style={{ fontSize:10, color:"#4b5563", marginTop:2, textAlign: esPropio ? "right" : "left", paddingLeft: esPropio ? 0 : 4 }}>
-          {soloHora(m.created_at)}{esPropio && <span style={{ marginLeft:4, color:"#6b7280" }}> · Vos</span>}
-        </div>
+      ))}
+      <div style={{ fontSize:10, color:"#4b5563", marginTop:1, textAlign: esPropio ? "right" : "left", paddingLeft: esPropio ? 0 : 4 }}>
+        {minuto}
+        {!esPropio && <span style={{ marginLeft:4, color:"#fbbf24", fontWeight:700 }}>{autor}</span>}
+        {esPropio && <span style={{ marginLeft:4, color:"#6b7280" }}>· Vos</span>}
       </div>
     </div>
   );
@@ -1552,7 +1571,7 @@ function ChatEquipo({ ejecutadoPor }) {
         <div style={{ textAlign:"center", color:"#6b7280", padding:24, fontSize:13 }}>Sin mensajes ese día</div>
       ) : (
         <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-          {mensajesHistorial.map(m => <BurbujaMensaje key={m.id} m={m} esPropio={m.autor === ejecutadoPor} />)}
+          {agruparMensajes(mensajesHistorial, ejecutadoPor).map((g, i) => <GrupoMensajes key={i} grupo={g} />)}
         </div>
       )}
     </>
@@ -1572,7 +1591,7 @@ function ChatEquipo({ ejecutadoPor }) {
         ) : mensajes.length === 0 ? (
           <div style={{ textAlign:"center", color:"#4b5563", padding:20, fontSize:13 }}>No hay mensajes hoy. ¡Empezá la conversación!</div>
         ) : (
-          mensajes.map(m => <BurbujaMensaje key={m.id} m={m} esPropio={m.autor === ejecutadoPor} />)
+          agruparMensajes(mensajes, ejecutadoPor).map((g, i) => <GrupoMensajes key={i} grupo={g} />)
         )}
         <div ref={bottomRef} />
       </div>
