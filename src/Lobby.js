@@ -294,12 +294,13 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
 
   async function cargar() {
     const desde = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("partidas")
       .select("id, codigo, estado, jugador1_id, jugador1_nombre, jugador1_avatar, jugador2_id, jugador2_nombre, jugador2_avatar, apuesta, puntos, es_torneo, created_at")
       .in("estado", ["esperando", "jugando"])
       .gte("created_at", desde)
       .order("created_at", { ascending: false });
+    console.log("[Lobby] cargar() →", { data, error, desde });
     setSalas(data || []);
     setCargando(false);
   }
@@ -328,7 +329,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
     const mazo = mezclarLobby(MAZO_LOBBY);
     const mano1 = mazo.slice(0, 3);
     const mano2 = mazo.slice(3, 6);
-    const { error: err } = await supabase.from("partidas").insert({
+    const payload = {
       codigo: cod,
       estado: "esperando",
       jugador1_id: user.id,
@@ -343,20 +344,24 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
       apuesta: apuestaCrear,
       puntos: puntosCrear,
       es_torneo: esTorneoCrear,
-    });
+    };
+    console.log("[Lobby] insertando partida →", payload);
+    const { data: insertData, error: err } = await supabase.from("partidas").insert(payload).select();
+    console.log("[Lobby] resultado insert →", { insertData, err });
     if (err) {
       if (apuestaCrear > 0) {
         const { data: fresh2 } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
         await supabase.from("perfiles").update({ saldo: (fresh2?.saldo || 0) + apuestaCrear }).eq("usuario_id", user.id);
       }
-      setErrorCrear("Error al crear la sala");
+      setErrorCrear(`Error al crear la sala: ${err.message}`);
       setCreandoSala(false);
       return;
     }
+    console.log("[Lobby] sala creada con código", cod, "- llamando cargar()");
     setMiCodigoSala(cod);
     setCreandoSala(false);
     setPantalla("lobby");
-    cargar(); // actualiza la lista propia al instante
+    cargar();
     canalRef.current?.send({ type: "broadcast", event: "sala_actualizada", payload: {} });
   }
 
