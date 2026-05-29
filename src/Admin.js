@@ -1352,6 +1352,25 @@ function ChatEquipo({ ejecutadoPor }) {
   const [mensajesHistorial, setMensajesHistorial] = useState([]);
   const [cargandoHist, setCargandoHist]     = useState(false);
   const bottomRef = useRef(null);
+  const broadcastCh = useRef(null);
+
+  // Canal de broadcast para enviar/recibir señales de badge en tiempo real
+  useEffect(() => {
+    const hoy = localHoy();
+    const ch = supabase.channel("chat-equipo-admin-notif")
+      .on("broadcast", { event: "nuevo_mensaje" }, (payload) => {
+        // Mostrar mensaje de otro usuario sin necesitar postgres_changes
+        const msg = payload.payload?.msg;
+        if (msg && vistaChat === "hoy") {
+          const d = new Date(msg.created_at);
+          const diaMsg = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          if (diaMsg === hoy) setMensajes(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
+        }
+      })
+      .subscribe();
+    broadcastCh.current = ch;
+    return () => { supabase.removeChannel(ch); broadcastCh.current = null; };
+  }, [vistaChat]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { cargarHoy(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1419,7 +1438,13 @@ function ChatEquipo({ ejecutadoPor }) {
       .insert({ autor: ejecutadoPor, mensaje: texto.trim() })
       .select()
       .single();
-    if (data) setMensajes(prev => prev.some(m => m.id === data.id) ? prev : [...prev, data]);
+    if (data) {
+      setMensajes(prev => prev.some(m => m.id === data.id) ? prev : [...prev, data]);
+      broadcastCh.current?.send({
+        type: "broadcast", event: "nuevo_mensaje",
+        payload: { autor: ejecutadoPor, msg: data },
+      });
+    }
     setTexto("");
     setEnviando(false);
   }
@@ -1780,9 +1805,10 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
       setChatBadge(count || 0);
     }
     cargarChatBadge();
-    const canal = supabase.channel("chat-badge-admin")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_equipo" }, (payload) => {
-        if (payload.new?.autor !== ejecutadoPor) setChatBadge(prev => prev + 1);
+    // Broadcast (no requiere configuración de publicación en Supabase)
+    const canal = supabase.channel("chat-equipo-admin-notif")
+      .on("broadcast", { event: "nuevo_mensaje" }, (payload) => {
+        if (payload.payload?.autor !== ejecutadoPor) setChatBadge(prev => prev + 1);
       })
       .subscribe();
     return () => supabase.removeChannel(canal);
