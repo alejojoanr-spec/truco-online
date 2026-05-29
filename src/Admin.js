@@ -1483,7 +1483,7 @@ function ChatEquipo({ ejecutadoPor }) {
 function TabEquipo({ rol, ejecutadoPor }) {
   const [subtab, setSubtab] = useState("tickets"); // "tickets" | "chat"
   const [tickets, setTickets] = useState([]);
-  const [filtro, setFiltro] = useState("todos");
+  const [filtro, setFiltro] = useState("pendiente");
   const [cargando, setCargando] = useState(true);
   const [ticketSel, setTicketSel] = useState(null);
   const [comentarios, setComentarios] = useState([]);
@@ -1640,7 +1640,7 @@ function TabEquipo({ rol, ejecutadoPor }) {
       {subtab === "chat" ? <ChatEquipo ejecutadoPor={ejecutadoPor} /> : (
       <>
       <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
-        {[["todos", "Todos"], ["pendiente", "Pendientes"], ["en_revision", "En revisión"], ["resuelto", "Resueltos"]].map(([val, lbl]) => (
+        {[["pendiente", "Pendientes"], ["en_revision", "En revisión"], ["resuelto", "Resueltos"], ["todos", "Todos"]].map(([val, lbl]) => (
           <button key={val} onClick={() => setFiltro(val)} style={{
             padding: "6px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 700,
             fontFamily: "'Lato',sans-serif", border: "1px solid",
