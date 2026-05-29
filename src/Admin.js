@@ -28,11 +28,26 @@ const INPUT_STYLE = {
   outline: "none", boxSizing: "border-box",
 };
 
-function StatCard({ label, valor, color = "#4ade80" }) {
+function StatCard({ label, valor, color = "#4ade80", onClick, activo }) {
   return (
-    <div style={{ ...CARD, textAlign: "center", padding: "12px 8px" }}>
+    <div
+      onClick={onClick}
+      style={{
+        ...CARD, textAlign: "center", padding: "12px 8px",
+        ...(onClick ? { cursor: "pointer" } : {}),
+        ...(activo ? {
+          border: `1px solid ${color}`,
+          background: `rgba(${
+            color === "#4ade80" ? "74,222,128" :
+            color === "#60a5fa" ? "96,165,250" :
+            color === "#f87171" ? "248,113,113" :
+            color === "#fbbf24" ? "251,191,36" : "74,222,128"
+          },0.12)`,
+        } : {}),
+      }}
+    >
       <div style={{ fontSize: 22, fontWeight: 900, color }}>{valor}</div>
-      <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{label}</div>
+      <div style={{ fontSize: 11, color: activo ? color : "#6b7280", marginTop: 2 }}>{label}</div>
     </div>
   );
 }
@@ -163,7 +178,14 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
     setCargandoMov(false);
   }
 
+  const [filtroStats, setFiltroStats] = useState(null); // null | 'verificados' | 'baneados' | 'novedades'
+
+  function toggleFiltroStats(clave) { setFiltroStats(f => f === clave ? null : clave); }
+
   const filtrados = usuarios.filter(u => {
+    if (filtroStats === 'verificados' && !u.is_verified) return false;
+    if (filtroStats === 'baneados' && !u.is_banned) return false;
+    if (filtroStats === 'novedades' && !u.recibe_novedades) return false;
     if (!busqueda.trim()) return true;
     const q = busqueda.trim();
     const esNumero = /^\d+/.test(q);
@@ -201,13 +223,13 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
   return (
     <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 8 }}>
-        <StatCard label="Usuarios" valor={stats.total} color="#4ade80" />
-        <StatCard label="Verificados" valor={stats.verificados} color="#60a5fa" />
-        <StatCard label="Baneados" valor={stats.baneados} color="#f87171" />
+        <StatCard label="Usuarios" valor={stats.total} color="#4ade80" onClick={() => setFiltroStats(null)} activo={filtroStats === null} />
+        <StatCard label="Verificados" valor={stats.verificados} color="#60a5fa" onClick={() => toggleFiltroStats('verificados')} activo={filtroStats === 'verificados'} />
+        <StatCard label="Baneados" valor={stats.baneados} color="#f87171" onClick={() => toggleFiltroStats('baneados')} activo={filtroStats === 'baneados'} />
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
         <div style={{ flex: 1 }}>
-          <StatCard label="Suscritos a novedades" valor={stats.novedades} color="#fbbf24" />
+          <StatCard label="Suscritos a novedades" valor={stats.novedades} color="#fbbf24" onClick={() => toggleFiltroStats('novedades')} activo={filtroStats === 'novedades'} />
         </div>
         <button
           onClick={exportarEmailsMarketing}
