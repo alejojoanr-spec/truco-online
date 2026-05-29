@@ -1041,7 +1041,7 @@ function ChatEquipo({ ejecutadoPor }) {
         const msg = payload.new;
         const d = new Date(msg.created_at);
         const diaMsg = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        if (diaMsg === hoy) setMensajes(prev => [...prev, msg]);
+        if (diaMsg === hoy) setMensajes(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
       })
       .subscribe();
     return () => supabase.removeChannel(canal);
@@ -1092,7 +1092,12 @@ function ChatEquipo({ ejecutadoPor }) {
   async function enviar() {
     if (!texto.trim() || enviando) return;
     setEnviando(true);
-    await supabase.from("chat_equipo").insert({ autor: ejecutadoPor, mensaje: texto.trim() });
+    const { data } = await supabase
+      .from("chat_equipo")
+      .insert({ autor: ejecutadoPor, mensaje: texto.trim() })
+      .select()
+      .single();
+    if (data) setMensajes(prev => prev.some(m => m.id === data.id) ? prev : [...prev, data]);
     setTexto("");
     setEnviando(false);
   }
