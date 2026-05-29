@@ -802,7 +802,66 @@ function RakeConfig() {
   );
 }
 
-function TabFinanzas() {
+function DatosTransferenciaConfig() {
+  const [valor, setValor] = useState("");
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [editando, setEditando] = useState(false);
+  const [valorEdit, setValorEdit] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("configuracion").select("valor").eq("clave", "alias_deposito").single();
+      setValor(data?.valor || "");
+      setCargando(false);
+    })();
+  }, []);
+
+  async function guardar() {
+    if (!valorEdit.trim()) return;
+    setGuardando(true);
+    await supabase.from("configuracion").upsert({ clave: "alias_deposito", valor: valorEdit.trim() });
+    setValor(valorEdit.trim());
+    setEditando(false);
+    setGuardando(false);
+  }
+
+  if (cargando) return <div style={{ color: "#4ade80", fontSize: 13 }}>Cargando...</div>;
+
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, color: "#9ca3af" }}>CBU / CVU o Alias de destino</div>
+        {editando ? (
+          <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
+            <input
+              type="text"
+              placeholder="ej: 0000003100012345678901 o mi.alias"
+              value={valorEdit}
+              onChange={e => setValorEdit(e.target.value)}
+              style={{ ...INPUT_STYLE, flex: 1, minWidth: 140, padding: "8px 10px" }}
+            />
+            <button onClick={guardar} disabled={guardando || !valorEdit.trim()} style={BTN_SM("#4ade80")}>
+              {guardando ? "..." : "Guardar"}
+            </button>
+            <button onClick={() => setEditando(false)} style={BTN_SM("#f87171")}>Cancelar</button>
+          </div>
+        ) : (
+          <div style={{ fontSize: 14, fontWeight: 700, color: valor ? "#e2f5e9" : "#6b7280", marginTop: 4, fontFamily: valor ? "monospace" : "inherit", wordBreak: "break-all" }}>
+            {valor || "No configurado"}
+          </div>
+        )}
+      </div>
+      {!editando && (
+        <button onClick={() => { setValorEdit(valor); setEditando(true); }} style={{ ...BTN_SM("#60a5fa"), flexShrink: 0 }}>
+          Editar
+        </button>
+      )}
+    </div>
+  );
+}
+
+function TabFinanzas({ rol = 'admin' }) {
   const [transacciones, setTransacciones] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState(null);
@@ -1008,6 +1067,14 @@ function TabFinanzas() {
         <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>Configuración de comisiones</div>
         <RakeConfig />
       </div>
+
+      {/* Datos de transferencia — solo admin principal */}
+      {rol === 'admin' && (
+        <div style={{ ...CARD, marginTop: 12 }}>
+          <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>Datos de transferencia</div>
+          <DatosTransferenciaConfig />
+        </div>
+      )}
     </>
   );
 }
@@ -1859,7 +1926,7 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
       <div style={{ padding: "16px", maxWidth: 640, margin: "0 auto" }}>
         {tab === "usuarios" && <TabUsuarios rol={rol} ejecutadoPor={ejecutadoPor} usuarioId={usuarioId} />}
         {tab === "partidas" && <TabPartidas />}
-        {tab === "finanzas" && <TabFinanzas />}
+        {tab === "finanzas" && <TabFinanzas rol={rol} />}
         {tab === "soporte" && <TabSoporte />}
         {tab === "metricas" && <TabMetricas />}
         {tab === "equipo" && <TabEquipo rol={rol} ejecutadoPor={ejecutadoPor} pendientesBadge={ticketsBadge} chatBadge={chatBadge} onChatLeido={marcarChatLeido} />}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 import VerificarCuenta from "./VerificarCuenta";
 
@@ -53,6 +53,12 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
   const [salaUnirseCodigo, setSalaUnirseCodigo] = useState("");
   const [salaUnirseApuesta, setSalaUnirseApuesta] = useState("");
   const [salaError, setSalaError] = useState("");
+  const [aliasDeposito, setAliasDeposito] = useState("");
+
+  useEffect(() => {
+    supabase.from("configuracion").select("valor").eq("clave", "alias_deposito").single()
+      .then(({ data }) => { if (data?.valor) setAliasDeposito(data.valor); });
+  }, []);
 
   function abrirEditar() {
     setNombreEdit(perfil.nombre);
@@ -114,9 +120,6 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
     setCargandoEdit(false);
     setMostrarEditar(false);
   }
-
-  const CBU = "próximamente";
-  const ALIAS = "próximamente";
 
   function copiar(valor, key) {
     navigator.clipboard.writeText(valor);
@@ -481,30 +484,23 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
               ¿Querés ingresar dinero? Realizá una transferencia bancaria a nuestras cuentas.
             </div>
 
-            {/* CBU */}
+            {/* CBU / CVU o Alias */}
             <div>
-              <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>CBU</div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <div style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(45,106,79,0.5)", background: "rgba(0,0,0,0.4)", color: "#ffffff", fontSize: 13, fontFamily: "monospace" }}>
-                  {CBU}
+              <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>CBU / CVU o Alias</div>
+              {aliasDeposito ? (
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <div style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(45,106,79,0.5)", background: "rgba(0,0,0,0.4)", color: "#ffffff", fontSize: 13, fontFamily: "monospace", wordBreak: "break-all" }}>
+                    {aliasDeposito}
+                  </div>
+                  <button onClick={() => copiar(aliasDeposito, "ALIAS")} style={{ padding: "10px 12px", borderRadius: 8, background: copiado === "ALIAS" ? "rgba(74,222,128,0.2)" : "rgba(0,0,0,0.3)", border: "1px solid rgba(45,106,79,0.5)", color: copiado === "ALIAS" ? "#4ade80" : "#ffffff", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", whiteSpace: "nowrap", transition: "all 0.2s" }}>
+                    {copiado === "ALIAS" ? "✓ Copiado" : "📋 Copiar"}
+                  </button>
                 </div>
-                <button onClick={() => copiar(CBU, "CBU")} style={{ padding: "10px 12px", borderRadius: 8, background: copiado === "CBU" ? "rgba(74,222,128,0.2)" : "rgba(0,0,0,0.3)", border: "1px solid rgba(45,106,79,0.5)", color: copiado === "CBU" ? "#4ade80" : "#ffffff", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", whiteSpace: "nowrap", transition: "all 0.2s" }}>
-                  {copiado === "CBU" ? "✓ Copiado" : "📋 Copiar"}
-                </button>
-              </div>
-            </div>
-
-            {/* Alias */}
-            <div>
-              <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>ALIAS</div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <div style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(45,106,79,0.5)", background: "rgba(0,0,0,0.4)", color: "#ffffff", fontSize: 13 }}>
-                  {ALIAS}
+              ) : (
+                <div style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(45,106,79,0.3)", background: "rgba(0,0,0,0.3)", color: "#6b7280", fontSize: 13 }}>
+                  Próximamente
                 </div>
-                <button onClick={() => copiar(ALIAS, "ALIAS")} style={{ padding: "10px 12px", borderRadius: 8, background: copiado === "ALIAS" ? "rgba(74,222,128,0.2)" : "rgba(0,0,0,0.3)", border: "1px solid rgba(45,106,79,0.5)", color: copiado === "ALIAS" ? "#4ade80" : "#ffffff", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", whiteSpace: "nowrap", transition: "all 0.2s" }}>
-                  {copiado === "ALIAS" ? "✓ Copiado" : "📋 Copiar"}
-                </button>
-              </div>
+              )}
             </div>
 
             {/* Importante */}
