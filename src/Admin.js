@@ -774,6 +774,14 @@ const GENERO_LABELS = {
 
 const PIE_COLORS = ["#60a5fa","#f472b6","#a78bfa","#fbbf24","#6b7280"];
 
+const GENERO_COLORS = {
+  "Masculino":    "#60a5fa",
+  "Femenino":     "#f472b6",
+  "No binario":   "#4ade80",
+  "Otro":         "#fbbf24",
+  "No especifica":"#fbbf24",
+};
+
 const TOOLTIP_STYLE = {
   contentStyle: { background: "#0a2414", border: "1px solid #2d6a4f", borderRadius: 8, fontFamily: "'Lato',sans-serif", fontSize: 12, color: "#e2f5e9" },
   itemStyle: { color: "#e2f5e9" },
@@ -934,8 +942,8 @@ function TabMetricas() {
                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                       labelLine={{ stroke: "#4b5563" }}
                     >
-                      {data.generos.map((_, i) => (
-                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                      {data.generos.map((entry, i) => (
+                        <Cell key={i} fill={GENERO_COLORS[entry.name] ?? "#6b7280"} />
                       ))}
                     </Pie>
                     <Tooltip
