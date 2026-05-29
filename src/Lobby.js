@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 
 function formatPesos(n) {
@@ -17,6 +17,36 @@ const OPCIONES_APUESTA = [
     return { label: formatPesos(v), value: v };
   }),
 ];
+
+const MAZO_LOBBY = [
+  { num: 1, palo: "espada" },{ num: 2, palo: "espada" },{ num: 3, palo: "espada" },
+  { num: 4, palo: "espada" },{ num: 5, palo: "espada" },{ num: 6, palo: "espada" },
+  { num: 7, palo: "espada" },{ num: 10, palo: "espada" },{ num: 11, palo: "espada" },
+  { num: 12, palo: "espada" },{ num: 1, palo: "basto" },{ num: 2, palo: "basto" },
+  { num: 3, palo: "basto" },{ num: 4, palo: "basto" },{ num: 5, palo: "basto" },
+  { num: 6, palo: "basto" },{ num: 7, palo: "basto" },{ num: 10, palo: "basto" },
+  { num: 11, palo: "basto" },{ num: 12, palo: "basto" },{ num: 1, palo: "copa" },
+  { num: 2, palo: "copa" },{ num: 3, palo: "copa" },{ num: 4, palo: "copa" },
+  { num: 5, palo: "copa" },{ num: 6, palo: "copa" },{ num: 7, palo: "copa" },
+  { num: 10, palo: "copa" },{ num: 11, palo: "copa" },{ num: 12, palo: "copa" },
+  { num: 1, palo: "oro" },{ num: 2, palo: "oro" },{ num: 3, palo: "oro" },
+  { num: 4, palo: "oro" },{ num: 5, palo: "oro" },{ num: 6, palo: "oro" },
+  { num: 7, palo: "oro" },{ num: 10, palo: "oro" },{ num: 11, palo: "oro" },
+  { num: 12, palo: "oro" },
+];
+
+function mezclarLobby(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function generarCodigoLobby() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
 
 function CardIA({ onJugar }) {
   return (
@@ -75,10 +105,7 @@ function CardEsperando({ sala, onUnirse, uniendose, perfil }) {
     }}>
       <div style={{ fontSize: 32, flexShrink: 0, lineHeight: 1 }}>{sala.jugador1_avatar || "👤"}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontSize: 14, fontWeight: 900, color: "#fbbf24",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
+        <div style={{ fontSize: 14, fontWeight: 900, color: "#fbbf24", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {sala.jugador1_nombre || "Jugador"}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
@@ -129,22 +156,15 @@ function CardJugando({ sala }) {
       <div style={{ fontSize: 11, color: "#374151", fontWeight: 900, flexShrink: 0 }}>VS</div>
       <div style={{ fontSize: 26, flexShrink: 0, lineHeight: 1 }}>{sala.jugador2_avatar || "👤"}</div>
       <div style={{ flex: 1, minWidth: 0, paddingLeft: 4 }}>
-        <div style={{
-          fontSize: 12, color: "#9ca3af",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
+        <div style={{ fontSize: 12, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {sala.jugador1_nombre || "Jugador 1"} vs {sala.jugador2_nombre || "Jugador 2"}
         </div>
         <div style={{ display: "flex", gap: 6, marginTop: 2, alignItems: "center", flexWrap: "wrap" }}>
           {sala.apuesta > 0 && (
             <span style={{ fontSize: 11, color: "#6b7280" }}>{formatPesos(sala.apuesta)} en juego</span>
           )}
-          {sala.puntos && (
-            <span style={{ fontSize: 10, color: "#60a5fa" }}>· {sala.puntos} pts</span>
-          )}
-          {sala.es_torneo && (
-            <span style={{ fontSize: 10, color: "#fbbf24" }}>· 🏆</span>
-          )}
+          {sala.puntos && <span style={{ fontSize: 10, color: "#60a5fa" }}>· {sala.puntos} pts</span>}
+          {sala.es_torneo && <span style={{ fontSize: 10, color: "#fbbf24" }}>· 🏆</span>}
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
@@ -155,7 +175,7 @@ function CardJugando({ sala }) {
   );
 }
 
-function CardMiSala({ sala }) {
+function CardMiSala({ sala, onEliminar, eliminando }) {
   return (
     <div style={{
       background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.35)",
@@ -163,20 +183,41 @@ function CardMiSala({ sala }) {
       display: "flex", alignItems: "center", gap: 12,
     }}>
       <div style={{ fontSize: 28, flexShrink: 0, lineHeight: 1 }}>{sala.jugador1_avatar || "👤"}</div>
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 900, color: "#fbbf24" }}>Tu sala abierta</div>
         <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
-          Código: <span style={{ color: "#fbbf24", letterSpacing: 1 }}>{sala.codigo}</span> · Esperando contrincante
+          Código: <span style={{ color: "#fbbf24", letterSpacing: 1 }}>{sala.codigo}</span>
         </div>
         <TagsPts sala={sala} />
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#fbbf24" }} />
-        <span style={{ fontSize: 11, color: "#fbbf24" }}>Esperando</span>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#fbbf24", boxShadow: "0 0 6px #fbbf24" }} />
+          <span style={{ fontSize: 11, color: "#fbbf24" }}>Esperando...</span>
+        </div>
+        <button
+          onClick={() => !eliminando && onEliminar(sala)}
+          disabled={eliminando}
+          style={{
+            padding: "5px 11px", borderRadius: 8,
+            cursor: eliminando ? "not-allowed" : "pointer",
+            background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.35)",
+            color: "#f87171", fontFamily: "'Lato',sans-serif", fontSize: 11, fontWeight: 700,
+            opacity: eliminando ? 0.5 : 1, transition: "opacity 0.15s",
+          }}
+        >
+          {eliminando ? "..." : "Eliminar"}
+        </button>
       </div>
     </div>
   );
 }
+
+const wrapperStyle = {
+  minHeight: "100dvh",
+  background: "radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",
+  fontFamily: "'Lato', sans-serif", color: "#e2f5e9",
+};
 
 const headerStyle = {
   display: "flex", alignItems: "center", gap: 12, padding: "14px 16px",
@@ -191,27 +232,30 @@ const btnVolverStyle = {
   fontFamily: "'Lato',sans-serif", display: "flex", alignItems: "center", gap: 6,
 };
 
-const wrapperStyle = {
-  minHeight: "100dvh",
-  background: "radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",
-  fontFamily: "'Lato', sans-serif", color: "#e2f5e9",
-};
-
 const IconVolver = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M19 12H5M12 5l-7 7 7 7"/>
   </svg>
 );
 
-export default function Lobby({ user, perfil, onJugarIA, onUnirse, onCrearSala, onVolver }) {
+export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaIniciada, onVolver }) {
   const [salas, setSalas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [uniendose, setUniendose] = useState(null);
   const [pantalla, setPantalla] = useState("lobby");
+
+  // Datos del formulario de creación
   const [apuestaCrear, setApuestaCrear] = useState(0);
   const [puntosCrear, setPuntosCrear] = useState(15);
   const [esTorneoCrear, setEsTorneoCrear] = useState(false);
   const [rakePct, setRakePct] = useState(5);
+  const [creandoSala, setCreandoSala] = useState(false);
+  const [errorCrear, setErrorCrear] = useState("");
+
+  // Sala creada por este usuario en esta sesión
+  const [miCodigoSala, setMiCodigoSala] = useState(null);
+  const [eliminandoSala, setEliminandoSala] = useState(false);
+  const navegandoRef = useRef(false);
 
   useEffect(() => {
     cargar();
@@ -227,6 +271,23 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onCrearSala, 
       .then(({ data }) => { if (data?.valor) setRakePct(parseFloat(data.valor)); });
   }, [pantalla]);
 
+  // Detecta cuando la sala abierta obtiene un contrincante y empieza la partida
+  useEffect(() => {
+    if (!miCodigoSala) {
+      // Restaurar miCodigoSala si el usuario ya tenía una sala abierta al entrar
+      const existente = salas.find(s => s.estado === "esperando" && s.jugador1_id === user.id);
+      if (existente) setMiCodigoSala(existente.codigo);
+      return;
+    }
+    if (navegandoRef.current) return;
+    const iniciada = salas.find(s => s.codigo === miCodigoSala && s.estado === "jugando");
+    if (iniciada) {
+      navegandoRef.current = true;
+      onPartidaIniciada(miCodigoSala);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [salas, miCodigoSala]);
+
   async function cargar() {
     const desde = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
     const { data } = await supabase
@@ -237,6 +298,73 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onCrearSala, 
       .order("created_at", { ascending: false });
     setSalas(data || []);
     setCargando(false);
+  }
+
+  async function crearSalaPublica() {
+    setErrorCrear("");
+    setCreandoSala(true);
+    if (apuestaCrear > 0) {
+      const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+      const saldoActual = fresh?.saldo || 0;
+      if (saldoActual < apuestaCrear) {
+        setErrorCrear("Saldo insuficiente");
+        setCreandoSala(false);
+        return;
+      }
+      const { error: saldoErr } = await supabase.from("perfiles")
+        .update({ saldo: saldoActual - apuestaCrear })
+        .eq("usuario_id", user.id);
+      if (saldoErr) {
+        setErrorCrear("Error al procesar el saldo");
+        setCreandoSala(false);
+        return;
+      }
+    }
+    const cod = generarCodigoLobby();
+    const mazo = mezclarLobby(MAZO_LOBBY);
+    const mano1 = mazo.slice(0, 3);
+    const mano2 = mazo.slice(3, 6);
+    const { error: err } = await supabase.from("partidas").insert({
+      codigo: cod,
+      estado: "esperando",
+      jugador1_id: user.id,
+      jugador1_nombre: perfil?.nombre || "",
+      jugador1_avatar: perfil?.avatar || "👤",
+      mano_jugador1: JSON.stringify(mano1),
+      mano_jugador2: JSON.stringify(mano2),
+      turno: user.id,
+      mesa: JSON.stringify([]),
+      puntos1: 0,
+      puntos2: 0,
+      apuesta: apuestaCrear,
+      puntos: puntosCrear,
+      es_torneo: esTorneoCrear,
+    });
+    if (err) {
+      if (apuestaCrear > 0) {
+        const { data: fresh2 } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+        await supabase.from("perfiles").update({ saldo: (fresh2?.saldo || 0) + apuestaCrear }).eq("usuario_id", user.id);
+      }
+      setErrorCrear("Error al crear la sala");
+      setCreandoSala(false);
+      return;
+    }
+    setMiCodigoSala(cod);
+    setCreandoSala(false);
+    setPantalla("lobby");
+  }
+
+  async function eliminarSala(sala) {
+    setEliminandoSala(true);
+    if ((sala.apuesta || 0) > 0) {
+      const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+      await supabase.from("perfiles")
+        .update({ saldo: (fresh?.saldo || 0) + sala.apuesta })
+        .eq("usuario_id", user.id);
+    }
+    await supabase.from("partidas").update({ estado: "cancelada" }).eq("codigo", sala.codigo);
+    setMiCodigoSala(null);
+    setEliminandoSala(false);
   }
 
   function unirse(codigo) {
@@ -270,7 +398,6 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onCrearSala, 
 
         <div style={{ maxWidth: 480, margin: "0 auto", padding: "20px 16px 48px", display: "flex", flexDirection: "column", gap: 14 }}>
 
-          {/* Monto */}
           <div style={{ background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 14, padding: "16px 18px" }}>
             <div style={{ fontSize: 10, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>Monto de apuesta</div>
             <select
@@ -288,7 +415,6 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onCrearSala, 
             </select>
           </div>
 
-          {/* Puntos */}
           <div style={{ background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 14, padding: "16px 18px" }}>
             <div style={{ fontSize: 10, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>Puntos para ganar</div>
             <div style={{ display: "flex", gap: 10 }}>
@@ -311,7 +437,6 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onCrearSala, 
             </div>
           </div>
 
-          {/* Torneo */}
           <div style={{ background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 14, padding: "16px 18px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
@@ -330,44 +455,44 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onCrearSala, 
                 <div style={{
                   width: 20, height: 20, borderRadius: "50%",
                   background: esTorneoCrear ? "#fbbf24" : "#374151",
-                  position: "absolute", top: 3,
-                  left: esTorneoCrear ? 27 : 3,
+                  position: "absolute", top: 3, left: esTorneoCrear ? 27 : 3,
                   transition: "left 0.2s",
                 }} />
               </button>
             </div>
           </div>
 
-          {/* Info comisión */}
           {apuestaCrear > 0 ? (
-            <div style={{
-              background: "rgba(74,222,128,0.04)", border: "1px solid rgba(74,222,128,0.2)",
-              borderRadius: 12, padding: "12px 14px", fontSize: 13, color: "#4ade80", lineHeight: 1.7,
-            }}>
+            <div style={{ background: "rgba(74,222,128,0.04)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 12, padding: "12px 14px", fontSize: 13, color: "#4ade80", lineHeight: 1.7 }}>
               <span style={{ fontWeight: 700 }}>Apostando {formatPesos(apuestaCrear)}</span>
               {" · "}Comisión {rakePct}%: −{formatPesos(rakeAmount)}
               {" · "}Si ganás recibís{" "}
               <span style={{ fontWeight: 700, color: "#fbbf24" }}>{formatPesos(premio)}</span>
             </div>
           ) : (
-            <div style={{
-              background: "rgba(74,222,128,0.04)", border: "1px solid rgba(74,222,128,0.12)",
-              borderRadius: 12, padding: "12px 14px", fontSize: 13, color: "#6b9", lineHeight: 1.7,
-            }}>
+            <div style={{ background: "rgba(74,222,128,0.04)", border: "1px solid rgba(74,222,128,0.12)", borderRadius: 12, padding: "12px 14px", fontSize: 13, color: "#6b9", lineHeight: 1.7 }}>
               Partida gratuita · Sin apuesta ni comisión
             </div>
           )}
 
-          {/* Botón crear */}
+          {errorCrear && (
+            <div style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.3)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#f87171" }}>
+              {errorCrear}
+            </div>
+          )}
+
           <button
-            onClick={() => onCrearSala(apuestaCrear, puntosCrear, esTorneoCrear)}
+            onClick={crearSalaPublica}
+            disabled={creandoSala}
             style={{
-              width: "100%", padding: "15px", borderRadius: 12, cursor: "pointer",
+              width: "100%", padding: "15px", borderRadius: 12,
+              cursor: creandoSala ? "not-allowed" : "pointer",
               background: "rgba(167,139,250,0.07)", border: "1.5px solid rgba(167,139,250,0.5)",
               color: "#a78bfa", fontFamily: "'Lato',sans-serif", fontSize: 15, fontWeight: 900,
+              opacity: creandoSala ? 0.6 : 1, transition: "opacity 0.15s",
             }}
           >
-            + Crear sala
+            {creandoSala ? "Creando..." : "+ Crear sala"}
           </button>
 
         </div>
@@ -378,7 +503,6 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onCrearSala, 
   return (
     <div style={wrapperStyle}>
 
-      {/* Header sticky */}
       <div style={headerStyle}>
         <button onClick={onVolver} style={btnVolverStyle}>
           <IconVolver />
@@ -389,20 +513,18 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onCrearSala, 
           <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900 }}>Buscando partida</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{
-            width: 8, height: 8, borderRadius: "50%", background: "#4ade80",
-            boxShadow: "0 0 8px #4ade80",
-          }} />
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 8px #4ade80" }} />
           <span style={{ fontSize: 11, color: "#4ade80" }}>En vivo</span>
         </div>
       </div>
 
-      {/* Contenido */}
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "14px 16px 48px", display: "flex", flexDirection: "column", gap: 8 }}>
 
         <CardIA onJugar={onJugarIA} />
 
-        {mySala && <CardMiSala sala={mySala} />}
+        {mySala && (
+          <CardMiSala sala={mySala} onEliminar={eliminarSala} eliminando={eliminandoSala} />
+        )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0", marginTop: 2 }}>
           <div style={{ flex: 1, height: 1, background: "rgba(45,106,79,0.3)" }} />

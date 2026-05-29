@@ -48,7 +48,7 @@ function CartaMulti({ carta, oculta, onClick, jugada, seleccionada }) {
   );
 }
 
-export default function Multijugador({ user, perfil, onVolver, codigoInicial, autoCrear, apuesta, puntos, esTorneo }) {
+export default function Multijugador({ user, perfil, onVolver, codigoInicial, autoCrear, apuesta, puntos, esTorneo, codigoYaCreado }) {
   const [pantalla, setPantalla] = useState("menu");
   const [codigo, setCodigo] = useState("");
   const [codigoInput, setCodigoInput] = useState("");
@@ -139,6 +139,19 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         setMiMano(JSON.parse(data.mano_jugador2));
         setManoRival(JSON.parse(data.mano_jugador1));
         setPartida({ ...data, jugador2_id: user.id, estado: "jugando" });
+        setPantalla("jugando");
+        addLog("¡Partida iniciada!");
+      })();
+    } else if (codigoYaCreado) {
+      (async () => {
+        const cod = codigoYaCreado.toUpperCase().trim();
+        const { data, error: err } = await supabase.from("partidas").select("*").eq("codigo", cod).single();
+        if (err || !data) { setError("No se pudo cargar la partida"); return; }
+        setCodigo(cod);
+        setSoyJugador1(true);
+        setMiMano(JSON.parse(data.mano_jugador1));
+        setManoRival(JSON.parse(data.mano_jugador2));
+        setPartida(data);
         setPantalla("jugando");
         addLog("¡Partida iniciada!");
       })();
