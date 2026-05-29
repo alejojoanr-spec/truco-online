@@ -958,27 +958,6 @@ function TabFinanzas({ rol = 'admin' }) {
 
   return (
     <>
-      {/* Rake stats widget */}
-      <div style={{ ...CARD, marginBottom: 16 }}>
-        <div style={{ fontSize: 11, color: "#a78bfa", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>Rake cobrado</div>
-        <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
-          {[["hoy", "Hoy"], ["semana", "Semana"], ["mes", "Mes"], ["anio", "Año"]].map(([p, label]) => (
-            <button key={p} onClick={() => setPeriodoRake(p)} style={{
-              flex: 1, padding: "5px 2px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: 700,
-              fontFamily: "'Lato',sans-serif",
-              border: `1px solid ${periodoRake === p ? "#a78bfa" : "#2d6a4f"}`,
-              background: periodoRake === p ? "rgba(167,139,250,0.12)" : "rgba(0,0,0,0.3)",
-              color: periodoRake === p ? "#a78bfa" : "#6b7280",
-            }}>
-              {label}
-            </button>
-          ))}
-        </div>
-        <div style={{ fontSize: 30, fontWeight: 900, color: "#a78bfa", textAlign: "center" }}>
-          ${rakeStats[periodoRake].toFixed(2)}
-        </div>
-      </div>
-
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 16 }}>
         <StatCard label="Pendientes" valor={stats.pendientes} color="#fbbf24" onClick={() => setFiltro(f => f === "pendiente" ? "todas" : "pendiente")} activo={filtro === "pendiente"} />
         <StatCard label="Aprobado total" valor={`$${stats.aprobados.toFixed(0)}`} color="#4ade80" onClick={() => setFiltro(f => f === "aprobado" ? "todas" : "aprobado")} activo={filtro === "aprobado"} />
@@ -1075,6 +1054,27 @@ function TabFinanzas({ rol = 'admin' }) {
           <DatosTransferenciaConfig />
         </div>
       )}
+
+      {/* Rake stats widget */}
+      <div style={{ ...CARD, marginTop: 12 }}>
+        <div style={{ fontSize: 11, color: "#a78bfa", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>Rake cobrado</div>
+        <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
+          {[["hoy", "Hoy"], ["semana", "Semana"], ["mes", "Mes"], ["anio", "Año"]].map(([p, label]) => (
+            <button key={p} onClick={() => setPeriodoRake(p)} style={{
+              flex: 1, padding: "5px 2px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: 700,
+              fontFamily: "'Lato',sans-serif",
+              border: `1px solid ${periodoRake === p ? "#a78bfa" : "#2d6a4f"}`,
+              background: periodoRake === p ? "rgba(167,139,250,0.12)" : "rgba(0,0,0,0.3)",
+              color: periodoRake === p ? "#a78bfa" : "#6b7280",
+            }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div style={{ fontSize: 30, fontWeight: 900, color: "#a78bfa", textAlign: "center" }}>
+          ${rakeStats[periodoRake].toFixed(2)}
+        </div>
+      </div>
     </>
   );
 }
