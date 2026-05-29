@@ -1739,7 +1739,7 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
 
       {/* Header sticky */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 0", position: "sticky", top: 0, background: "rgba(5,15,8,0.96)", backdropFilter: "blur(8px)", zIndex: 10, borderBottom: "1px solid rgba(45,106,79,0.4)" }}>
-        <div style={{ paddingBottom: 14 }}>
+        <div onClick={onVolver} style={{ paddingBottom: 14, cursor: "pointer" }}>
           <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 3, textTransform: "uppercase" }}>Truco Online</div>
           <div style={{ fontSize: 19, color: "#fbbf24", fontWeight: 900 }}>{rol === 'asesor' ? 'Panel de asesor' : 'Panel de administrador'}</div>
         </div>
