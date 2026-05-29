@@ -793,6 +793,7 @@ export default function App() {
         setNecesitaAvatar(false);
         setEsBaneado(false);
         setVerAdmin(false);
+        sessionStorage.removeItem('truco_panel');
         setCargando(false);
       }
     });
@@ -831,13 +832,18 @@ export default function App() {
       localStorage.setItem(cacheKey, JSON.stringify(perfilCompleto));
       setPerfil(perfilCompleto);
       supabase.from("perfiles").update({ ultimo_acceso: new Date().toISOString() }).eq("usuario_id", u.id).then(() => {});
+      const esAdminUser = u.email === ADMIN_EMAIL;
+      const esAsesorUser = data.rol === 'asesor';
+      if ((esAdminUser || esAsesorUser) && sessionStorage.getItem('truco_panel') === '1') {
+        setVerAdmin(true);
+      }
     } else {
       setNecesitaNombre(true);
     }
     setCargando(false);
   }
 
-  async function handleLogout() { await supabase.auth.signOut(); }
+  async function handleLogout() { sessionStorage.removeItem('truco_panel'); await supabase.auth.signOut(); }
 
   if (cargando) return (
     <div style={{ minHeight:"100vh",background:"#050f08",display:"flex",alignItems:"center",justifyContent:"center",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:18 }}>Cargando...</div>
@@ -862,7 +868,7 @@ export default function App() {
   if (verTorneos) return <Torneos user={user} perfil={perfil} onVolver={()=>setVerTorneos(false)} />;
   const esAdmin = user?.email === ADMIN_EMAIL;
   const esAsesor = perfil?.rol === 'asesor';
-  if (verAdmin && (esAdmin || esAsesor)) return <Admin onVolver={()=>setVerAdmin(false)} rol={esAdmin ? 'admin' : 'asesor'} ejecutadoPor={perfil?.nombre || user?.email || ''} usuarioId={user?.id || ''} />;
+  if (verAdmin && (esAdmin || esAsesor)) return <Admin onVolver={()=>{ sessionStorage.removeItem('truco_panel'); setVerAdmin(false); }} rol={esAdmin ? 'admin' : 'asesor'} ejecutadoPor={perfil?.nombre || user?.email || ''} usuarioId={user?.id || ''} />;
   if (modoJuego === "lobby") return (
     <Lobby
       user={user}
@@ -913,7 +919,7 @@ export default function App() {
         onPerfilActualizado={setPerfil}
         esAdmin={esAdmin}
         esAsesor={esAsesor}
-        onAdmin={()=>setVerAdmin(true)}
+        onAdmin={()=>{ sessionStorage.setItem('truco_panel', '1'); setVerAdmin(true); }}
       />
       {mostrarConfigHome && <Configuracion onCerrar={()=>setMostrarConfigHome(false)} />}
     </>
