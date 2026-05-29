@@ -1480,7 +1480,7 @@ function ChatEquipo({ ejecutadoPor }) {
   );
 }
 
-function TabEquipo({ rol, ejecutadoPor }) {
+function TabEquipo({ rol, ejecutadoPor, pendientesBadge = 0, chatBadge = 0, onChatLeido }) {
   const [subtab, setSubtab] = useState("tickets"); // "tickets" | "chat"
   const [tickets, setTickets] = useState([]);
   const [filtro, setFiltro] = useState("pendiente");
@@ -1624,17 +1624,27 @@ function TabEquipo({ rol, ejecutadoPor }) {
     <>
       {/* Sub-tabs: Tickets | Chat */}
       <div style={{ display:"flex", gap:6, marginBottom:16 }}>
-        {[["tickets","Tickets"], ["chat","Chat del equipo"]].map(([val, lbl]) => (
-          <button key={val} onClick={() => setSubtab(val)} style={{
-            padding:"6px 14px", borderRadius:8, cursor:"pointer", fontSize:12, fontWeight:700,
-            fontFamily:"'Lato',sans-serif", border:"1px solid",
-            borderColor: subtab === val ? "#a78bfa" : "#2d6a4f",
-            background: subtab === val ? "rgba(167,139,250,0.12)" : "rgba(0,0,0,0.3)",
-            color: subtab === val ? "#a78bfa" : "#6b7280",
-          }}>
-            {lbl}{val === "tickets" && pendientesCount > 0 ? ` (${pendientesCount})` : ""}
-          </button>
-        ))}
+        {[["tickets","Tickets"], ["chat","Chat del equipo"]].map(([val, lbl]) => {
+          const badgeCount = val === "tickets" ? pendientesBadge : chatBadge;
+          const activo = subtab === val;
+          return (
+            <button key={val} onClick={() => { setSubtab(val); if (val === "chat" && onChatLeido) onChatLeido(); }} style={{
+              padding:"6px 14px", borderRadius:8, cursor:"pointer", fontSize:12, fontWeight:700,
+              fontFamily:"'Lato',sans-serif", border:"1px solid",
+              borderColor: activo ? "#a78bfa" : "#2d6a4f",
+              background: activo ? "rgba(167,139,250,0.12)" : "rgba(0,0,0,0.3)",
+              color: activo ? "#a78bfa" : "#6b7280",
+              display:"flex", alignItems:"center", gap:6, position:"relative",
+            }}>
+              {lbl}
+              {badgeCount > 0 && (
+                <span style={{ background:"#f87171", color:"#fff", fontSize:9, fontWeight:900, borderRadius:"50%", minWidth:16, height:16, display:"inline-flex", alignItems:"center", justifyContent:"center", lineHeight:1, padding:"0 3px" }}>
+                  {badgeCount > 9 ? "9+" : badgeCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {subtab === "chat" ? <ChatEquipo ejecutadoPor={ejecutadoPor} /> : (
@@ -1716,6 +1726,7 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
     return guardada && tabsVisibles.some(t => t.id === guardada) ? guardada : tabsVisibles[0].id;
   });
   const [ticketsBadge, setTicketsBadge] = useState(0);
+  const [chatBadge, setChatBadge] = useState(0);
 
   function cambiarTab(id) { localStorage.setItem('truco_admin_tab', id); setTab(id); }
 
@@ -1733,6 +1744,33 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
       .subscribe();
     return () => supabase.removeChannel(canal);
   }, []);
+
+  useEffect(() => {
+    if (!ejecutadoPor) return;
+    const lsKey = `truco_chat_leido_${ejecutadoPor}`;
+    async function cargarChatBadge() {
+      const ultimaLectura = localStorage.getItem(lsKey) || new Date(0).toISOString();
+      const { count } = await supabase
+        .from("chat_equipo")
+        .select("*", { count: "exact", head: true })
+        .gt("created_at", ultimaLectura)
+        .neq("autor", ejecutadoPor);
+      setChatBadge(count || 0);
+    }
+    cargarChatBadge();
+    const canal = supabase.channel("chat-badge-admin")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_equipo" }, (payload) => {
+        if (payload.new?.autor !== ejecutadoPor) setChatBadge(prev => prev + 1);
+      })
+      .subscribe();
+    return () => supabase.removeChannel(canal);
+  }, [ejecutadoPor]);
+
+  function marcarChatLeido() {
+    if (!ejecutadoPor) return;
+    localStorage.setItem(`truco_chat_leido_${ejecutadoPor}`, new Date().toISOString());
+    setChatBadge(0);
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)", fontFamily: "'Lato', sans-serif", color: "#e2f5e9" }}>
@@ -1760,9 +1798,9 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
             position: "relative",
           }}>
             {t.label}
-            {t.id === "equipo" && ticketsBadge > 0 && (
+            {t.id === "equipo" && (ticketsBadge + chatBadge) > 0 && (
               <span style={{ position: "absolute", top: 6, right: "50%", transform: "translateX(calc(50% + 16px))", background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 900, borderRadius: "50%", minWidth: 16, height: 16, display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: "0 3px" }}>
-                {ticketsBadge > 9 ? "9+" : ticketsBadge}
+                {(ticketsBadge + chatBadge) > 9 ? "9+" : (ticketsBadge + chatBadge)}
               </span>
             )}
           </button>
@@ -1776,7 +1814,7 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
         {tab === "finanzas" && <TabFinanzas />}
         {tab === "soporte" && <TabSoporte />}
         {tab === "metricas" && <TabMetricas />}
-        {tab === "equipo" && <TabEquipo rol={rol} ejecutadoPor={ejecutadoPor} />}
+        {tab === "equipo" && <TabEquipo rol={rol} ejecutadoPor={ejecutadoPor} pendientesBadge={ticketsBadge} chatBadge={chatBadge} onChatLeido={marcarChatLeido} />}
       </div>
 
     </div>
