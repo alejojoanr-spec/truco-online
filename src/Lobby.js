@@ -398,6 +398,18 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
   async function crearSalaPublica() {
     setErrorCrear("");
     setCreandoSala(true);
+    // 0. Verificar que el usuario no tenga ya una partida activa
+    const { data: activas } = await supabase
+      .from("partidas")
+      .select("id")
+      .in("estado", ["esperando", "jugando"])
+      .or(`jugador1_id.eq.${user.id},jugador2_id.eq.${user.id}`)
+      .limit(1);
+    if (activas?.length > 0) {
+      setErrorCrear("Ya tenés una partida activa. Finalizala antes de crear una nueva.");
+      setCreandoSala(false);
+      return;
+    }
     // 1. Verificar saldo sin descontar todavía
     if (apuestaCrear > 0) {
       const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();

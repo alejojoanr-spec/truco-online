@@ -227,6 +227,14 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const { data, error: err } = await supabase.from("partidas").select("*").eq("codigo", cod).single();
     if (err || !data) { setError("Sala no encontrada"); return; }
     if (data.estado !== "esperando") { setError("La sala ya está en juego"); return; }
+    // Verificar que el usuario no tenga ya una partida activa
+    const { data: activas } = await supabase
+      .from("partidas")
+      .select("id")
+      .in("estado", ["esperando", "jugando"])
+      .or(`jugador1_id.eq.${user.id},jugador2_id.eq.${user.id}`)
+      .limit(1);
+    if (activas?.length > 0) { setError("Ya tenés una partida activa. Finalizala antes de unirte a otra."); return; }
     const montoSala = data.apuesta || 0;
     if (montoSala > 0) {
       const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
