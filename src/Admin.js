@@ -772,16 +772,6 @@ const GENERO_LABELS = {
   otro: "Otro",
 };
 
-const PIE_COLORS = ["#60a5fa","#f472b6","#a78bfa","#fbbf24","#6b7280"];
-
-const GENERO_COLORS = {
-  "Masculino":    "#60a5fa",
-  "Femenino":     "#f472b6",
-  "No binario":   "#4ade80",
-  "Otro":         "#fbbf24",
-  "No especifica":"#fbbf24",
-};
-
 const TOOLTIP_STYLE = {
   contentStyle: { background: "#0a2414", border: "1px solid #2d6a4f", borderRadius: 8, fontFamily: "'Lato',sans-serif", fontSize: 12, color: "#e2f5e9" },
   itemStyle: { color: "#e2f5e9" },
@@ -805,6 +795,14 @@ function rangoEdad(edad) {
   if (edad <= 45) return "36-45";
   return "46+";
 }
+
+const GENERO_COLORS = {
+  "Masculino":    "#60a5fa",
+  "Femenino":     "#f472b6",
+  "No binario":   "#4ade80",
+  "Otro":         "#fbbf24",
+  "No especifica":"#fbbf24",
+};
 
 function TabMetricas() {
   const [data, setData] = useState(null);
