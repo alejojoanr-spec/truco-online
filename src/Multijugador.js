@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 
+function fmtARS(n) {
+  const num = parseFloat(n) || 0;
+  const [entero, decimal] = num.toFixed(2).split('.');
+  return '$' + entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + decimal;
+}
+
 const PALO = { espada: "espada", basto: "basto", copa: "copa", oro: "oro" };
 const MAZO = [
   { num: 1, palo: PALO.espada },{ num: 2, palo: PALO.espada },{ num: 3, palo: PALO.espada },
@@ -303,18 +309,18 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         {resultadoPartida.ganaste && resultadoPartida.premio > 0 && (
           <>
             <div style={{ fontSize:18,color:"#4ade80",fontWeight:700,marginBottom:4 }}>
-              +${resultadoPartida.premio.toFixed(2)} acreditados
+              +{fmtARS(resultadoPartida.premio)} acreditados
             </div>
             {resultadoPartida.rake > 0 && (
               <div style={{ fontSize:12,color:"#6b7280",marginBottom:8 }}>
-                Comisión de la casa: −${resultadoPartida.rake.toFixed(2)}
+                Comisión de la casa: −{fmtARS(resultadoPartida.rake)}
               </div>
             )}
           </>
         )}
         {!resultadoPartida.ganaste && resultadoPartida.apuesta > 0 && (
           <div style={{ fontSize:14,color:"#9ca3af",marginBottom:8 }}>
-            Perdiste ${resultadoPartida.apuesta.toFixed(2)}
+            Perdiste {fmtARS(resultadoPartida.apuesta)}
           </div>
         )}
         <button

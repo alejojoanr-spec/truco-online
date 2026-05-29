@@ -73,6 +73,12 @@ const TIPO_LABEL = {
 };
 const TIPO_SIGNO_POSITIVO = new Set(["deposito", "premio"]);
 
+function formatARS(n) {
+  const num = parseFloat(n) || 0;
+  const [entero, decimal] = num.toFixed(2).split('.');
+  return '$' + entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + decimal;
+}
+
 /* ══════════════════════════════════════════
    TAB 1 — USUARIOS
 ══════════════════════════════════════════ */
@@ -155,7 +161,7 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
       creado_por: ejecutadoPor,
       usuario_afectado_id: modalSaldo.usuario_id,
       monto: Math.abs(monto),
-      descripcion: `Solicitud de autorización: ${ejecutadoPor} solicita ajuste de ${monto >= 0 ? '+' : ''}$${monto.toFixed(2)} en usuario ${modalSaldo.nombre}${saldoNota.trim() ? `. Nota: ${saldoNota.trim()}` : ''}.`,
+      descripcion: `Solicitud de autorización: ${ejecutadoPor} solicita ajuste de ${monto >= 0 ? '+' : ''}${formatARS(monto)} en usuario ${modalSaldo.nombre}${saldoNota.trim() ? `. Nota: ${saldoNota.trim()}` : ''}.`,
       estado: 'pendiente',
     });
     if (error) { setErrorSaldo("No se pudo crear el ticket. Intentá de nuevo."); return; }
@@ -299,7 +305,7 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
                     <span>·</span>
                     <span>{u.partidas_jugadas || 0} partidas</span>
                     <span>·</span>
-                    <span>Saldo: ${(u.saldo || 0).toFixed(2)}</span>
+                    <span>Saldo: {formatARS(u.saldo)}</span>
                     {u.dni && <><span>·</span><span style={{ color: "#6b7280" }}>DNI: {u.dni}</span></>}
                   </div>
                 </div>
@@ -378,7 +384,7 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
                   const esPositivo = m.tipo === 'ajuste' ? parseFloat(m.monto) >= 0 : TIPO_SIGNO_POSITIVO.has(m.tipo);
                   const colorMonto = esPositivo ? "#4ade80" : "#f87171";
                   const signo = esPositivo ? "+" : "−";
-                  const montoAbs = Math.abs(parseFloat(m.monto)).toFixed(2);
+                  const montoAbs = formatARS(Math.abs(parseFloat(m.monto)));
                   const tipoLabel = TIPO_LABEL[m.tipo] || m.tipo;
                   return (
                     <div key={m.id} style={{ background: "rgba(0,0,0,0.35)", border: `1px solid ${esPositivo ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -388,7 +394,7 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
                           <span style={{ fontSize: 18, fontWeight: 900, color: colorMonto }}>
-                            {signo}${montoAbs}
+                            {signo}{montoAbs}
                           </span>
                           <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, background: "rgba(0,0,0,0.4)", border: `1px solid ${esPositivo ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)"}`, color: esPositivo ? "#4ade80" : "#f87171", fontWeight: 700 }}>
                             {tipoLabel}
@@ -407,7 +413,7 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
                           <div style={{ fontSize: 11, color: "#a78bfa", marginTop: 3 }}>Por: {m.ejecutado_por}</div>
                         )}
                         {m.tipo === 'ajuste' && m.saldo_anterior != null && m.saldo_nuevo != null && (
-                          <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>${Number(m.saldo_anterior).toFixed(2)} → ${Number(m.saldo_nuevo).toFixed(2)}</div>
+                          <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{formatARS(m.saldo_anterior)} → {formatARS(m.saldo_nuevo)}</div>
                         )}
                       </div>
                     </div>
@@ -427,7 +433,7 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
             <div style={{ fontSize: 17, color: "#fbbf24", fontWeight: 900, marginBottom: 4 }}>Ajustar saldo</div>
             <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 20 }}>
               Usuario: <strong style={{ color: "#e2f5e9" }}>{modalSaldo.nombre}</strong><br />
-              Saldo actual: <strong style={{ color: "#4ade80" }}>${(modalSaldo.saldo || 0).toFixed(2)}</strong>
+              Saldo actual: <strong style={{ color: "#4ade80" }}>{formatARS(modalSaldo.saldo)}</strong>
             </div>
             <div style={{ marginBottom: 14 }}>
               <label style={{ fontSize: 11, color: "#60a5fa", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 }}>Monto a sumar/restar</label>
@@ -576,19 +582,19 @@ function TabPartidas() {
             <div style={{ background:"rgba(0,0,0,0.3)", borderRadius:8, padding:"10px 12px" }}>
               <div style={{ fontSize:11, color:"#6b7280" }}>Apuesta</div>
               <div style={{ fontSize:18, fontWeight:900, color:"#4ade80", marginTop:4 }}>
-                {(partidaSel.apuesta || 0) > 0 ? `$${parseFloat(partidaSel.apuesta).toFixed(2)}` : "Sin apuesta"}
+                {(partidaSel.apuesta || 0) > 0 ? formatARS(partidaSel.apuesta) : "Sin apuesta"}
               </div>
             </div>
             <div style={{ background:"rgba(0,0,0,0.3)", borderRadius:8, padding:"10px 12px" }}>
               <div style={{ fontSize:11, color:"#6b7280" }}>Pozo total</div>
               <div style={{ fontSize:18, fontWeight:900, color:"#fbbf24", marginTop:4 }}>
-                {(partidaSel.apuesta || 0) > 0 ? `$${(parseFloat(partidaSel.apuesta) * 2).toFixed(2)}` : "—"}
+                {(partidaSel.apuesta || 0) > 0 ? formatARS(parseFloat(partidaSel.apuesta) * 2) : "—"}
               </div>
             </div>
             <div style={{ background:"rgba(0,0,0,0.3)", borderRadius:8, padding:"10px 12px" }}>
               <div style={{ fontSize:11, color:"#6b7280" }}>Rake cobrado</div>
               <div style={{ fontSize:18, fontWeight:900, color:"#a78bfa", marginTop:4 }}>
-                {rake > 0 ? `$${rake.toFixed(2)}` : "—"}
+                {rake > 0 ? formatARS(rake) : "—"}
               </div>
             </div>
             <div style={{ background:"rgba(0,0,0,0.3)", borderRadius:8, padding:"10px 12px" }}>
@@ -619,7 +625,7 @@ function TabPartidas() {
           onClick={() => setFiltroEstado("todas")} activo={filtroEstado === "todas"} />
         <StatCard label="En juego" valor={stats.enJuego} color="#60a5fa"
           onClick={() => setFiltroEstado(f => f === "jugando" ? "todas" : "jugando")} activo={filtroEstado === "jugando"} />
-        <StatCard label="Rake total" valor={`$${stats.rakeTotal.toFixed(0)}`} color="#a78bfa" />
+        <StatCard label="Rake total" valor={formatARS(stats.rakeTotal)} color="#a78bfa" />
       </div>
 
       {/* Alerta sospechosos */}
@@ -721,10 +727,10 @@ function TabPartidas() {
                         <div style={{ display:"flex", gap:10, marginTop:5, flexWrap:"wrap" }}>
                           <span style={{ fontSize:11, color:"#6b7280" }}>{fechaHora(p.created_at)}</span>
                           {(p.apuesta || 0) > 0 && (
-                            <span style={{ fontSize:11, color:"#fbbf24" }}>Apuesta: ${parseFloat(p.apuesta).toFixed(2)}</span>
+                            <span style={{ fontSize:11, color:"#fbbf24" }}>Apuesta: {formatARS(p.apuesta)}</span>
                           )}
                           {rake > 0 && (
-                            <span style={{ fontSize:11, color:"#a78bfa" }}>Rake: ${rake.toFixed(2)}</span>
+                            <span style={{ fontSize:11, color:"#a78bfa" }}>Rake: {formatARS(rake)}</span>
                           )}
                         </div>
                         {finalizada && p.ganador_nombre && (
@@ -981,8 +987,8 @@ function TabFinanzas({ rol = 'admin' }) {
     <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 16 }}>
         <StatCard label="Pendientes" valor={stats.pendientes} color="#fbbf24" onClick={() => setFiltro(f => f === "pendiente" ? "todas" : "pendiente")} activo={filtro === "pendiente"} />
-        <StatCard label="Aprobado total" valor={`$${stats.aprobados.toFixed(0)}`} color="#4ade80" onClick={() => setFiltro(f => f === "aprobado" ? "todas" : "aprobado")} activo={filtro === "aprobado"} />
-        <StatCard label="Volumen total" valor={`$${stats.volumen.toFixed(0)}`} color="#60a5fa" onClick={() => setFiltro("todas")} activo={filtro === "todas"} />
+        <StatCard label="Aprobado total" valor={formatARS(stats.aprobados)} color="#4ade80" onClick={() => setFiltro(f => f === "aprobado" ? "todas" : "aprobado")} activo={filtro === "aprobado"} />
+        <StatCard label="Volumen total" valor={formatARS(stats.volumen)} color="#60a5fa" onClick={() => setFiltro("todas")} activo={filtro === "todas"} />
       </div>
 
       {/* Filtro rechazado */}
@@ -1016,7 +1022,7 @@ function TabFinanzas({ rol = 'admin' }) {
                     <span style={{ fontSize: 10, color: "#6b7280", background: "rgba(0,0,0,0.3)", border: "1px solid #374151", borderRadius: 4, padding: "1px 6px" }}>{t.tipo}</span>
                   </div>
                   <div style={{ fontSize: 12, fontWeight: 900, marginTop: 3, color: t.tipo === 'ajuste' ? (parseFloat(t.monto) >= 0 ? "#4ade80" : "#f87171") : t.tipo === 'rake' ? "#a78bfa" : "#4ade80" }}>
-                    {t.tipo === 'ajuste' ? (parseFloat(t.monto) >= 0 ? `+$${parseFloat(t.monto).toFixed(2)}` : `−$${Math.abs(parseFloat(t.monto)).toFixed(2)}`) : `$${parseFloat(t.monto).toFixed(2)}`}
+                    {t.tipo === 'ajuste' ? (parseFloat(t.monto) >= 0 ? `+${formatARS(t.monto)}` : `−${formatARS(Math.abs(parseFloat(t.monto)))}`) : formatARS(t.monto)}
                   </div>
                   <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
                     {fechaHora(t.created_at)}{t.tipo !== 'retiro' && t.nota ? ` · ${t.nota}` : ""}
@@ -1046,7 +1052,7 @@ function TabFinanzas({ rol = 'admin' }) {
                     <div style={{ fontSize: 11, color: "#a78bfa", marginTop: 2 }}>Por: {t.ejecutado_por}</div>
                   )}
                   {t.tipo === 'ajuste' && t.saldo_anterior != null && t.saldo_nuevo != null && (
-                    <div style={{ fontSize: 11, color: "#6b7280", marginTop: 1 }}>${Number(t.saldo_anterior).toFixed(2)} → ${Number(t.saldo_nuevo).toFixed(2)}</div>
+                    <div style={{ fontSize: 11, color: "#6b7280", marginTop: 1 }}>{formatARS(t.saldo_anterior)} → {formatARS(t.saldo_nuevo)}</div>
                   )}
                 </div>
                 {t.estado === "pendiente" && (
@@ -1096,7 +1102,7 @@ function TabFinanzas({ rol = 'admin' }) {
           ))}
         </div>
         <div style={{ fontSize: 30, fontWeight: 900, color: "#a78bfa", textAlign: "center" }}>
-          ${rakeStats[periodoRake].toFixed(2)}
+          {formatARS(rakeStats[periodoRake])}
         </div>
       </div>
 
@@ -1124,14 +1130,14 @@ function TabFinanzas({ rol = 'admin' }) {
                   const esPositivo = m.tipo === 'ajuste' ? parseFloat(m.monto) >= 0 : TIPO_SIGNO_POSITIVO.has(m.tipo);
                   const colorMonto = esPositivo ? "#4ade80" : "#f87171";
                   const signo = esPositivo ? "+" : "−";
-                  const montoAbs = Math.abs(parseFloat(m.monto)).toFixed(2);
+                  const montoAbs = formatARS(Math.abs(parseFloat(m.monto)));
                   const tipoLabel = TIPO_LABEL[m.tipo] || m.tipo;
                   return (
                     <div key={m.id} style={{ background: "rgba(0,0,0,0.35)", border: `1px solid ${esPositivo ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "flex-start", gap: 12 }}>
                       <div style={{ fontSize: 20, lineHeight: 1, flexShrink: 0, marginTop: 2 }}>{esPositivo ? "💚" : "🔴"}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
-                          <span style={{ fontSize: 18, fontWeight: 900, color: colorMonto }}>{signo}${montoAbs}</span>
+                          <span style={{ fontSize: 18, fontWeight: 900, color: colorMonto }}>{signo}{montoAbs}</span>
                           <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, background: "rgba(0,0,0,0.4)", border: `1px solid ${esPositivo ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)"}`, color: esPositivo ? "#4ade80" : "#f87171", fontWeight: 700 }}>{tipoLabel}</span>
                           {m.estado && m.estado !== "aprobado" && (
                             <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, background: "rgba(0,0,0,0.4)", border: `1px solid ${m.estado === "pendiente" ? "rgba(251,191,36,0.4)" : "rgba(107,114,128,0.4)"}`, color: m.estado === "pendiente" ? "#fbbf24" : "#6b7280" }}>{m.estado}</span>
@@ -1140,7 +1146,7 @@ function TabFinanzas({ rol = 'admin' }) {
                         <div style={{ fontSize: 11, color: "#9ca3af" }}>{fechaHora(m.created_at)}</div>
                         {m.nota && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 3, fontStyle: "italic" }}>"{m.nota}"</div>}
                         {m.tipo === 'ajuste' && m.ejecutado_por && <div style={{ fontSize: 11, color: "#a78bfa", marginTop: 3 }}>Por: {m.ejecutado_por}</div>}
-                        {m.tipo === 'ajuste' && m.saldo_anterior != null && m.saldo_nuevo != null && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>${Number(m.saldo_anterior).toFixed(2)} → ${Number(m.saldo_nuevo).toFixed(2)}</div>}
+                        {m.tipo === 'ajuste' && m.saldo_anterior != null && m.saldo_nuevo != null && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{formatARS(m.saldo_anterior)} → {formatARS(m.saldo_nuevo)}</div>}
                       </div>
                     </div>
                   );
@@ -1770,7 +1776,7 @@ function TabEquipo({ rol, ejecutadoPor, pendientesBadge = 0, chatBadge = 0, onCh
             <span>Por: <strong style={{ color: "#fbbf24" }}>{ticketSel.creado_por}</strong></span>
             <span>·</span>
             <span>{fechaHora(ticketSel.created_at)}</span>
-            {ticketSel.monto != null && <><span>·</span><span style={{ color: "#4ade80" }}>${Number(ticketSel.monto).toFixed(2)}</span></>}
+            {ticketSel.monto != null && <><span>·</span><span style={{ color: "#4ade80" }}>{formatARS(ticketSel.monto)}</span></>}
           </div>
         </div>
 
@@ -1894,7 +1900,7 @@ function TabEquipo({ rol, ejecutadoPor, pendientesBadge = 0, chatBadge = 0, onCh
                       <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, border: `1px solid ${color}`, color, fontWeight: 700, flexShrink: 0 }}>
                         {ESTADO_LABEL[t.estado] || t.estado}
                       </span>
-                      {t.monto != null && <span style={{ fontSize: 11, color: "#4ade80", fontWeight: 700 }}>${Number(t.monto).toFixed(2)}</span>}
+                      {t.monto != null && <span style={{ fontSize: 11, color: "#4ade80", fontWeight: 700 }}>{formatARS(t.monto)}</span>}
                     </div>
                     <div style={{ fontSize: 13, color: "#e2f5e9", lineHeight: 1.5, marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {t.descripcion}

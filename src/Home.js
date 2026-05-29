@@ -568,7 +568,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                     />
                   </div>
                   <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
-                    de ${(perfil.saldo || 0).toFixed(2)} disponibles
+                    de {((perfil.saldo || 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }))} disponibles
                   </div>
                 </div>
 

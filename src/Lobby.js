@@ -3,7 +3,9 @@ import { supabase } from "./supabase";
 
 function formatPesos(n) {
   if (n === 0) return "Gratis";
-  return `$${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+  const [entero, decimal] = n.toFixed(2).split('.');
+  const miles = entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return decimal === '00' ? `$${miles}` : `$${miles},${decimal}`;
 }
 
 const OPCIONES_APUESTA = [
