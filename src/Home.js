@@ -613,14 +613,18 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                         .eq("tipo", "retiro")
                         .gte("created_at", inicioDia.toISOString());
                       if (count >= 2) { setRetiroError("Alcanzaste el límite de 2 retiros diarios."); setRetiroCargando(false); return; }
+                      const saldoAnterior = perfil.saldo || 0;
                       const { error } = await supabase.from("transacciones").insert({
                         usuario_id: perfil.usuario_id,
                         tipo: "retiro",
                         monto,
                         estado: "pendiente",
                         nota: retiroCbu.trim(),
+                        ejecutado_por: perfil.nombre || perfil.usuario_id,
+                        saldo_anterior: saldoAnterior,
+                        saldo_nuevo: saldoAnterior - monto,
                       });
-                      if (error) { setRetiroError("No se pudo enviar la solicitud. Intentá de nuevo."); setRetiroCargando(false); return; }
+                      if (error) { console.error("[Home] retiro insert error:", error); setRetiroError("No se pudo enviar la solicitud. Intentá de nuevo."); setRetiroCargando(false); return; }
                       setRetiroExito(true);
                       setRetiroCargando(false);
                     }}
