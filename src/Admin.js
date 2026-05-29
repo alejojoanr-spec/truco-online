@@ -562,14 +562,24 @@ function TabFinanzas() {
 
   async function cargar() {
     setCargando(true);
-    const { data, error } = await supabase
+    const { data: txs, error } = await supabase
       .from("transacciones")
-      .select("*, perfiles(nombre, avatar)")
+      .select("*")
       .order("created_at", { ascending: false })
       .limit(100);
-    if (error) console.error("[TabFinanzas] cargar error:", error);
-    console.log("[TabFinanzas] transacciones recibidas:", data?.length, data?.map(t => t.tipo));
-    setTransacciones(data || []);
+    if (error) { console.error("[TabFinanzas] cargar error:", error); setCargando(false); return; }
+
+    const ids = [...new Set((txs || []).map(t => t.usuario_id).filter(Boolean))];
+    let perfilesMap = {};
+    if (ids.length > 0) {
+      const { data: perfs } = await supabase
+        .from("perfiles")
+        .select("usuario_id, nombre, avatar")
+        .in("usuario_id", ids);
+      if (perfs) perfilesMap = Object.fromEntries(perfs.map(p => [p.usuario_id, p]));
+    }
+
+    setTransacciones((txs || []).map(t => ({ ...t, perfiles: perfilesMap[t.usuario_id] || null })));
     setCargando(false);
   }
 
