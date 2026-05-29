@@ -78,6 +78,19 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
     }
     setCargandoEdit(true);
     setErrorEdit("");
+    if (cambioNombre) {
+      const { data: existe } = await supabase
+        .from("perfiles")
+        .select("usuario_id")
+        .eq("nombre", nombre)
+        .neq("usuario_id", perfil.usuario_id)
+        .maybeSingle();
+      if (existe) {
+        setErrorEdit("Este nombre de usuario ya está en uso, elegí otro");
+        setCargandoEdit(false);
+        return;
+      }
+    }
     const ahora = new Date().toISOString();
     const updateData = { nombre, avatar: avatarEdit };
     if (cambioNombre) updateData.nombre_cambiado_en = ahora;
@@ -88,7 +101,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
     if (error) {
       console.error("Error al actualizar perfil:", error);
       const msg = error.code === "23505"
-        ? "Ese nombre de usuario ya está en uso."
+        ? "Este nombre de usuario ya está en uso, elegí otro"
         : `No se pudo guardar (${error.message})`;
       setErrorEdit(msg);
       setCargandoEdit(false);
