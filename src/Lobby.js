@@ -259,13 +259,18 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
   const canalRef = useRef(null);
   const salaAbiertaRef = useRef(null);
   const timerSalaRef = useRef(null);
+  const cargandoRef = useRef(false);
 
   useEffect(() => {
     cargar();
+    const disparar = () => {
+      if (cargandoRef.current) return; // ignorar si ya hay una carga en vuelo
+      cargar();
+    };
     const canal = supabase.channel("truco-lobby")
-      .on("postgres_changes", { event: "*", schema: "public", table: "partidas" }, () => cargar())
+      .on("postgres_changes", { event: "*", schema: "public", table: "partidas" }, disparar)
       // Broadcast como fallback para INSERT/DELETE (postgres_changes requiere ALTER PUBLICATION)
-      .on("broadcast", { event: "sala_actualizada" }, () => cargar())
+      .on("broadcast", { event: "sala_actualizada" }, disparar)
       .subscribe();
     canalRef.current = canal;
     return () => { supabase.removeChannel(canal); canalRef.current = null; };
@@ -340,6 +345,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
   }, []);
 
   async function cargar() {
+    cargandoRef.current = true;
     const { data: rawSalas } = await supabase
       .from("partidas")
       .select("id, codigo, estado, jugador1_id, jugador1_nombre, jugador1_avatar, jugador2_id, jugador2_nombre, jugador2_avatar, apuesta, puntos, es_torneo")
@@ -348,8 +354,9 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
       .order("id", { ascending: false })
       .limit(50);
 
-    // Filtrar jugando sin segundo jugador asignado
-    const salas = (rawSalas || []).filter(s =>
+    // Deduplicar por id y filtrar jugando sin segundo jugador
+    const unicas = Array.from(new Map((rawSalas || []).map(s => [s.id, s])).values());
+    const salas = unicas.filter(s =>
       s.estado === "esperando" || (s.estado === "jugando" && s.jugador2_id)
     );
 
@@ -371,11 +378,13 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
         }));
         setSalas(enriquecidas);
         setCargando(false);
+        cargandoRef.current = false;
         return;
       }
     }
     setSalas(salas);
     setCargando(false);
+    cargandoRef.current = false;
   }
 
   async function cancelarSalaConReembolso(codigo, apuesta) {
