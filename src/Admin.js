@@ -562,11 +562,13 @@ function TabFinanzas() {
 
   async function cargar() {
     setCargando(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("transacciones")
       .select("*, perfiles(nombre, avatar)")
       .order("created_at", { ascending: false })
       .limit(100);
+    if (error) console.error("[TabFinanzas] cargar error:", error);
+    console.log("[TabFinanzas] transacciones recibidas:", data?.length, data?.map(t => t.tipo));
     setTransacciones(data || []);
     setCargando(false);
   }
