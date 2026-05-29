@@ -340,13 +340,41 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
   }, []);
 
   async function cargar() {
-    const { data } = await supabase
+    const { data: rawSalas } = await supabase
       .from("partidas")
       .select("id, codigo, estado, jugador1_id, jugador1_nombre, jugador1_avatar, jugador2_id, jugador2_nombre, jugador2_avatar, apuesta, puntos, es_torneo")
       .in("estado", ["esperando", "jugando"])
+      .not("jugador1_id", "is", null)
       .order("id", { ascending: false })
       .limit(50);
-    setSalas(data || []);
+
+    // Filtrar jugando sin segundo jugador asignado
+    const salas = (rawSalas || []).filter(s =>
+      s.estado === "esperando" || (s.estado === "jugando" && s.jugador2_id)
+    );
+
+    // Enriquecer con nombres/avatares reales desde perfiles
+    const ids = [...new Set(salas.flatMap(s => [s.jugador1_id, s.jugador2_id].filter(Boolean)))];
+    if (ids.length > 0) {
+      const { data: perfiles } = await supabase
+        .from("perfiles")
+        .select("usuario_id, nombre, avatar")
+        .in("usuario_id", ids);
+      if (perfiles?.length) {
+        const mapa = Object.fromEntries(perfiles.map(p => [p.usuario_id, p]));
+        const enriquecidas = salas.map(s => ({
+          ...s,
+          jugador1_nombre: mapa[s.jugador1_id]?.nombre || s.jugador1_nombre || "Jugador",
+          jugador1_avatar: mapa[s.jugador1_id]?.avatar || s.jugador1_avatar || "👤",
+          jugador2_nombre: s.jugador2_id ? (mapa[s.jugador2_id]?.nombre || s.jugador2_nombre || "Jugador") : null,
+          jugador2_avatar: s.jugador2_id ? (mapa[s.jugador2_id]?.avatar || s.jugador2_avatar || "👤") : null,
+        }));
+        setSalas(enriquecidas);
+        setCargando(false);
+        return;
+      }
+    }
+    setSalas(salas);
     setCargando(false);
   }
 
