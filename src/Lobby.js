@@ -333,7 +333,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
       if (navegandoRef.current) return;
       const info = salaAbiertaRef.current;
       if (!info) return;
-      supabase.from("partidas").update({ estado: "cancelada" }).eq("codigo", info.codigo);
+      supabase.from("partidas").delete().eq("codigo", info.codigo);
       if (info.apuesta > 0) {
         supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single()
           .then(({ data }) => {
@@ -392,7 +392,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
       const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
       if (fresh) await supabase.from("perfiles").update({ saldo: fresh.saldo + apuesta }).eq("usuario_id", user.id);
     }
-    await supabase.from("partidas").update({ estado: "cancelada" }).eq("codigo", codigo);
+    await supabase.from("partidas").delete().eq("codigo", codigo);
   }
 
   async function crearSalaPublica() {
@@ -437,7 +437,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
     if (apuestaCrear > 0) {
       const { data: fresh, error: fetchErr } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
       if (fetchErr || !fresh || fresh.saldo < apuestaCrear) {
-        await supabase.from("partidas").update({ estado: "cancelada" }).eq("codigo", cod);
+        await supabase.from("partidas").delete().eq("codigo", cod);
         setErrorCrear("Error al procesar el saldo. Intentá de nuevo.");
         setCreandoSala(false);
         return;
@@ -446,7 +446,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
         .update({ saldo: fresh.saldo - apuestaCrear })
         .eq("usuario_id", user.id);
       if (saldoErr) {
-        await supabase.from("partidas").update({ estado: "cancelada" }).eq("codigo", cod);
+        await supabase.from("partidas").delete().eq("codigo", cod);
         setErrorCrear("Error al procesar el saldo. Intentá de nuevo.");
         setCreandoSala(false);
         return;
