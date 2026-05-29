@@ -809,6 +809,7 @@ function TabFinanzas() {
   const [filtro, setFiltro] = useState("todas"); // todas | pendiente | aprobado | rechazado
   const [rakeStats, setRakeStats] = useState({ hoy: 0, semana: 0, mes: 0, anio: 0 });
   const [periodoRake, setPeriodoRake] = useState("semana");
+  const [copiadoId, setCopiadoId] = useState(null);
 
   useEffect(() => { cargar(); }, []);
 
@@ -956,8 +957,29 @@ function TabFinanzas() {
                     {t.tipo === 'ajuste' ? (parseFloat(t.monto) >= 0 ? `+$${parseFloat(t.monto).toFixed(2)}` : `−$${Math.abs(parseFloat(t.monto)).toFixed(2)}`) : `$${parseFloat(t.monto).toFixed(2)}`}
                   </div>
                   <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
-                    {fechaHora(t.created_at)}{t.nota ? ` · ${t.nota}` : ""}
+                    {fechaHora(t.created_at)}{t.tipo !== 'retiro' && t.nota ? ` · ${t.nota}` : ""}
                   </div>
+                  {t.tipo === 'retiro' && t.nota && (
+                    <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:4 }}>
+                      <span style={{ fontSize:12, color:"#e2f5e9", fontFamily:"monospace", background:"rgba(0,0,0,0.3)", borderRadius:5, padding:"2px 7px", letterSpacing:0.5 }}>{t.nota}</span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(t.nota).then(() => {
+                            setCopiadoId(t.id);
+                            setTimeout(() => setCopiadoId(null), 2000);
+                          });
+                        }}
+                        title="Copiar CBU/alias"
+                        style={{ background:"rgba(74,222,128,0.08)", border:"1px solid rgba(74,222,128,0.3)", borderRadius:6, padding:"3px 6px", cursor:"pointer", color:"#4ade80", display:"flex", alignItems:"center", flexShrink:0 }}
+                      >
+                        {copiadoId === t.id
+                          ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        }
+                      </button>
+                      {copiadoId === t.id && <span style={{ fontSize:11, color:"#4ade80" }}>¡Copiado!</span>}
+                    </div>
+                  )}
                   {t.tipo === 'ajuste' && t.ejecutado_por && (
                     <div style={{ fontSize: 11, color: "#a78bfa", marginTop: 2 }}>Por: {t.ejecutado_por}</div>
                   )}
