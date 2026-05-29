@@ -38,7 +38,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
   const [avatarEdit, setAvatarEdit] = useState("");
   const [errorEdit, setErrorEdit] = useState("");
   const [cargandoEdit, setCargandoEdit] = useState(false);
-  const [saldoVisible, setSaldoVisible] = useState(false);
+  const [saldoVisible, setSaldoVisible] = useState(true);
   const [mostrarDepositar, setMostrarDepositar] = useState(false);
   const [mostrarRetirar, setMostrarRetirar] = useState(false);
   const [retiroMonto, setRetiroMonto] = useState("");
