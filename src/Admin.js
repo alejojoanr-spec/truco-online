@@ -2007,7 +2007,7 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
           <button key={t.id} onClick={() => cambiarTab(t.id)} style={{
             flex: 1, padding: "11px 2px", border: "none", background: "none",
             cursor: "pointer", fontFamily: "'Lato',sans-serif", fontSize: 11, fontWeight: 700,
-            color: tab === t.id ? "#4ade80" : "#4b5563",
+            color: tab === t.id ? "#4ade80" : "#9ca3af",
             borderBottom: tab === t.id ? "2px solid #4ade80" : "2px solid transparent",
             transition: "color 0.15s, border-color 0.15s",
             position: "relative",
