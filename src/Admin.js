@@ -1411,9 +1411,14 @@ const TABS = [
 ];
 
 export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usuarioId = '' }) {
-  const [tab, setTab] = useState("usuarios");
-  const [ticketsBadge, setTicketsBadge] = useState(0);
   const tabsVisibles = rol === 'asesor' ? TABS.filter(t => t.id === 'usuarios' || t.id === 'equipo') : TABS;
+  const [tab, setTab] = useState(() => {
+    const guardada = localStorage.getItem('truco_admin_tab');
+    return guardada && tabsVisibles.some(t => t.id === guardada) ? guardada : tabsVisibles[0].id;
+  });
+  const [ticketsBadge, setTicketsBadge] = useState(0);
+
+  function cambiarTab(id) { localStorage.setItem('truco_admin_tab', id); setTab(id); }
 
   useEffect(() => {
     async function cargarBadge() {
@@ -1447,7 +1452,7 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
       {/* Tab bar */}
       <div style={{ display: "flex", borderBottom: "1px solid rgba(45,106,79,0.3)", background: "rgba(5,15,8,0.92)", position: "sticky", top: 57, zIndex: 9 }}>
         {tabsVisibles.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{
+          <button key={t.id} onClick={() => cambiarTab(t.id)} style={{
             flex: 1, padding: "11px 2px", border: "none", background: "none",
             cursor: "pointer", fontFamily: "'Lato',sans-serif", fontSize: 11, fontWeight: 700,
             color: tab === t.id ? "#4ade80" : "#4b5563",
