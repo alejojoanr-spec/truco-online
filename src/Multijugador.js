@@ -68,16 +68,44 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (pagoProcesadoRef.current) return;
     pagoProcesadoRef.current = true;
     const apuestaPartida = p.apuesta || 0;
+    const pot = apuestaPartida * 2;
+
+    let rakePct = 5;
+    if (apuestaPartida > 0) {
+      const { data: cfg } = await supabase
+        .from("configuracion").select("valor").eq("clave", "rake_porcentaje").single();
+      if (cfg?.valor) rakePct = parseFloat(cfg.valor);
+    }
+
+    const rakeAmount = apuestaPartida > 0
+      ? Math.round(pot * rakePct / 100 * 100) / 100
+      : 0;
+    const premio = pot - rakeAmount;
+
     if (p.ganador_id === user.id && apuestaPartida > 0) {
       const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
       await supabase.from("perfiles")
-        .update({ saldo: (fresh?.saldo || 0) + apuestaPartida * 2 })
+        .update({ saldo: (fresh?.saldo || 0) + premio })
         .eq("usuario_id", user.id);
+      if (rakeAmount > 0) {
+        await supabase.from("transacciones").insert({
+          usuario_id: user.id,
+          tipo: "rake",
+          monto: rakeAmount,
+          estado: "aprobado",
+          nota: `Partida ${p.codigo || ""}`,
+          ejecutado_por: "sistema",
+          saldo_anterior: 0,
+          saldo_nuevo: 0,
+        });
+      }
     }
+
     setResultadoPartida({
       ganaste: p.ganador_id === user.id,
-      premio: p.ganador_id === user.id ? apuestaPartida * 2 : 0,
+      premio: p.ganador_id === user.id ? premio : 0,
       apuesta: apuestaPartida,
+      rake: p.ganador_id === user.id ? rakeAmount : 0,
     });
   }
 
@@ -249,9 +277,16 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           {resultadoPartida.ganaste?"¡Ganaste!":"Perdiste"}
         </div>
         {resultadoPartida.ganaste && resultadoPartida.premio > 0 && (
-          <div style={{ fontSize:18,color:"#4ade80",fontWeight:700,marginBottom:8 }}>
-            +${resultadoPartida.premio.toFixed(2)} acreditados
-          </div>
+          <>
+            <div style={{ fontSize:18,color:"#4ade80",fontWeight:700,marginBottom:4 }}>
+              +${resultadoPartida.premio.toFixed(2)} acreditados
+            </div>
+            {resultadoPartida.rake > 0 && (
+              <div style={{ fontSize:12,color:"#6b7280",marginBottom:8 }}>
+                Comisión de la casa: −${resultadoPartida.rake.toFixed(2)}
+              </div>
+            )}
+          </>
         )}
         {!resultadoPartida.ganaste && resultadoPartida.apuesta > 0 && (
           <div style={{ fontSize:14,color:"#9ca3af",marginBottom:8 }}>

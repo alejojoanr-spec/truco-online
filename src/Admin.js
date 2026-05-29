@@ -577,11 +577,73 @@ function TabPartidas() {
 /* ══════════════════════════════════════════
    TAB 3 — FINANZAS
 ══════════════════════════════════════════ */
+function RakeConfig() {
+  const [valor, setValor] = useState("");
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [editando, setEditando] = useState(false);
+  const [valorEdit, setValorEdit] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("configuracion").select("valor").eq("clave", "rake_porcentaje").single();
+      setValor(data?.valor || "5");
+      setCargando(false);
+    })();
+  }, []);
+
+  async function guardar() {
+    const num = parseFloat(valorEdit);
+    if (isNaN(num) || num < 0 || num > 100) return;
+    setGuardando(true);
+    await supabase.from("configuracion").upsert({ clave: "rake_porcentaje", valor: String(num) });
+    setValor(String(num));
+    setEditando(false);
+    setGuardando(false);
+  }
+
+  if (cargando) return <div style={{ color: "#4ade80", fontSize: 13 }}>Cargando...</div>;
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div>
+        <div style={{ fontSize: 12, color: "#9ca3af" }}>Rake por partida</div>
+        {editando ? (
+          <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center" }}>
+            <input
+              type="number" min="0" max="100" step="0.5"
+              value={valorEdit}
+              onChange={e => setValorEdit(e.target.value)}
+              style={{ ...INPUT_STYLE, width: 80, padding: "8px 10px" }}
+            />
+            <span style={{ color: "#9ca3af", fontSize: 13 }}>%</span>
+            <button onClick={guardar} disabled={guardando} style={BTN_SM("#4ade80")}>
+              {guardando ? "..." : "Guardar"}
+            </button>
+            <button onClick={() => setEditando(false)} style={BTN_SM("#f87171")}>
+              Cancelar
+            </button>
+          </div>
+        ) : (
+          <div style={{ fontSize: 26, fontWeight: 900, color: "#4ade80", marginTop: 4 }}>{valor}%</div>
+        )}
+      </div>
+      {!editando && (
+        <button onClick={() => { setValorEdit(valor); setEditando(true); }} style={BTN_SM("#60a5fa")}>
+          Editar
+        </button>
+      )}
+    </div>
+  );
+}
+
 function TabFinanzas() {
   const [transacciones, setTransacciones] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState(null);
   const [filtro, setFiltro] = useState("todas"); // todas | pendiente | aprobado | rechazado
+  const [rakeStats, setRakeStats] = useState({ hoy: 0, semana: 0, mes: 0, anio: 0 });
+  const [periodoRake, setPeriodoRake] = useState("semana");
 
   useEffect(() => { cargar(); }, []);
 
@@ -605,6 +667,30 @@ function TabFinanzas() {
     }
 
     setTransacciones((txs || []).map(t => ({ ...t, perfiles: perfilesMap[t.usuario_id] || null })));
+
+    // Rake stats (fetch from start of year to cover all periods)
+    const ahora = new Date();
+    const anioInicio = new Date(ahora.getFullYear(), 0, 1).toISOString();
+    const { data: rakeTxs } = await supabase
+      .from("transacciones")
+      .select("monto, created_at")
+      .eq("tipo", "rake")
+      .gte("created_at", anioInicio);
+    if (rakeTxs) {
+      const hoyInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()).toISOString();
+      const semanaInicio = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const mesInicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
+      const sum = (desde) => rakeTxs
+        .filter(t => new Date(t.created_at) >= new Date(desde))
+        .reduce((s, t) => s + parseFloat(t.monto), 0);
+      setRakeStats({
+        hoy: sum(hoyInicio),
+        semana: sum(semanaInicio),
+        mes: sum(mesInicio),
+        anio: rakeTxs.reduce((s, t) => s + parseFloat(t.monto), 0),
+      });
+    }
+
     setCargando(false);
   }
 
@@ -647,6 +733,27 @@ function TabFinanzas() {
 
   return (
     <>
+      {/* Rake stats widget */}
+      <div style={{ ...CARD, marginBottom: 16 }}>
+        <div style={{ fontSize: 11, color: "#a78bfa", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>Rake cobrado</div>
+        <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
+          {[["hoy", "Hoy"], ["semana", "Semana"], ["mes", "Mes"], ["anio", "Año"]].map(([p, label]) => (
+            <button key={p} onClick={() => setPeriodoRake(p)} style={{
+              flex: 1, padding: "5px 2px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: 700,
+              fontFamily: "'Lato',sans-serif",
+              border: `1px solid ${periodoRake === p ? "#a78bfa" : "#2d6a4f"}`,
+              background: periodoRake === p ? "rgba(167,139,250,0.12)" : "rgba(0,0,0,0.3)",
+              color: periodoRake === p ? "#a78bfa" : "#6b7280",
+            }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div style={{ fontSize: 30, fontWeight: 900, color: "#a78bfa", textAlign: "center" }}>
+          ${rakeStats[periodoRake].toFixed(2)}
+        </div>
+      </div>
+
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 16 }}>
         <StatCard label="Pendientes" valor={stats.pendientes} color="#fbbf24" onClick={() => setFiltro(f => f === "pendiente" ? "todas" : "pendiente")} activo={filtro === "pendiente"} />
         <StatCard label="Aprobado total" valor={`$${stats.aprobados.toFixed(0)}`} color="#4ade80" onClick={() => setFiltro(f => f === "aprobado" ? "todas" : "aprobado")} activo={filtro === "aprobado"} />
@@ -680,7 +787,7 @@ function TabFinanzas() {
                     <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, border: `1px solid ${colorEstado(t.estado)}`, color: colorEstado(t.estado), background: `rgba(0,0,0,0.3)` }}>{t.estado}</span>
                     <span style={{ fontSize: 10, color: "#6b7280", background: "rgba(0,0,0,0.3)", border: "1px solid #374151", borderRadius: 4, padding: "1px 6px" }}>{t.tipo}</span>
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 900, marginTop: 3, color: t.tipo === 'ajuste' ? (parseFloat(t.monto) >= 0 ? "#4ade80" : "#f87171") : "#4ade80" }}>
+                  <div style={{ fontSize: 12, fontWeight: 900, marginTop: 3, color: t.tipo === 'ajuste' ? (parseFloat(t.monto) >= 0 ? "#4ade80" : "#f87171") : t.tipo === 'rake' ? "#a78bfa" : "#4ade80" }}>
                     {t.tipo === 'ajuste' ? (parseFloat(t.monto) >= 0 ? `+$${parseFloat(t.monto).toFixed(2)}` : `−$${Math.abs(parseFloat(t.monto)).toFixed(2)}`) : `$${parseFloat(t.monto).toFixed(2)}`}
                   </div>
                   <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
@@ -708,6 +815,12 @@ function TabFinanzas() {
           ))}
         </div>
       )}
+
+      {/* Rake configuration */}
+      <div style={{ ...CARD, marginTop: 20 }}>
+        <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>Configuración de comisiones</div>
+        <RakeConfig />
+      </div>
     </>
   );
 }
