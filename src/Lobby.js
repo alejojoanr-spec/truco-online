@@ -256,13 +256,17 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
   const [miCodigoSala, setMiCodigoSala] = useState(null);
   const [eliminandoSala, setEliminandoSala] = useState(false);
   const navegandoRef = useRef(false);
+  const canalRef = useRef(null);
 
   useEffect(() => {
     cargar();
     const canal = supabase.channel("truco-lobby")
       .on("postgres_changes", { event: "*", schema: "public", table: "partidas" }, () => cargar())
+      // Broadcast como fallback para INSERT/DELETE (postgres_changes requiere ALTER PUBLICATION)
+      .on("broadcast", { event: "sala_actualizada" }, () => cargar())
       .subscribe();
-    return () => supabase.removeChannel(canal);
+    canalRef.current = canal;
+    return () => { supabase.removeChannel(canal); canalRef.current = null; };
   }, []);
 
   useEffect(() => {
@@ -352,6 +356,8 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
     setMiCodigoSala(cod);
     setCreandoSala(false);
     setPantalla("lobby");
+    cargar(); // actualiza la lista propia al instante
+    canalRef.current?.send({ type: "broadcast", event: "sala_actualizada", payload: {} });
   }
 
   async function eliminarSala(sala) {
@@ -365,6 +371,8 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
     await supabase.from("partidas").update({ estado: "cancelada" }).eq("codigo", sala.codigo);
     setMiCodigoSala(null);
     setEliminandoSala(false);
+    cargar();
+    canalRef.current?.send({ type: "broadcast", event: "sala_actualizada", payload: {} });
   }
 
   function unirse(codigo) {
