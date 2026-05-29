@@ -135,7 +135,7 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
     const nuevoSaldo = saldoAnterior + monto;
     const { error } = await supabase.from("perfiles").update({ saldo: nuevoSaldo }).eq("usuario_id", modalSaldo.usuario_id);
     if (error) { console.error("[Admin] ajustarSaldo error:", error); setErrorSaldo(`No se pudo ajustar el saldo. (${error.message})`); setProcesandoSaldo(false); return; }
-    const { data: txInsert, error: txErr } = await supabase.from("transacciones").insert({
+    const { error: txErr } = await supabase.from("transacciones").insert({
       usuario_id: modalSaldo.usuario_id,
       tipo: "ajuste",
       monto,
@@ -180,7 +180,7 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
     setModalMovimientos(u);
     setMovimientos([]);
     setCargandoMov(true);
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("transacciones")
       .select("*")
       .eq("usuario_id", u.usuario_id)
@@ -890,7 +890,7 @@ function TabFinanzas({ rol = 'admin' }) {
     setModalMov(u);
     setMovimientos([]);
     setCargandoMov(true);
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("transacciones")
       .select("*")
       .eq("usuario_id", u.usuario_id)
