@@ -494,11 +494,12 @@ function TabPartidas() {
 
   async function cargar() {
     setCargando(true);
-    const [{ data: p }, { data: perfiles }, { data: rakeTxs }] = await Promise.all([
-      supabase.from("partidas").select("*").order("created_at", { ascending: false }).limit(100),
+    const [{ data: p, error: errP }, { data: perfiles }, { data: rakeTxs }] = await Promise.all([
+      supabase.from("partidas").select("*").order("created_at", { ascending: false }).limit(200),
       supabase.from("perfiles").select("usuario_id,nombre,avatar,partidas_jugadas,partidas_ganadas,is_banned"),
       supabase.from("transacciones").select("monto,nota").eq("tipo", "rake"),
     ]);
+    if (errP) console.error("[Admin] partidas error:", errP.message, errP.code);
     setPartidas(p || []);
 
     const rm = {};
@@ -733,8 +734,8 @@ function TabPartidas() {
                             <span style={{ fontSize:11, color:"#a78bfa" }}>Rake: {formatARS(rake)}</span>
                           )}
                         </div>
-                        {finalizada && p.ganador_nombre && (
-                          <div style={{ fontSize:11, color:"#4ade80", marginTop:3 }}>Ganó: {p.ganador_nombre}</div>
+                        {finalizada && p.ganador_id && (
+                          <div style={{ fontSize:11, color:"#4ade80", marginTop:3 }}>Ganó: {p.ganador_id === p.jugador1_id ? p.jugador1_nombre : p.jugador2_nombre}</div>
                         )}
                       </div>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0, marginTop:3 }}><path d="M9 18l6-6-6-6"/></svg>
