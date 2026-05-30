@@ -339,7 +339,21 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
       if (info.apuesta > 0) {
         supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single()
           .then(({ data }) => {
-            if (data) supabase.from("perfiles").update({ saldo: data.saldo + info.apuesta }).eq("usuario_id", user.id);
+            if (!data) return;
+            const nuevoSaldo = data.saldo + info.apuesta;
+            supabase.from("perfiles").update({ saldo: nuevoSaldo }).eq("usuario_id", user.id)
+              .then(() => {
+                supabase.from("transacciones").insert({
+                  usuario_id: user.id,
+                  tipo: "reembolso",
+                  monto: info.apuesta,
+                  estado: "aprobado",
+                  nota: `Reembolso sala ${info.codigo}`,
+                  ejecutado_por: "sistema",
+                  saldo_anterior: data.saldo,
+                  saldo_nuevo: nuevoSaldo,
+                });
+              });
           });
       }
     };
@@ -392,7 +406,20 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
   async function cancelarSalaConReembolso(codigo, apuesta) {
     if ((apuesta || 0) > 0) {
       const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-      if (fresh) await supabase.from("perfiles").update({ saldo: fresh.saldo + apuesta }).eq("usuario_id", user.id);
+      if (fresh) {
+        const nuevoSaldo = fresh.saldo + apuesta;
+        await supabase.from("perfiles").update({ saldo: nuevoSaldo }).eq("usuario_id", user.id);
+        await supabase.from("transacciones").insert({
+          usuario_id: user.id,
+          tipo: "reembolso",
+          monto: apuesta,
+          estado: "aprobado",
+          nota: `Reembolso sala ${codigo}`,
+          ejecutado_por: "sistema",
+          saldo_anterior: fresh.saldo,
+          saldo_nuevo: nuevoSaldo,
+        });
+      }
     }
     await supabase.from("partidas").delete().eq("codigo", codigo);
   }
@@ -465,6 +492,16 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
         setCreandoSala(false);
         return;
       }
+      await supabase.from("transacciones").insert({
+        usuario_id: user.id,
+        tipo: "apuesta",
+        monto: apuestaCrear,
+        estado: "aprobado",
+        nota: `Apuesta partida ${cod}`,
+        ejecutado_por: "sistema",
+        saldo_anterior: fresh.saldo,
+        saldo_nuevo: fresh.saldo - apuestaCrear,
+      });
     }
     setMiCodigoSala(cod);
     setCreandoSala(false);

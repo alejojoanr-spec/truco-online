@@ -70,8 +70,10 @@ const TIPO_LABEL = {
   ajuste: "Ajuste manual",
   premio: "Ganancia de partida",
   apuesta: "Apuesta",
+  rake: "Rake (comisión)",
+  reembolso: "Reembolso",
 };
-const TIPO_SIGNO_POSITIVO = new Set(["deposito", "premio"]);
+const TIPO_SIGNO_POSITIVO = new Set(["deposito", "premio", "reembolso"]);
 
 function formatARS(n) {
   const num = parseFloat(n) || 0;

@@ -129,20 +129,33 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const premio = pot - rakeAmount;
 
     if (p.ganador_id === user.id && apuestaPartida > 0) {
+      const rivalNombre = p.jugador1_id === user.id ? p.jugador2_nombre : p.jugador1_nombre;
       const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+      const saldoAntes = fresh?.saldo || 0;
+      const saldoDespues = saldoAntes + premio;
       await supabase.from("perfiles")
-        .update({ saldo: (fresh?.saldo || 0) + premio })
+        .update({ saldo: saldoDespues })
         .eq("usuario_id", user.id);
+      await supabase.from("transacciones").insert({
+        usuario_id: user.id,
+        tipo: "premio",
+        monto: premio,
+        estado: "aprobado",
+        nota: `Ganancia vs ${rivalNombre || "rival"}`,
+        ejecutado_por: "sistema",
+        saldo_anterior: saldoAntes,
+        saldo_nuevo: saldoDespues,
+      });
       if (rakeAmount > 0) {
         await supabase.from("transacciones").insert({
           usuario_id: user.id,
           tipo: "rake",
           monto: rakeAmount,
           estado: "aprobado",
-          nota: `Partida ${p.codigo || ""}`,
+          nota: `Comisión partida ${p.codigo || ""}`,
           ejecutado_por: "sistema",
-          saldo_anterior: 0,
-          saldo_nuevo: 0,
+          saldo_anterior: saldoAntes,
+          saldo_nuevo: saldoDespues,
         });
       }
     }
@@ -164,6 +177,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         if (err || !data) { setError("Sala no encontrada"); return; }
         if (data.estado !== "esperando") { setError("La sala ya no está disponible"); return; }
         const montoSalaLobby = data.apuesta || 0;
+        let saldoAntesLobby = 0;
         if (montoSalaLobby > 0) {
           const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
           const saldoActual = fresh?.saldo || 0;
@@ -172,6 +186,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             .update({ saldo: saldoActual - montoSalaLobby })
             .eq("usuario_id", user.id);
           if (saldoErr) { setError("Error al procesar el saldo."); return; }
+          saldoAntesLobby = saldoActual;
         }
         await supabase.from("partidas").update({
           jugador2_id: user.id,
@@ -179,6 +194,18 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           jugador2_avatar: perfil?.avatar || "👤",
           estado: "jugando",
         }).eq("codigo", cod);
+        if (montoSalaLobby > 0) {
+          await supabase.from("transacciones").insert({
+            usuario_id: user.id,
+            tipo: "apuesta",
+            monto: montoSalaLobby,
+            estado: "aprobado",
+            nota: `Apuesta vs ${data.jugador1_nombre || "rival"}`,
+            ejecutado_por: "sistema",
+            saldo_anterior: saldoAntesLobby,
+            saldo_nuevo: saldoAntesLobby - montoSalaLobby,
+          });
+        }
         setCodigo(cod);
         setSoyJugador1(false);
         setMiMano(JSON.parse(data.mano_jugador2));
@@ -240,6 +267,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }, [codigo, soyJugador1]);
 
   async function crearSala() {
+    let saldoAntesCrea = 0;
     if ((apuesta || 0) > 0) {
       const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
       const saldoActual = fresh?.saldo || 0;
@@ -248,6 +276,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         .update({ saldo: saldoActual - apuesta })
         .eq("usuario_id", user.id);
       if (saldoErr) { setError("Error al procesar el saldo."); return; }
+      saldoAntesCrea = saldoActual;
     }
     const cod = generarCodigo();
     const mazo = mezclar(MAZO);
@@ -270,6 +299,18 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       es_torneo: esTorneo || false,
     });
     if (err) { setError("Error al crear sala"); return; }
+    if ((apuesta || 0) > 0) {
+      await supabase.from("transacciones").insert({
+        usuario_id: user.id,
+        tipo: "apuesta",
+        monto: apuesta,
+        estado: "aprobado",
+        nota: `Apuesta partida ${cod}`,
+        ejecutado_por: "sistema",
+        saldo_anterior: saldoAntesCrea,
+        saldo_nuevo: saldoAntesCrea - apuesta,
+      });
+    }
     setCodigo(cod);
     setSoyJugador1(true);
     setMiMano(mano1);
@@ -291,6 +332,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       .limit(1);
     if (activas?.length > 0) { setError("Ya tenés una partida activa. Finalizala antes de unirte a otra."); return; }
     const montoSala = data.apuesta || 0;
+    let saldoAntesUne = 0;
     if (montoSala > 0) {
       const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
       const saldoActual = fresh?.saldo || 0;
@@ -299,6 +341,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         .update({ saldo: saldoActual - montoSala })
         .eq("usuario_id", user.id);
       if (saldoErr) { setError("Error al procesar el saldo."); return; }
+      saldoAntesUne = saldoActual;
     }
     await supabase.from("partidas").update({
       jugador2_id: user.id,
@@ -306,6 +349,18 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       jugador2_avatar: perfil?.avatar || "👤",
       estado: "jugando",
     }).eq("codigo", cod);
+    if (montoSala > 0) {
+      await supabase.from("transacciones").insert({
+        usuario_id: user.id,
+        tipo: "apuesta",
+        monto: montoSala,
+        estado: "aprobado",
+        nota: `Apuesta vs ${data.jugador1_nombre || "rival"}`,
+        ejecutado_por: "sistema",
+        saldo_anterior: saldoAntesUne,
+        saldo_nuevo: saldoAntesUne - montoSala,
+      });
+    }
     setCodigo(cod);
     setSoyJugador1(false);
     setMiMano(JSON.parse(data.mano_jugador2));
