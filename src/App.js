@@ -833,7 +833,7 @@ export default function App() {
       localStorage.setItem(cacheKey, JSON.stringify(perfilCompleto));
       setPerfil(perfilCompleto);
       supabase.from("perfiles").update({ ultimo_acceso: new Date().toISOString() }).eq("usuario_id", u.id).then(() => {});
-      const esAdminUser = u.email === ADMIN_EMAIL;
+      const esAdminUser = data.rol === 'admin';
       const esAsesorUser = data.rol === 'asesor';
       if ((esAdminUser || esAsesorUser) && sessionStorage.getItem('truco_panel') === '1') {
         setVerAdmin(true);
@@ -867,7 +867,7 @@ export default function App() {
   if (verTerminos) return <Terminos onVolver={()=>setVerTerminos(false)} />;
   if (verPrivacidad) return <Privacidad onVolver={()=>setVerPrivacidad(false)} />;
   if (verTorneos) return <Torneos user={user} perfil={perfil} onVolver={()=>setVerTorneos(false)} />;
-  const esAdmin = user?.email === ADMIN_EMAIL;
+  const esAdmin = perfil?.rol === 'admin';
   const esAsesor = perfil?.rol === 'asesor';
   if (verAdmin && (esAdmin || esAsesor)) return <Admin onVolver={()=>{ sessionStorage.removeItem('truco_panel'); setVerAdmin(false); }} rol={esAdmin ? 'admin' : 'asesor'} ejecutadoPor={perfil?.nombre || user?.email || ''} usuarioId={user?.id || ''} />;
   if (modoJuego === "lobby") return (
