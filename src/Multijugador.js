@@ -104,6 +104,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const [log, setLog] = useState([]);
   const [error, setError] = useState("");
   const [copiado, setCopiado] = useState(false);
+  const [resolviendoMano, setResolviendoMano] = useState(false);
 
   const addLog = (msg) => setLog(prev => [...prev.slice(-6), msg]);
   const [resultadoPartida, setResultadoPartida] = useState(null);
@@ -372,6 +373,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   async function jugarCarta(idx) {
     if (!partida) return;
+    if (resolviendoMano) return;
     if (partida.accion_pendiente) { setCartaSeleccionada(null); return; }
     if (partida.turno !== user.id) { addLog("No es tu turno"); return; }
     if (cartaSeleccionada !== idx) { setCartaSeleccionada(idx); return; }
@@ -437,21 +439,31 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           const ganadorId = nuevoPuntos1 >= puntosObjetivo ? partida.jugador1_id : partida.jugador2_id;
           updateData = { ...updateData, puntos1: nuevoPuntos1, puntos2: nuevoPuntos2, puntos_mano: 1, accion_pendiente: null, ganador_id: ganadorId, estado: "terminada" };
         } else {
-          // New hand: deal fresh cards, jugador1 starts
-          const nuevoMazo = mezclar(MAZO);
-          updateData = {
-            ...updateData,
+          // New hand: two-step update so both players see the mesa before it clears
+          setResolviendoMano(true);
+          // Step 1: keep mesa visible, update scores; turno=user.id blocks both players
+          await supabase.from("partidas").update({
+            mesa: JSON.stringify(nuevaMesa),
+            [manoField]: JSON.stringify(nuevaMiMano),
             puntos1: nuevoPuntos1,
             puntos2: nuevoPuntos2,
             puntos_mano: 1,
             envido_jugado: false,
             truco_jugado: false,
             accion_pendiente: null,
+            turno: user.id,
+          }).eq("codigo", codigo);
+          // Step 2: after delay, clear mesa and deal new hand
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          const nuevoMazo = mezclar(MAZO);
+          await supabase.from("partidas").update({
             mesa: JSON.stringify([]),
             mano_jugador1: JSON.stringify(nuevoMazo.slice(0, 3)),
             mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
             turno: partida.jugador1_id,
-          };
+          }).eq("codigo", codigo);
+          setResolviendoMano(false);
+          return;
         }
       }
     }
