@@ -12,8 +12,6 @@ import Home from "./Home";
 import Lobby from "./Lobby";
 import Admin from "./Admin";
 
-const ADMIN_EMAIL = process.env.REACT_APP_ADMIN_EMAIL;
-
 const PALO = { espada: "espada", basto: "basto", copa: "copa", oro: "oro" };
 const MAZO = [
   { num: 1, palo: PALO.espada },{ num: 2, palo: PALO.espada },{ num: 3, palo: PALO.espada },
