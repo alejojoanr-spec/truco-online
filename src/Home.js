@@ -138,10 +138,6 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
     setMostrarRanking(true);
   }
 
-  function abrirSoporte() {
-    setMenuAbierto(false);
-    window.$crisp?.push?.(["do", "chat:open"]);
-  }
 
   return (
     <div style={{
@@ -358,7 +354,6 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
           <MenuItem icono="🎮" label="Configuración del juego" onClick={() => { setMenuAbierto(false); onConfig(); }} />
           <MenuItem icono="📋" label="Términos y condiciones"  onClick={() => { setMenuAbierto(false); onVerTerminos(); }} />
           <MenuItem icono="🔒" label="Política de privacidad"  onClick={() => { setMenuAbierto(false); onVerPrivacidad(); }} />
-          <MenuItem icono="💬" label="Soporte"                 onClick={abrirSoporte} />
           {esAdmin && <MenuItem icono="🛡️" label="Panel de administrador" onClick={() => { setMenuAbierto(false); onAdmin(); }} />}
           {esAsesor && !esAdmin && <MenuItem icono="👔" label="Panel de asesor" onClick={() => { setMenuAbierto(false); onAdmin(); }} />}
         </div>
