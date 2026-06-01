@@ -11,6 +11,7 @@ import ElegirAvatar from "./ElegirAvatar";
 import Home from "./Home";
 import Lobby from "./Lobby";
 import Admin from "./Admin";
+import BotonSoporte from "./Soporte";
 
 const PALO = { espada: "espada", basto: "basto", copa: "copa", oro: "oro" };
 const MAZO = [
@@ -320,10 +321,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   }
   const addLog = useCallback((msg) => { setLog((prev) => [...prev.slice(-8), msg]); }, []);
 
-  useEffect(() => {
-    window.$crisp?.push?.(["do", "chat:hide"]);
-    return () => { window.$crisp?.push?.(["do", "chat:show"]); };
-  }, []);
 
   useEffect(() => { iniciarPartida(); }, []);
 
@@ -864,47 +861,63 @@ export default function App() {
   if (necesitaAvatar) return <ElegirAvatar perfil={perfil} onAvatarGuardado={(p) => { setPerfil(p); setNecesitaAvatar(false); }} />;
   if (verTerminos) return <Terminos onVolver={()=>setVerTerminos(false)} />;
   if (verPrivacidad) return <Privacidad onVolver={()=>setVerPrivacidad(false)} />;
-  if (verTorneos) return <Torneos user={user} perfil={perfil} onVolver={()=>setVerTorneos(false)} />;
+  if (verTorneos) return (
+    <>
+      <Torneos user={user} perfil={perfil} onVolver={()=>setVerTorneos(false)} />
+      <BotonSoporte perfil={perfil} />
+    </>
+  );
   const esAdmin = perfil?.rol === 'admin';
   const esAsesor = perfil?.rol === 'asesor';
   if (verAdmin && (esAdmin || esAsesor)) return <Admin onVolver={()=>{ sessionStorage.removeItem('truco_panel'); setVerAdmin(false); }} rol={esAdmin ? 'admin' : 'asesor'} ejecutadoPor={perfil?.nombre || user?.email || ''} usuarioId={user?.id || ''} />;
   if (modoJuego === "lobby") return (
-    <Lobby
-      user={user}
-      perfil={perfil}
-      onJugarIA={() => setModoJuego("single")}
-      onUnirse={(cod) => {
-        setCodigoUnirse(cod);
-        setOrigenMulti("lobby");
-        setAutoCrearSala(false);
-        setModoJuego("multi");
-      }}
-      onPartidaIniciada={(codigo) => {
-        setCodigoYaCreadoInicial(codigo);
-        setOrigenMulti("lobby");
-        setModoJuego("multi");
-      }}
-      onVolver={() => setModoJuego(null)}
-    />
+    <>
+      <Lobby
+        user={user}
+        perfil={perfil}
+        onJugarIA={() => setModoJuego("single")}
+        onUnirse={(cod) => {
+          setCodigoUnirse(cod);
+          setOrigenMulti("lobby");
+          setAutoCrearSala(false);
+          setModoJuego("multi");
+        }}
+        onPartidaIniciada={(codigo) => {
+          setCodigoYaCreadoInicial(codigo);
+          setOrigenMulti("lobby");
+          setModoJuego("multi");
+        }}
+        onVolver={() => setModoJuego(null)}
+      />
+      <BotonSoporte perfil={perfil} />
+    </>
   );
   if (modoJuego === "multi") return (
-    <Multijugador
-      user={user}
-      perfil={perfil}
-      codigoInicial={codigoUnirse}
-      autoCrear={autoCrearSala}
-      apuesta={apuestaInicial}
-      codigoYaCreado={codigoYaCreadoInicial}
-      onVolver={() => {
-        setCodigoUnirse(null);
-        setAutoCrearSala(false);
-        setCodigoYaCreadoInicial(null);
-        setModoJuego(origenMulti === "lobby" ? "lobby" : null);
-        setOrigenMulti("home");
-      }}
-    />
+    <>
+      <Multijugador
+        user={user}
+        perfil={perfil}
+        codigoInicial={codigoUnirse}
+        autoCrear={autoCrearSala}
+        apuesta={apuestaInicial}
+        codigoYaCreado={codigoYaCreadoInicial}
+        onVolver={() => {
+          setCodigoUnirse(null);
+          setAutoCrearSala(false);
+          setCodigoYaCreadoInicial(null);
+          setModoJuego(origenMulti === "lobby" ? "lobby" : null);
+          setOrigenMulti("home");
+        }}
+      />
+      <BotonSoporte perfil={perfil} />
+    </>
   );
-  if (modoJuego === "single") return <TrucoApp user={user} perfil={perfil} setPerfil={setPerfil} onLogout={handleLogout} onMultijugador={()=>setModoJuego("multi")} onVerTerminos={()=>setVerTerminos(true)} onVerTorneos={()=>setVerTorneos(true)} onHome={()=>setModoJuego(null)} />;
+  if (modoJuego === "single") return (
+    <>
+      <TrucoApp user={user} perfil={perfil} setPerfil={setPerfil} onLogout={handleLogout} onMultijugador={()=>setModoJuego("multi")} onVerTerminos={()=>setVerTerminos(true)} onVerTorneos={()=>setVerTorneos(true)} onHome={()=>setModoJuego(null)} />
+      <BotonSoporte perfil={perfil} />
+    </>
+  );
   return (
     <>
       <Home
@@ -922,6 +935,7 @@ export default function App() {
         onAdmin={()=>{ sessionStorage.setItem('truco_panel', '1'); setVerAdmin(true); }}
       />
       {mostrarConfigHome && <Configuracion onCerrar={()=>setMostrarConfigHome(false)} />}
+      <BotonSoporte perfil={perfil} />
     </>
   );
 }

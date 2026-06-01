@@ -1164,73 +1164,323 @@ function TabFinanzas({ rol = 'admin' }) {
 }
 
 /* ══════════════════════════════════════════
-   TAB 4 — SOPORTE
+   TAB 4 — SOPORTE (casos con chat)
 ══════════════════════════════════════════ */
-function TabSoporte() {
-  const [reportes, setReportes] = useState([]);
+const ESTADO_COLOR_S = { abierto: "#fbbf24", en_curso: "#60a5fa", resuelto: "#4ade80" };
+const ESTADO_LABEL_S = { abierto: "Abierto", en_curso: "En curso", resuelto: "Resuelto" };
+
+function TabSoporte({ ejecutadoPor, usuarioId }) {
+  const [casos, setCasos] = useState([]);
   const [cargando, setCargando] = useState(true);
-  const [procesando, setProcesando] = useState(null);
-  const [filtro, setFiltro] = useState("pendiente");
+  const [filtro, setFiltro] = useState("abierto");
+  const [casoActivo, setCasoActivo] = useState(null);
+  const [mensajes, setMensajes] = useState([]);
+  const [cargandoMensajes, setCargandoMensajes] = useState(false);
+  const [texto, setTexto] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [cambiandoEstado, setCambiandoEstado] = useState(false);
+  const bottomRef = useRef(null);
 
   useEffect(() => { cargar(); }, []);
 
+  useEffect(() => {
+    if (bottomRef.current) bottomRef.current.scrollIntoView({ behavior: "smooth" });
+  }, [mensajes]);
+
+  useEffect(() => {
+    if (!casoActivo) return;
+    const canal = supabase.channel(`soporte-admin-${casoActivo.id}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "mensajes_soporte" },
+        (payload) => {
+          if (payload.new.caso_id !== casoActivo.id) return;
+          setMensajes(prev => prev.find(m => m.id === payload.new.id) ? prev : [...prev, payload.new]);
+        })
+      .subscribe();
+    return () => supabase.removeChannel(canal);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [casoActivo?.id]);
+
   async function cargar() {
     setCargando(true);
-    const { data } = await supabase
-      .from("reportes")
+    const { data: casosData } = await supabase
+      .from("casos_soporte")
       .select("*")
-      .order("created_at", { ascending: false });
-    setReportes(data || []);
+      .order("updated_at", { ascending: false });
+    if (!casosData) { setCargando(false); return; }
+
+    const ids = [...new Set(casosData.filter(c => c.usuario_id).map(c => c.usuario_id))];
+    let perfilesMap = {};
+    if (ids.length > 0) {
+      const { data: perfs } = await supabase
+        .from("perfiles").select("usuario_id, nombre, avatar").in("usuario_id", ids);
+      if (perfs) perfilesMap = Object.fromEntries(perfs.map(p => [p.usuario_id, p]));
+    }
+
+    const casoIds = casosData.map(c => c.id);
+    let primerMsgMap = {};
+    if (casoIds.length > 0) {
+      const { data: msgs } = await supabase
+        .from("mensajes_soporte")
+        .select("caso_id, mensaje")
+        .in("caso_id", casoIds)
+        .order("created_at", { ascending: true });
+      if (msgs) {
+        for (const m of msgs) {
+          if (!primerMsgMap[m.caso_id]) primerMsgMap[m.caso_id] = m.mensaje;
+        }
+      }
+    }
+
+    setCasos(casosData.map(c => ({
+      ...c,
+      perfil: perfilesMap[c.usuario_id] || null,
+      primerMensaje: primerMsgMap[c.id] || "",
+    })));
     setCargando(false);
   }
 
-  async function resolver(id) {
-    setProcesando(id);
-    await supabase.from("reportes").update({ estado: "resuelto" }).eq("id", id);
-    setReportes(prev => prev.map(r => r.id === id ? { ...r, estado: "resuelto" } : r));
-    setProcesando(null);
+  async function abrirCaso(c) {
+    setCasoActivo(c);
+    setTexto("");
+    setCargandoMensajes(true);
+    const { data: msgs } = await supabase
+      .from("mensajes_soporte")
+      .select("*").eq("caso_id", c.id)
+      .order("created_at", { ascending: true });
+    setMensajes(msgs || []);
+    setCargandoMensajes(false);
   }
 
-  const filtrados = filtro === "todos" ? reportes : reportes.filter(r => r.estado === filtro);
+  async function enviarRespuesta() {
+    const msg = texto.trim();
+    if (!msg || enviando || !casoActivo) return;
+    setEnviando(true);
 
-  const pendientes = reportes.filter(r => r.estado === "pendiente").length;
-  const resueltos = reportes.filter(r => r.estado === "resuelto").length;
+    const { data: nuevoMsg } = await supabase
+      .from("mensajes_soporte")
+      .insert({
+        caso_id: casoActivo.id,
+        autor_id: usuarioId || null,
+        autor_nombre: ejecutadoPor || "Admin",
+        es_admin: true,
+        mensaje: msg,
+      })
+      .select().single();
 
-  if (cargando) return <div style={{ textAlign: "center", color: "#4ade80", padding: 40 }}>Cargando reportes...</div>;
+    if (nuevoMsg) {
+      setMensajes(prev => prev.find(m => m.id === nuevoMsg.id) ? prev : [...prev, nuevoMsg]);
+    }
 
+    // Auto-cambiar a en_curso si estaba abierto
+    if (casoActivo.estado === "abierto") {
+      await supabase.from("casos_soporte")
+        .update({ estado: "en_curso", updated_at: new Date().toISOString() })
+        .eq("id", casoActivo.id);
+      setCasoActivo(prev => ({ ...prev, estado: "en_curso" }));
+      setCasos(prev => prev.map(c => c.id === casoActivo.id ? { ...c, estado: "en_curso" } : c));
+    } else {
+      await supabase.from("casos_soporte")
+        .update({ updated_at: new Date().toISOString() }).eq("id", casoActivo.id);
+    }
+
+    setTexto("");
+    setEnviando(false);
+  }
+
+  async function cambiarEstado(nuevoEstado) {
+    if (!casoActivo || cambiandoEstado) return;
+    setCambiandoEstado(true);
+    await supabase.from("casos_soporte")
+      .update({ estado: nuevoEstado, updated_at: new Date().toISOString() })
+      .eq("id", casoActivo.id);
+    setCasoActivo(prev => ({ ...prev, estado: nuevoEstado }));
+    setCasos(prev => prev.map(c => c.id === casoActivo.id ? { ...c, estado: nuevoEstado } : c));
+    setCambiandoEstado(false);
+  }
+
+  const stats = {
+    abiertos: casos.filter(c => c.estado === "abierto").length,
+    en_curso: casos.filter(c => c.estado === "en_curso").length,
+    resueltos: casos.filter(c => c.estado === "resuelto").length,
+  };
+
+  const filtrados = filtro === "todos" ? casos : casos.filter(c => c.estado === filtro);
+
+  if (cargando) return <div style={{ textAlign: "center", color: "#4ade80", padding: 40 }}>Cargando casos...</div>;
+
+  /* ── Vista chat de un caso ── */
+  if (casoActivo) {
+    return (
+      <>
+        {/* Volver + número de caso */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+          <button
+            onClick={() => { setCasoActivo(null); cargar(); }}
+            style={{ background: "none", border: "none", color: "#4ade80", fontSize: 20, cursor: "pointer", padding: "2px 6px", lineHeight: 1 }}
+          >←</button>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 14, color: "#fbbf24", fontWeight: 800, fontFamily: "monospace" }}>
+                Caso #{String(casoActivo.numero).padStart(3, "0")}
+              </span>
+              <span style={{ fontSize: 13, color: "#e2f5e9", fontWeight: 700 }}>
+                {casoActivo.perfil?.nombre || "Usuario"}
+              </span>
+            </div>
+            <div style={{ fontSize: 10, color: "#6b7280", marginTop: 1 }}>{fechaHora(casoActivo.created_at)}</div>
+          </div>
+        </div>
+
+        {/* Selectores de estado */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
+          {["abierto", "en_curso", "resuelto"].map(est => {
+            const activo = casoActivo.estado === est;
+            const color = ESTADO_COLOR_S[est];
+            return (
+              <button key={est} onClick={() => !activo && cambiarEstado(est)}
+                disabled={activo || cambiandoEstado}
+                style={{
+                  padding: "5px 13px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+                  cursor: activo ? "default" : "pointer", fontFamily: "'Lato', sans-serif", letterSpacing: 0.5,
+                  background: activo ? `${color}18` : "rgba(0,0,0,0.3)",
+                  border: `1px solid ${activo ? color : "rgba(107,114,128,0.3)"}`,
+                  color: activo ? color : "#6b7280", transition: "all 0.15s",
+                }}>
+                {ESTADO_LABEL_S[est]}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Mensajes */}
+        <div style={{
+          ...CARD, minHeight: 240, maxHeight: 360,
+          overflowY: "auto", padding: "14px",
+          display: "flex", flexDirection: "column", gap: 10, marginBottom: 12,
+        }}>
+          {cargandoMensajes ? (
+            <div style={{ textAlign: "center", color: "#4ade80", padding: 20, fontSize: 13 }}>Cargando...</div>
+          ) : mensajes.length === 0 ? (
+            <div style={{ textAlign: "center", color: "#6b7280", padding: 20, fontSize: 13 }}>Sin mensajes aún</div>
+          ) : (
+            mensajes.map(m => (
+              <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: m.es_admin ? "flex-end" : "flex-start" }}>
+                {!m.es_admin && (
+                  <div style={{ fontSize: 10, color: "#fbbf24", fontWeight: 700, marginBottom: 3, paddingLeft: 4 }}>
+                    {m.autor_nombre}
+                  </div>
+                )}
+                <div style={{
+                  maxWidth: "82%", padding: "9px 13px",
+                  borderRadius: m.es_admin ? "12px 2px 12px 12px" : "2px 12px 12px 12px",
+                  background: m.es_admin ? "rgba(74,222,128,0.1)" : "rgba(255,255,255,0.06)",
+                  border: m.es_admin ? "1px solid rgba(74,222,128,0.25)" : "1px solid rgba(255,255,255,0.1)",
+                  fontSize: 13, color: "#e2f5e9", lineHeight: 1.55, wordBreak: "break-word",
+                }}>
+                  {m.mensaje}
+                </div>
+                <div style={{ fontSize: 10, color: "#4b5563", marginTop: 3 }}>
+                  {new Date(m.created_at).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                  {m.es_admin && <span style={{ color: "#4ade80", marginLeft: 4 }}>· {m.autor_nombre}</span>}
+                </div>
+              </div>
+            ))
+          )}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Input respuesta */}
+        {casoActivo.estado === "resuelto" ? (
+          <div style={{ textAlign: "center", fontSize: 12, color: "#4ade80", padding: "8px 0" }}>✅ Caso resuelto</div>
+        ) : (
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              value={texto}
+              onChange={e => setTexto(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarRespuesta(); } }}
+              placeholder="Escribir respuesta..."
+              style={{ flex: 1, padding: "11px 14px", borderRadius: 10, border: "1px solid #2d6a4f", background: "rgba(0,0,0,0.5)", color: "#ffffff", fontFamily: "'Lato', sans-serif", fontSize: 14, outline: "none" }}
+            />
+            <button
+              onClick={enviarRespuesta}
+              disabled={!texto.trim() || enviando}
+              style={{
+                padding: "11px 16px", borderRadius: 10,
+                border: `1px solid ${texto.trim() && !enviando ? "#4ade80" : "#374151"}`,
+                background: texto.trim() && !enviando ? "linear-gradient(135deg,#1a472a,#2d6a4f)" : "rgba(0,0,0,0.3)",
+                color: texto.trim() && !enviando ? "#4ade80" : "#4b5563",
+                cursor: texto.trim() && !enviando ? "pointer" : "default",
+                fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700,
+              }}
+            >
+              {enviando ? "..." : "Enviar"}
+            </button>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  /* ── Vista lista de casos ── */
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8, marginBottom: 16 }}>
-        <StatCard label="Pendientes" valor={pendientes} color="#fbbf24" onClick={() => setFiltro(f => f === "pendiente" ? "todos" : "pendiente")} activo={filtro === "pendiente"} />
-        <StatCard label="Resueltos" valor={resueltos} color="#4ade80" onClick={() => setFiltro(f => f === "resuelto" ? "todos" : "resuelto")} activo={filtro === "resuelto"} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 16 }}>
+        <StatCard label="Abiertos" valor={stats.abiertos} color="#fbbf24"
+          onClick={() => setFiltro(f => f === "abierto" ? "todos" : "abierto")} activo={filtro === "abierto"} />
+        <StatCard label="En curso" valor={stats.en_curso} color="#60a5fa"
+          onClick={() => setFiltro(f => f === "en_curso" ? "todos" : "en_curso")} activo={filtro === "en_curso"} />
+        <StatCard label="Resueltos" valor={stats.resueltos} color="#4ade80"
+          onClick={() => setFiltro(f => f === "resuelto" ? "todos" : "resuelto")} activo={filtro === "resuelto"} />
       </div>
 
       {filtrados.length === 0 ? (
-        <div style={{ textAlign: "center", color: "#6b7280", padding: 30, fontSize: 13 }}>
-          {filtro === "pendiente" ? "No hay reportes pendientes" : "Sin reportes"}
+        <div style={{ textAlign: "center", color: "#6b7280", padding: 32, fontSize: 13 }}>
+          {filtro === "abierto" ? "No hay casos abiertos" :
+           filtro === "en_curso" ? "No hay casos en curso" :
+           filtro === "resuelto" ? "No hay casos resueltos" : "Sin casos"}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {filtrados.map(r => (
-            <div key={r.id} style={{
-              ...CARD,
-              background: r.estado === "resuelto" ? "rgba(74,222,128,0.02)" : "rgba(0,0,0,0.4)",
-              border: `1px solid ${r.estado === "resuelto" ? "rgba(74,222,128,0.2)" : "#2d6a4f"}`,
-            }}>
-              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 900, color: "#fbbf24" }}>{r.nombre_usuario || "Anónimo"}</span>
-                    <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, border: `1px solid ${r.estado === "resuelto" ? "#4ade80" : "#fbbf24"}`, color: r.estado === "resuelto" ? "#4ade80" : "#fbbf24" }}>{r.estado}</span>
+          {filtrados.map(c => (
+            <div key={c.id} onClick={() => abrirCaso(c)} style={{
+              ...CARD, cursor: "pointer",
+              border: c.estado === "abierto"
+                ? "1px solid rgba(251,191,36,0.35)"
+                : c.estado === "en_curso"
+                ? "1px solid rgba(96,165,250,0.3)"
+                : "1px solid rgba(74,222,128,0.2)",
+              background: c.estado === "abierto" ? "rgba(251,191,36,0.04)" : "rgba(0,0,0,0.4)",
+              transition: "background 0.15s",
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(74,222,128,0.06)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = c.estado === "abierto" ? "rgba(251,191,36,0.04)" : "rgba(0,0,0,0.4)"; }}
+            >
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12, color: "#fbbf24", fontWeight: 800, fontFamily: "monospace" }}>
+                      #{String(c.numero).padStart(3, "0")}
+                    </span>
+                    <span style={{ fontSize: 13, color: "#e2f5e9", fontWeight: 700 }}>
+                      {c.perfil?.nombre || "Usuario"}
+                    </span>
+                    <span style={{
+                      fontSize: 9, fontWeight: 800, padding: "1px 7px", borderRadius: 10, letterSpacing: 1,
+                      background: `${ESTADO_COLOR_S[c.estado]}15`,
+                      color: ESTADO_COLOR_S[c.estado],
+                      border: `1px solid ${ESTADO_COLOR_S[c.estado]}35`,
+                    }}>
+                      {ESTADO_LABEL_S[c.estado].toUpperCase()}
+                    </span>
                   </div>
-                  <div style={{ fontSize: 13, color: "#e2f5e9", lineHeight: 1.6 }}>{r.mensaje}</div>
-                  <div style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>{fecha(r.created_at)}</div>
+                  {c.primerMensaje && (
+                    <div style={{ fontSize: 12, color: "#9ca3af", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {c.primerMensaje}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 10, color: "#4b5563", marginTop: 5 }}>{fechaHora(c.created_at)}</div>
                 </div>
-                {r.estado === "pendiente" && (
-                  <button onClick={() => resolver(r.id)} disabled={procesando === r.id} style={{ ...BTN_SM("#4ade80"), flexShrink: 0 }}>
-                    {procesando === r.id ? "..." : "Resolver"}
-                  </button>
-                )}
+                <div style={{ color: "#4ade80", fontSize: 18, flexShrink: 0, lineHeight: 1, marginTop: 2 }}>›</div>
               </div>
             </div>
           ))}
@@ -2187,8 +2437,13 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
   });
   const [ticketsBadge, setTicketsBadge] = useState(0);
   const [chatBadge, setChatBadge] = useState(0);
+  const [soporteBadge, setSoporteBadge] = useState(0);
 
-  function cambiarTab(id) { localStorage.setItem('truco_admin_tab', id); setTab(id); }
+  function cambiarTab(id) {
+    localStorage.setItem('truco_admin_tab', id);
+    setTab(id);
+    if (id === "soporte") setSoporteBadge(0);
+  }
 
   useEffect(() => {
     async function cargarBadge() {
@@ -2203,6 +2458,24 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
       .on("postgres_changes", { event: "*", schema: "public", table: "tickets_internos" }, cargarBadge)
       .subscribe();
     return () => supabase.removeChannel(canal);
+  }, []);
+
+  useEffect(() => {
+    async function cargarSoporteBadge() {
+      const { count } = await supabase
+        .from("casos_soporte")
+        .select("*", { count: "exact", head: true })
+        .eq("estado", "abierto");
+      setSoporteBadge(count || 0);
+    }
+    if (tab !== "soporte") cargarSoporteBadge();
+    const canal = supabase.channel("soporte-badge-admin")
+      .on("postgres_changes", { event: "*", schema: "public", table: "casos_soporte" }, () => {
+        if (tab !== "soporte") cargarSoporteBadge();
+      })
+      .subscribe();
+    return () => supabase.removeChannel(canal);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -2264,6 +2537,11 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
                 {(ticketsBadge + chatBadge) > 9 ? "9+" : (ticketsBadge + chatBadge)}
               </span>
             )}
+            {t.id === "soporte" && soporteBadge > 0 && (
+              <span style={{ position: "absolute", top: 6, right: "50%", transform: "translateX(calc(50% + 20px))", background: "#fbbf24", color: "#050f08", fontSize: 9, fontWeight: 900, borderRadius: "50%", minWidth: 16, height: 16, display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: "0 3px" }}>
+                {soporteBadge > 9 ? "9+" : soporteBadge}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -2273,7 +2551,7 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
         {tab === "usuarios" && <TabUsuarios rol={rol} ejecutadoPor={ejecutadoPor} usuarioId={usuarioId} />}
         {tab === "partidas" && <TabPartidas />}
         {tab === "finanzas" && <TabFinanzas rol={rol} />}
-        {tab === "soporte" && <TabSoporte />}
+        {tab === "soporte" && <TabSoporte ejecutadoPor={ejecutadoPor} usuarioId={usuarioId} />}
         {tab === "metricas" && <TabMetricas />}
         {tab === "cuentas" && <TabCuentas />}
         {tab === "equipo" && <TabEquipo rol={rol} ejecutadoPor={ejecutadoPor} pendientesBadge={ticketsBadge} chatBadge={chatBadge} onChatLeido={marcarChatLeido} />}
