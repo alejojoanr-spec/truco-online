@@ -1925,6 +1925,248 @@ function TabEquipo({ rol, ejecutadoPor, pendientesBadge = 0, chatBadge = 0, onCh
 }
 
 /* ══════════════════════════════════════════
+   TAB 7 — CUENTAS DE COBRO
+══════════════════════════════════════════ */
+function TabCuentas() {
+  const [cuentas, setCuentas] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [modal, setModal] = useState(null); // null | { modo: 'nueva' | 'editar', cuenta? }
+  const [confirmEliminar, setConfirmEliminar] = useState(null); // id
+  const [procesando, setProcesando] = useState(null);
+  const [form, setForm] = useState({ nombre: "", alias: "", cbu: "", titular: "" });
+  const [formError, setFormError] = useState("");
+  const [guardando, setGuardando] = useState(false);
+
+  useEffect(() => { cargar(); }, []);
+
+  async function cargar() {
+    setCargando(true);
+    const { data } = await supabase
+      .from("cuentas_cobro")
+      .select("*")
+      .order("created_at", { ascending: false });
+    setCuentas(data || []);
+    setCargando(false);
+  }
+
+  function abrirNueva() {
+    setForm({ nombre: "", alias: "", cbu: "", titular: "" });
+    setFormError("");
+    setModal({ modo: "nueva" });
+  }
+
+  function abrirEditar(cuenta) {
+    setForm({ nombre: cuenta.nombre, alias: cuenta.alias, cbu: cuenta.cbu, titular: cuenta.titular });
+    setFormError("");
+    setModal({ modo: "editar", cuenta });
+  }
+
+  async function guardar() {
+    const { nombre, alias, cbu, titular } = form;
+    if (!nombre.trim()) { setFormError("El nombre identificador es obligatorio."); return; }
+    if (!alias.trim()) { setFormError("El alias es obligatorio."); return; }
+    if (!cbu.trim()) { setFormError("El CBU/CVU es obligatorio."); return; }
+    if (cbu.trim().replace(/\s/g, "").length < 22) { setFormError("El CBU/CVU debe tener al menos 22 caracteres."); return; }
+    if (!titular.trim()) { setFormError("El titular es obligatorio."); return; }
+
+    setGuardando(true);
+    setFormError("");
+
+    if (modal.modo === "nueva") {
+      const { error } = await supabase.from("cuentas_cobro").insert({
+        nombre: nombre.trim(), alias: alias.trim(),
+        cbu: cbu.trim(), titular: titular.trim(), activa: false,
+      });
+      if (error) { setFormError("Error al guardar. Intentá de nuevo."); setGuardando(false); return; }
+    } else {
+      const { error } = await supabase.from("cuentas_cobro").update({
+        nombre: nombre.trim(), alias: alias.trim(),
+        cbu: cbu.trim(), titular: titular.trim(),
+      }).eq("id", modal.cuenta.id);
+      if (error) { setFormError("Error al guardar. Intentá de nuevo."); setGuardando(false); return; }
+    }
+
+    setGuardando(false);
+    setModal(null);
+    cargar();
+  }
+
+  async function usarCuenta(id) {
+    setProcesando(id);
+    await supabase.from("cuentas_cobro").update({ activa: false }).neq("id", id);
+    await supabase.from("cuentas_cobro").update({ activa: true }).eq("id", id);
+    setProcesando(null);
+    cargar();
+  }
+
+  async function eliminar(id) {
+    setProcesando(id);
+    await supabase.from("cuentas_cobro").delete().eq("id", id);
+    setProcesando(null);
+    setConfirmEliminar(null);
+    cargar();
+  }
+
+  const activa = cuentas.find(c => c.activa);
+
+  if (cargando) return <div style={{ textAlign: "center", color: "#4ade80", padding: 40 }}>Cargando cuentas...</div>;
+
+  return (
+    <>
+      {/* Indicador de cuenta en uso */}
+      <div style={{
+        ...CARD,
+        background: activa ? "rgba(74,222,128,0.08)" : "rgba(248,113,113,0.06)",
+        border: activa ? "1px solid #2d6a4f" : "1px solid rgba(248,113,113,0.35)",
+        marginBottom: 16, display: "flex", alignItems: "center", gap: 14,
+      }}>
+        <div style={{ fontSize: 24 }}>{activa ? "🟢" : "🔴"}</div>
+        <div>
+          <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 3 }}>
+            Cuenta actualmente en uso
+          </div>
+          {activa ? (
+            <>
+              <div style={{ fontSize: 14, color: "#ffffff", fontWeight: 700 }}>{activa.alias}</div>
+              <div style={{ fontSize: 12, color: "#9ca3af" }}>{activa.titular}</div>
+            </>
+          ) : (
+            <div style={{ fontSize: 13, color: "#f87171" }}>Ninguna cuenta activa</div>
+          )}
+        </div>
+      </div>
+
+      {/* Encabezado + botón agregar */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <div style={{ fontSize: 15, color: "#e2f5e9", fontWeight: 700 }}>
+          Cuentas de cobro ({cuentas.length})
+        </div>
+        <button onClick={abrirNueva} style={{ ...BTN_SM("#4ade80"), padding: "8px 14px", fontSize: 13 }}>
+          + Agregar cuenta
+        </button>
+      </div>
+
+      {/* Lista de cuentas */}
+      {cuentas.length === 0 ? (
+        <div style={{ ...CARD, textAlign: "center", color: "#6b7280", padding: 32 }}>
+          No hay cuentas configuradas.<br />
+          <span style={{ fontSize: 12 }}>Agregá una para que los usuarios puedan hacer depósitos.</span>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {cuentas.map(c => (
+            <div key={c.id} style={{
+              ...CARD,
+              border: c.activa ? "1px solid #4ade80" : "1px solid #2d6a4f",
+              background: c.activa ? "rgba(74,222,128,0.06)" : "rgba(0,0,0,0.4)",
+            }}>
+              {/* Nombre + badge */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <div style={{ fontSize: 14, color: "#e2f5e9", fontWeight: 700 }}>{c.nombre}</div>
+                <span style={{
+                  fontSize: 9, fontWeight: 800, padding: "2px 8px", borderRadius: 20, letterSpacing: 1,
+                  background: c.activa ? "rgba(74,222,128,0.15)" : "rgba(107,114,128,0.12)",
+                  color: c.activa ? "#4ade80" : "#6b7280",
+                  border: c.activa ? "1px solid rgba(74,222,128,0.3)" : "1px solid rgba(107,114,128,0.2)",
+                }}>
+                  {c.activa ? "ACTIVA" : "INACTIVA"}
+                </span>
+              </div>
+              {/* Titular */}
+              <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 10 }}>Titular: {c.titular}</div>
+              {/* Alias y CBU */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 12 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                  <span style={{ fontSize: 9, color: "#6b7280", minWidth: 36, textTransform: "uppercase", letterSpacing: 1 }}>Alias</span>
+                  <span style={{ fontSize: 12, color: "#e2f5e9", fontFamily: "monospace", wordBreak: "break-all" }}>{c.alias}</span>
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                  <span style={{ fontSize: 9, color: "#6b7280", minWidth: 36, textTransform: "uppercase", letterSpacing: 1 }}>CBU</span>
+                  <span style={{ fontSize: 12, color: "#e2f5e9", fontFamily: "monospace", wordBreak: "break-all" }}>{c.cbu}</span>
+                </div>
+              </div>
+              {/* Acciones */}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {!c.activa && (
+                  <button
+                    disabled={!!procesando}
+                    onClick={() => usarCuenta(c.id)}
+                    style={{ ...BTN_SM("#4ade80"), opacity: procesando === c.id ? 0.6 : 1 }}
+                  >
+                    {procesando === c.id ? "⏳" : "✓ Usar esta cuenta"}
+                  </button>
+                )}
+                <button onClick={() => abrirEditar(c)} style={BTN_SM("#60a5fa")}>✏️ Editar</button>
+                <button onClick={() => setConfirmEliminar(c.id)} style={BTN_SM("#f87171")}>🗑 Eliminar</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Modal agregar / editar */}
+      {modal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.88)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 16 }}>
+          <div style={{ background: "radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)", border: "1px solid #2d6a4f", borderRadius: 20, padding: "24px 20px", width: "100%", maxWidth: 400, fontFamily: "'Lato', sans-serif", display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900 }}>
+              {modal.modo === "nueva" ? "+ Nueva cuenta" : "✏️ Editar cuenta"}
+            </div>
+            {[
+              { key: "nombre", label: "Nombre identificador", placeholder: "ej: Cuenta Principal, Cuenta Juan" },
+              { key: "alias", label: "Alias", placeholder: "ej: mi.alias.banco" },
+              { key: "cbu", label: "CBU / CVU", placeholder: "22 dígitos" },
+              { key: "titular", label: "Titular", placeholder: "Nombre y apellido" },
+            ].map(({ key, label, placeholder }) => (
+              <div key={key}>
+                <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 5 }}>{label}</div>
+                <input
+                  value={form[key]}
+                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                  placeholder={placeholder}
+                  style={INPUT_STYLE}
+                />
+              </div>
+            ))}
+            {formError && (
+              <div style={{ fontSize: 12, color: "#f87171", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.25)", borderRadius: 8, padding: "8px 12px" }}>
+                {formError}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+              <button onClick={() => setModal(null)} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#ffffff", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>
+                Cancelar
+              </button>
+              <button onClick={guardar} disabled={guardando} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: guardando ? "not-allowed" : "pointer", background: "linear-gradient(135deg,#1a472a,#2d6a4f)", border: "1px solid #4ade80", color: "#4ade80", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700, opacity: guardando ? 0.7 : 1 }}>
+                {guardando ? "⏳ Guardando..." : "✅ Guardar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal confirmar eliminar */}
+      {confirmEliminar && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.88)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 16 }}>
+          <div style={{ background: "radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)", border: "1px solid rgba(248,113,113,0.4)", borderRadius: 20, padding: "28px 24px", width: "100%", maxWidth: 340, fontFamily: "'Lato', sans-serif", display: "flex", flexDirection: "column", gap: 16, textAlign: "center" }}>
+            <div style={{ fontSize: 40, marginBottom: 2 }}>🗑️</div>
+            <div style={{ fontSize: 16, color: "#f87171", fontWeight: 700 }}>¿Eliminar esta cuenta?</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>Esta acción no se puede deshacer.</div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setConfirmEliminar(null)} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#ffffff", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>
+                Cancelar
+              </button>
+              <button onClick={() => eliminar(confirmEliminar)} disabled={!!procesando} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: "pointer", background: "rgba(248,113,113,0.12)", border: "1px solid #f87171", color: "#f87171", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700 }}>
+                {procesando ? "⏳" : "Eliminar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ══════════════════════════════════════════
    ADMIN ROOT
 ══════════════════════════════════════════ */
 const TABS = [
@@ -1933,6 +2175,7 @@ const TABS = [
   { id: "finanzas", label: "Finanzas" },
   { id: "soporte", label: "Soporte" },
   { id: "metricas", label: "Métricas" },
+  { id: "cuentas", label: "Cuentas" },
   { id: "equipo", label: "Equipo" },
 ];
 
@@ -2032,6 +2275,7 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
         {tab === "finanzas" && <TabFinanzas rol={rol} />}
         {tab === "soporte" && <TabSoporte />}
         {tab === "metricas" && <TabMetricas />}
+        {tab === "cuentas" && <TabCuentas />}
         {tab === "equipo" && <TabEquipo rol={rol} ejecutadoPor={ejecutadoPor} pendientesBadge={ticketsBadge} chatBadge={chatBadge} onChatLeido={marcarChatLeido} />}
       </div>
 
