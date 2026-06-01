@@ -54,6 +54,10 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
   const [salaUnirseApuesta, setSalaUnirseApuesta] = useState("");
   const [salaError, setSalaError] = useState("");
   const [cuentaActiva, setCuentaActiva] = useState(null);
+  const [mostrarMovimientos, setMostrarMovimientos] = useState(false);
+  const [movimientos, setMovimientos] = useState([]);
+  const [cargandoMov, setCargandoMov] = useState(false);
+  const [filtroMov, setFiltroMov] = useState("todos");
 
   useEffect(() => {
     supabase.from("cuentas_cobro").select("*").eq("activa", true).maybeSingle()
@@ -136,6 +140,21 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
       .limit(10);
     if (data) setRanking(data);
     setMostrarRanking(true);
+  }
+
+  async function abrirMovimientos() {
+    setMenuAbierto(false);
+    setFiltroMov("todos");
+    setMostrarMovimientos(true);
+    setCargandoMov(true);
+    const { data } = await supabase
+      .from("transacciones")
+      .select("id, tipo, monto, estado, nota, saldo_anterior, saldo_nuevo, created_at")
+      .eq("usuario_id", perfil.usuario_id)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    setMovimientos(data || []);
+    setCargandoMov(false);
   }
 
 
@@ -350,6 +369,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
         <div style={{ flex: 1, overflowY: "auto" }}>
           <MenuItem icono="👤" label="Configuración de cuenta" onClick={() => { setMenuAbierto(false); }} />
           <MenuItem icono="🏆" label="Ranking"                 onClick={abrirRanking} />
+          <MenuItem icono="📊" label="Mis movimientos"          onClick={abrirMovimientos} />
           <MenuItem icono="📖" label="Reglas"                  onClick={() => { setMenuAbierto(false); setMostrarReglas(true); }} />
           <MenuItem icono="🎮" label="Configuración del juego" onClick={() => { setMenuAbierto(false); onConfig(); }} />
           <MenuItem icono="📋" label="Términos y condiciones"  onClick={() => { setMenuAbierto(false); onVerTerminos(); }} />
@@ -462,6 +482,123 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setMostrarEditar(false)} style={{ flex: 1, padding: "12px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>Cancelar</button>
               <button onClick={guardarEdicion} disabled={cargandoEdit} style={{ flex: 1, padding: "12px", borderRadius: 10, cursor: cargandoEdit ? "not-allowed" : "pointer", background: "linear-gradient(135deg,#1a472a,#2d6a4f)", border: "1px solid #4ade80", color: "#4ade80", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700, opacity: cargandoEdit ? 0.7 : 1 }}>{cargandoEdit ? "⏳ Guardando..." : "✅ Guardar"}</button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL MIS MOVIMIENTOS ── */}
+      {mostrarMovimientos && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", display: "flex", flexDirection: "column", zIndex: 60 }}>
+          <div style={{ background: "radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)", display: "flex", flexDirection: "column", height: "100%", fontFamily: "'Lato', sans-serif" }}>
+
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 16px 14px", borderBottom: "1px solid rgba(45,106,79,0.4)", flexShrink: 0 }}>
+              <div>
+                <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 3, textTransform: "uppercase", marginBottom: 2 }}>Cuenta</div>
+                <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900 }}>📊 Mis movimientos</div>
+              </div>
+              <button onClick={() => setMostrarMovimientos(false)} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 34, height: 34, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+            </div>
+
+            {/* Filtros */}
+            <div style={{ display: "flex", gap: 6, padding: "12px 16px", borderBottom: "1px solid rgba(45,106,79,0.2)", flexShrink: 0, overflowX: "auto" }}>
+              {[
+                { id: "todos",    label: "Todos" },
+                { id: "deposito", label: "Depósitos" },
+                { id: "retiro",   label: "Retiros" },
+                { id: "apuesta",  label: "Apuestas" },
+                { id: "premio",   label: "Ganancias" },
+              ].map(f => (
+                <button key={f.id} onClick={() => setFiltroMov(f.id)} style={{
+                  padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
+                  cursor: "pointer", whiteSpace: "nowrap", fontFamily: "'Lato', sans-serif",
+                  background: filtroMov === f.id ? "rgba(74,222,128,0.15)" : "rgba(0,0,0,0.3)",
+                  border: `1px solid ${filtroMov === f.id ? "#4ade80" : "rgba(45,106,79,0.4)"}`,
+                  color: filtroMov === f.id ? "#4ade80" : "#9ca3af",
+                  transition: "all 0.15s",
+                }}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Lista */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px" }}>
+              {cargandoMov ? (
+                <div style={{ textAlign: "center", color: "#4ade80", padding: 40, fontSize: 14 }}>Cargando...</div>
+              ) : (() => {
+                const TIPO_LABEL_MOV = {
+                  deposito:  "Depósito",
+                  retiro:    "Retiro",
+                  ajuste:    "Ajuste",
+                  premio:    "Ganancia",
+                  apuesta:   "Apuesta",
+                  rake:      "Comisión",
+                  reembolso: "Reembolso",
+                };
+                const ES_INGRESO = new Set(["deposito", "premio", "reembolso", "ajuste"]);
+                const filtrados = filtroMov === "todos"
+                  ? movimientos
+                  : movimientos.filter(m => m.tipo === filtroMov);
+
+                if (filtrados.length === 0) return (
+                  <div style={{ textAlign: "center", color: "#6b7280", padding: 40, fontSize: 13 }}>
+                    No hay movimientos{filtroMov !== "todos" ? " de este tipo" : ""}
+                  </div>
+                );
+
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {filtrados.map(m => {
+                      const esIngreso = ES_INGRESO.has(m.tipo);
+                      const monto = parseFloat(m.monto) || 0;
+                      const [entero, dec] = monto.toFixed(2).split(".");
+                      const montoStr = "$" + entero.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "," + dec;
+                      const fecha = new Date(m.created_at);
+                      const fechaStr = `${String(fecha.getDate()).padStart(2,"0")}/${String(fecha.getMonth()+1).padStart(2,"0")}/${fecha.getFullYear()}`;
+                      const horaStr = `${String(fecha.getHours()).padStart(2,"0")}:${String(fecha.getMinutes()).padStart(2,"0")}`;
+                      return (
+                        <div key={m.id} style={{ background: "rgba(0,0,0,0.35)", border: "1px solid rgba(45,106,79,0.3)", borderRadius: 12, padding: "12px 14px" }}>
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              {/* Tipo + fecha */}
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
+                                <span style={{
+                                  fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20, letterSpacing: 0.5,
+                                  background: esIngreso ? "rgba(74,222,128,0.12)" : "rgba(248,113,113,0.1)",
+                                  color: esIngreso ? "#4ade80" : "#f87171",
+                                  border: `1px solid ${esIngreso ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.25)"}`,
+                                }}>
+                                  {TIPO_LABEL_MOV[m.tipo] || m.tipo}
+                                </span>
+                                <span style={{ fontSize: 11, color: "#6b7280" }}>{fechaStr} · {horaStr}</span>
+                              </div>
+                              {/* Nota */}
+                              {m.nota && (
+                                <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                  {m.nota}
+                                </div>
+                              )}
+                              {/* Saldo resultante */}
+                              {m.saldo_nuevo != null && (
+                                <div style={{ fontSize: 10, color: "#4b5563", marginTop: 4 }}>
+                                  Saldo: ${(parseFloat(m.saldo_nuevo) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
+                                </div>
+                              )}
+                            </div>
+                            {/* Monto */}
+                            <div style={{ fontSize: 16, fontWeight: 900, color: esIngreso ? "#4ade80" : "#f87171", flexShrink: 0 }}>
+                              {esIngreso ? "+" : "−"}{montoStr}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
 
           </div>
