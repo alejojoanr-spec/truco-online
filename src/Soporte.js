@@ -24,21 +24,21 @@ export default function BotonSoporte({ perfil }) {
     }
   }, [mensajes]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const casoId = caso?.id ?? null;
   useEffect(() => {
-    if (!caso) return;
-    const canal = supabase.channel(`soporte-user-${caso.id}`)
+    if (!casoId) return;
+    const canal = supabase.channel(`soporte-user-${casoId}`)
       .on("postgres_changes", {
         event: "INSERT", schema: "public", table: "mensajes_soporte",
       }, (payload) => {
-        if (payload.new.caso_id !== caso.id) return;
+        if (payload.new.caso_id !== casoId) return;
         setMensajes(prev =>
           prev.find(m => m.id === payload.new.id) ? prev : [...prev, payload.new]
         );
       })
       .subscribe();
     return () => supabase.removeChannel(canal);
-  }, [caso?.id]);
+  }, [casoId]);
 
   async function cargarCaso() {
     setCargando(true);
