@@ -300,10 +300,31 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
   const [salas, setSalas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [simuladas, setSimuladas] = useState(() => generarPartidasSimuladas());
+  const [marketingActivo, setMarketingActivo] = useState(true);
+  const [marketingCantidad, setMarketingCantidad] = useState(5);
 
   useEffect(() => {
     const intervalo = setInterval(() => setSimuladas(generarPartidasSimuladas()), 30 * 60 * 1000);
     return () => clearInterval(intervalo);
+  }, []);
+
+  useEffect(() => {
+    async function cargarMarketing() {
+      const [{ data: da }, { data: dc }] = await Promise.all([
+        supabase.from("configuracion").select("valor").eq("clave", "marketing_activo").maybeSingle(),
+        supabase.from("configuracion").select("valor").eq("clave", "marketing_cantidad").maybeSingle(),
+      ]);
+      if (da?.valor != null) setMarketingActivo(da.valor === "true");
+      if (dc?.valor != null) setMarketingCantidad(Number(dc.valor) || 5);
+    }
+    cargarMarketing();
+    const canal = supabase.channel("marketing-config-lobby")
+      .on("postgres_changes", { event: "*", schema: "public", table: "configuracion" }, ({ new: row }) => {
+        if (row?.clave === "marketing_activo")  setMarketingActivo(row.valor === "true");
+        if (row?.clave === "marketing_cantidad") setMarketingCantidad(Number(row.valor) || 5);
+      })
+      .subscribe();
+    return () => supabase.removeChannel(canal);
   }, []);
   const [uniendose, setUniendose] = useState(null);
   const [pantalla, setPantalla] = useState("lobby");
@@ -589,8 +610,9 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
   const mySala = salas.find(s => s.estado === "esperando" && s.jugador1_id === user.id);
   const disponibles = salas.filter(s => s.estado === "esperando" && s.jugador1_id !== user.id);
   const jugando = salas.filter(s => s.estado === "jugando");
-  // Mezclar partidas reales jugando con simuladas
-  const jugandoTotal = mezclarLobby([...jugando, ...simuladas]);
+  // Mezclar partidas reales jugando con simuladas (controlado por config de admin)
+  const simuladasVisibles = marketingActivo ? simuladas.slice(0, marketingCantidad) : [];
+  const jugandoTotal = mezclarLobby([...jugando, ...simuladasVisibles]);
   const lista = [...disponibles, ...jugandoTotal];
   const hayJugadores = lista.length > 0;
 
@@ -758,9 +780,11 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
           </div>
         )}
 
-        {!cargando && disponibles.length === 0 && jugando.length === 0 && (
-          <div style={{ textAlign: "center", padding: "12px 0 4px" }}>
-            <div style={{ fontSize: 12, color: "#9ca3af" }}>¡Sé el primero en abrir una sala!</div>
+        {!cargando && disponibles.length === 0 && jugando.length === 0 && simuladasVisibles.length === 0 && (
+          <div style={{ textAlign: "center", padding: "28px 0" }}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>🃏</div>
+            <div style={{ fontSize: 14, color: "#e2f5e9" }}>No hay jugadores disponibles</div>
+            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>¡Sé el primero en abrir una sala!</div>
           </div>
         )}
 

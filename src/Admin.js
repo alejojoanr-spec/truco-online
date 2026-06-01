@@ -484,6 +484,108 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
 /* ══════════════════════════════════════════
    TAB 2 — PARTIDAS
 ══════════════════════════════════════════ */
+function MarketingConfig() {
+  const [activo, setActivo]       = useState(true);
+  const [cantidad, setCantidad]   = useState(5);
+  const [cargando, setCargando]   = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [guardado, setGuardado]   = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const [{ data: da }, { data: dc }] = await Promise.all([
+        supabase.from("configuracion").select("valor").eq("clave", "marketing_activo").maybeSingle(),
+        supabase.from("configuracion").select("valor").eq("clave", "marketing_cantidad").maybeSingle(),
+      ]);
+      if (da?.valor != null) setActivo(da.valor === "true");
+      if (dc?.valor != null) setCantidad(Number(dc.valor) || 5);
+      setCargando(false);
+    })();
+  }, []);
+
+  async function guardar(nuevoActivo, nuevaCantidad) {
+    setGuardando(true);
+    await Promise.all([
+      supabase.from("configuracion").upsert({ clave: "marketing_activo",  valor: String(nuevoActivo)  }),
+      supabase.from("configuracion").upsert({ clave: "marketing_cantidad", valor: String(nuevaCantidad) }),
+    ]);
+    setGuardando(false);
+    setGuardado(true);
+    setTimeout(() => setGuardado(false), 2000);
+  }
+
+  async function toggleActivo() {
+    const nuevo = !activo;
+    setActivo(nuevo);
+    await guardar(nuevo, cantidad);
+  }
+
+  if (cargando) return null;
+
+  return (
+    <div style={{ ...CARD, marginBottom: 16, border: "1px solid rgba(167,139,250,0.3)", background: "rgba(167,139,250,0.04)" }}>
+      <div style={{ fontSize: 10, color: "#a78bfa", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
+        Actividad simulada · Lobby
+      </div>
+
+      {/* Toggle */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: activo ? 14 : 0 }}>
+        <div>
+          <div style={{ fontSize: 13, color: "#e2f5e9", fontWeight: 700 }}>Partidas simuladas</div>
+          <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+            {activo ? "Activo — visible en el lobby" : "Desactivado — no se muestran"}
+          </div>
+        </div>
+        <button
+          onClick={toggleActivo}
+          disabled={guardando}
+          style={{
+            width: 44, height: 24, borderRadius: 12, border: "none",
+            cursor: guardando ? "not-allowed" : "pointer",
+            background: activo ? "#a78bfa" : "#374151",
+            position: "relative", transition: "background 0.2s", flexShrink: 0,
+          }}
+        >
+          <div style={{
+            position: "absolute", top: 2, left: activo ? 22 : 2, width: 20, height: 20,
+            borderRadius: "50%", background: "#fff", transition: "left 0.2s",
+          }} />
+        </button>
+      </div>
+
+      {/* Cantidad */}
+      {activo && (
+        <>
+          <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 8 }}>
+            Cantidad a mostrar: <strong style={{ color: "#a78bfa" }}>{cantidad}</strong>
+          </div>
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 12 }}>
+            {[1,2,3,4,5,6,7,8,9,10].map(n => (
+              <button key={n} onClick={() => setCantidad(n)} style={{
+                width: 32, height: 32, borderRadius: 8, cursor: "pointer",
+                fontFamily: "'Lato',sans-serif", fontSize: 13, fontWeight: 700,
+                border: `1px solid ${cantidad === n ? "#a78bfa" : "rgba(45,106,79,0.35)"}`,
+                background: cantidad === n ? "rgba(167,139,250,0.18)" : "rgba(0,0,0,0.3)",
+                color: cantidad === n ? "#a78bfa" : "#6b7280",
+                transition: "all 0.12s",
+              }}>
+                {n}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => guardar(activo, cantidad)}
+            disabled={guardando}
+            style={{ ...BTN_SM(guardado ? "#4ade80" : "#a78bfa"), width: "100%", padding: "8px", textAlign: "center" }}
+          >
+            {guardando ? "Guardando..." : guardado ? "✓ Guardado" : "Guardar cantidad"}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function TabPartidas() {
   const [partidas, setPartidas]     = useState([]);
   const [sospechosos, setSospechosos] = useState([]);
@@ -622,6 +724,8 @@ function TabPartidas() {
 
   return (
     <>
+      <MarketingConfig />
+
       {/* Stats clickeables */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:16 }}>
         <StatCard label="Total" valor={stats.total} color="#4ade80"
