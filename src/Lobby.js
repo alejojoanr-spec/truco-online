@@ -50,6 +50,62 @@ function generarCodigoLobby() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+/* ─── Partidas simuladas ─────────────────────────────────────── */
+const NOMBRES_M_SIM = [
+  "juan","mateo","tomas","lucas","santiago","agustin","franco","nicolas",
+  "facundo","ezequiel","rodrigo","leandro","maxi","gonzalo","ignacio",
+  "fernando","diego","mariano","alejandro","pablo","sebastian","andres",
+  "gustavo","hernan","sergio","eduardo","cristian","dario","federico",
+  "claudio","javier","martin","roberto","carlos","daniel","miguel",
+  "raul","alberto","jorge","mario","ricardo","marcelo","ramiro",
+  "emiliano","esteban","ariel","ivan","nestor","ruben","gabriel",
+];
+const NOMBRES_F_SIM = [
+  "maria","valentina","camila","sofia","martina","florencia","milagros",
+  "agustina","lucia","victoria","romina","natalia","daniela","rocio",
+  "vanesa","paola","claudia","cecilia","veronica","mariana","soledad",
+  "laura","sandra","monica","patricia","silvina","graciela","adriana",
+  "beatriz","carolina","melina","nadia","valeria","brenda","carina",
+  "susana","elena","lorena","karina","andrea","miriam","rosa","gladys",
+  "norma","analia","sabrina","micaela","yanina","gisela","noelia",
+];
+const AVATARES_SIM = ["👨","👩","👴","👵","🧔","👱","🧑","👮","🧑‍🍳","🥷","🧙","🤠","👸","🤴","🧛","🧜","🧝","🧞","🤖","👾"];
+const APUESTAS_SIM = [0, 0, 100, 200, 500, 1000, 1500, 2000];
+
+function mkRand(seed) {
+  let s = seed >>> 0;
+  return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 0x100000000; };
+}
+
+function generarPartidasSimuladas() {
+  const ventana = Math.floor(Date.now() / (30 * 60 * 1000));
+  const r = mkRand(ventana * 2654435761);
+
+  function username(esMasc) {
+    const pool = esMasc ? NOMBRES_M_SIM : NOMBRES_F_SIM;
+    const base = pool[Math.floor(r() * pool.length)];
+    const tipo = Math.floor(r() * 3);
+    if (tipo === 0) return base;
+    if (tipo === 1) return `${base}${String(Math.floor(r() * 98) + 1).padStart(2, "0")}`;
+    return `${base}${Math.floor(r() * 9000) + 1000}`;
+  }
+
+  const cantidad = 5 + Math.floor(r() * 2);
+  return Array.from({ length: cantidad }, (_, i) => ({
+    id: `sim-${ventana}-${i}`,
+    estado: "jugando",
+    simulada: true,
+    jugador1_nombre: username(r() > 0.5),
+    jugador1_avatar: AVATARES_SIM[Math.floor(r() * AVATARES_SIM.length)],
+    jugador2_nombre: username(r() > 0.5),
+    jugador2_avatar: AVATARES_SIM[Math.floor(r() * AVATARES_SIM.length)],
+    apuesta: APUESTAS_SIM[Math.floor(r() * APUESTAS_SIM.length)],
+    puntos: r() > 0.5 ? 30 : 15,
+    es_torneo: false,
+  }));
+}
+/* ────────────────────────────────────────────────────────────── */
+
 function CardIA({ onJugar }) {
   return (
     <div style={{
@@ -243,6 +299,12 @@ const IconVolver = () => (
 export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaIniciada, onVolver }) {
   const [salas, setSalas] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [simuladas, setSimuladas] = useState(() => generarPartidasSimuladas());
+
+  useEffect(() => {
+    const intervalo = setInterval(() => setSimuladas(generarPartidasSimuladas()), 30 * 60 * 1000);
+    return () => clearInterval(intervalo);
+  }, []);
   const [uniendose, setUniendose] = useState(null);
   const [pantalla, setPantalla] = useState("lobby");
 
@@ -527,7 +589,9 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
   const mySala = salas.find(s => s.estado === "esperando" && s.jugador1_id === user.id);
   const disponibles = salas.filter(s => s.estado === "esperando" && s.jugador1_id !== user.id);
   const jugando = salas.filter(s => s.estado === "jugando");
-  const lista = [...disponibles, ...jugando];
+  // Mezclar partidas reales jugando con simuladas
+  const jugandoTotal = mezclarLobby([...jugando, ...simuladas]);
+  const lista = [...disponibles, ...jugandoTotal];
   const hayJugadores = lista.length > 0;
 
   if (pantalla === "crear") {
@@ -683,7 +747,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
           <span style={{ fontSize: 11, color: "#9ca3af", whiteSpace: "nowrap" }}>
             {cargando
               ? "Cargando..."
-              : `${disponibles.length} disponible${disponibles.length !== 1 ? "s" : ""} · ${jugando.length} jugando`}
+              : `${disponibles.length} disponible${disponibles.length !== 1 ? "s" : ""} · ${jugandoTotal.length} jugando`}
           </span>
           <div style={{ flex: 1, height: 1, background: "rgba(45,106,79,0.3)" }} />
         </div>
@@ -694,11 +758,9 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
           </div>
         )}
 
-        {!cargando && lista.length === 0 && (
-          <div style={{ textAlign: "center", padding: "28px 0" }}>
-            <div style={{ fontSize: 36, marginBottom: 10 }}>🃏</div>
-            <div style={{ fontSize: 14, color: "#e2f5e9" }}>No hay jugadores disponibles</div>
-            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>¡Sé el primero en abrir una sala!</div>
+        {!cargando && disponibles.length === 0 && jugando.length === 0 && (
+          <div style={{ textAlign: "center", padding: "12px 0 4px" }}>
+            <div style={{ fontSize: 12, color: "#9ca3af" }}>¡Sé el primero en abrir una sala!</div>
           </div>
         )}
 
