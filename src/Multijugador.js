@@ -111,6 +111,19 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const pagoProcesadoRef = useRef(false);
   const accionLogueadaRef = useRef(null);
 
+  // revancha
+  const [revanchaEstado, setRevanchaEstado] = useState(null);
+  // null | 'esperando_rival' | 'rival_pide' | 'procesando' | 'rechazada' | 'cancelada'
+  const [revanchaTimer, setRevanchaTimer] = useState(30);
+  const channelRef = useRef(null);
+  const partidaRef = useRef(null);
+  const revanchaTimerRef = useRef(null);
+
+  useEffect(() => { partidaRef.current = partida; }, [partida]);
+  useEffect(() => {
+    return () => { if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current); };
+  }, []);
+
   async function procesarFinPartida(p) {
     if (pagoProcesadoRef.current) return;
     pagoProcesadoRef.current = true;
@@ -262,8 +275,59 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const channel = supabase.channel(`partida-${codigo}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "partidas", filter: `codigo=eq.${codigo}` },
         (payload) => { setPartida(payload.new); procesarCambio(payload.new); }
-      ).subscribe();
-    return () => supabase.removeChannel(channel);
+      )
+      .on("broadcast", { event: "revancha_request" }, () => {
+        setRevanchaEstado("rival_pide");
+      })
+      .on("broadcast", { event: "revancha_reject" }, () => {
+        if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current);
+        setRevanchaEstado("rechazada");
+        setTimeout(() => setRevanchaEstado(null), 3000);
+      })
+      .on("broadcast", { event: "revancha_accept" }, async ({ payload }) => {
+        if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current);
+        const { nuevoCodigo } = payload;
+        setRevanchaEstado("procesando");
+
+        const apuestaR = partidaRef.current?.apuesta || 0;
+        if (apuestaR > 0) {
+          const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+          const saldoActual = fresh?.saldo || 0;
+          if (saldoActual < apuestaR) {
+            setRevanchaEstado("cancelada");
+            setTimeout(() => setRevanchaEstado(null), 3000);
+            return;
+          }
+          const saldoNuevo = saldoActual - apuestaR;
+          await supabase.from("perfiles").update({ saldo: saldoNuevo }).eq("usuario_id", user.id);
+          await supabase.from("transacciones").insert({
+            usuario_id: user.id, tipo: "apuesta", monto: apuestaR, estado: "aprobado",
+            nota: `Apuesta revancha ${nuevoCodigo}`, ejecutado_por: "sistema",
+            saldo_anterior: saldoActual, saldo_nuevo: saldoNuevo,
+          });
+        }
+
+        const { data: nuevaPartida } = await supabase.from("partidas").select("*").eq("codigo", nuevoCodigo).single();
+        if (!nuevaPartida) { setRevanchaEstado("cancelada"); setTimeout(() => setRevanchaEstado(null), 3000); return; }
+
+        // Solicitante entra como jugador2 (aceptante creó como jugador1)
+        pagoProcesadoRef.current = false;
+        accionLogueadaRef.current = null;
+        setResultadoPartida(null);
+        setRevanchaEstado(null);
+        setCartaSeleccionada(null);
+        setLog(["🔄 ¡Revancha! ¡A jugar!"]);
+        setPartida(nuevaPartida);
+        setSoyJugador1(false);
+        setMiMano(JSON.parse(nuevaPartida.mano_jugador2));
+        setManoRival(JSON.parse(nuevaPartida.mano_jugador1));
+        setPantalla("jugando");
+        setCodigo(nuevoCodigo);
+      })
+      .subscribe();
+
+    channelRef.current = channel;
+    return () => { supabase.removeChannel(channel); channelRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codigo, soyJugador1]);
 
@@ -585,12 +649,110 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     }
   }
 
+  /* ─── revancha ─── */
+  function solicitarRevancha() {
+    if (!channelRef.current) return;
+    if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current);
+    setRevanchaEstado("esperando_rival");
+    setRevanchaTimer(30);
+    channelRef.current.send({ type: "broadcast", event: "revancha_request" });
+    revanchaTimerRef.current = setInterval(() => {
+      setRevanchaTimer(t => {
+        if (t <= 1) {
+          clearInterval(revanchaTimerRef.current);
+          setRevanchaEstado(prev => prev === "esperando_rival" ? null : prev);
+          return 30;
+        }
+        return t - 1;
+      });
+    }, 1000);
+  }
+
+  function cancelarRevancha() {
+    if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current);
+    setRevanchaEstado(null);
+    setRevanchaTimer(30);
+  }
+
+  async function aceptarRevancha() {
+    setRevanchaEstado("procesando");
+    const p = partidaRef.current;
+    const apuestaR = p?.apuesta || 0;
+
+    if (apuestaR > 0) {
+      const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+      const saldoActual = fresh?.saldo || 0;
+      if (saldoActual < apuestaR) {
+        setRevanchaEstado(null);
+        if (channelRef.current) channelRef.current.send({ type: "broadcast", event: "revancha_reject" });
+        return;
+      }
+      const saldoNuevo = saldoActual - apuestaR;
+      await supabase.from("perfiles").update({ saldo: saldoNuevo }).eq("usuario_id", user.id);
+      await supabase.from("transacciones").insert({
+        usuario_id: user.id, tipo: "apuesta", monto: apuestaR, estado: "aprobado",
+        nota: `Apuesta revancha`, ejecutado_por: "sistema",
+        saldo_anterior: saldoActual, saldo_nuevo: saldoNuevo,
+      });
+    }
+
+    const rivalId     = soyJugador1 ? p?.jugador2_id    : p?.jugador1_id;
+    const rivalNombre = soyJugador1 ? p?.jugador2_nombre : p?.jugador1_nombre;
+    const rivalAvatar = soyJugador1 ? p?.jugador2_avatar : p?.jugador1_avatar;
+    const nuevoCod = generarCodigo();
+    const mazo = mezclar(MAZO);
+    const mano1 = mazo.slice(0, 3);
+    const mano2 = mazo.slice(3, 6);
+
+    const { error: errInsert } = await supabase.from("partidas").insert({
+      codigo: nuevoCod, estado: "jugando",
+      jugador1_id: user.id,
+      jugador1_nombre: perfil?.nombre || "",
+      jugador1_avatar: perfil?.avatar || "👤",
+      jugador2_id: rivalId,
+      jugador2_nombre: rivalNombre || "",
+      jugador2_avatar: rivalAvatar || "👤",
+      mano_jugador1: JSON.stringify(mano1),
+      mano_jugador2: JSON.stringify(mano2),
+      turno: user.id, mesa: JSON.stringify([]),
+      puntos1: 0, puntos2: 0,
+      apuesta: apuestaR,
+      puntos: p?.puntos || 15,
+      es_torneo: p?.es_torneo || false,
+    });
+
+    if (errInsert) { setRevanchaEstado(null); return; }
+
+    if (channelRef.current) {
+      channelRef.current.send({ type: "broadcast", event: "revancha_accept", payload: { nuevoCodigo: nuevoCod } });
+    }
+
+    // Aceptante entra como jugador1
+    pagoProcesadoRef.current = false;
+    accionLogueadaRef.current = null;
+    setResultadoPartida(null);
+    setRevanchaEstado(null);
+    setCartaSeleccionada(null);
+    setLog(["🔄 ¡Revancha! ¡A jugar!"]);
+    setSoyJugador1(true);
+    setMiMano(mano1);
+    setManoRival(mano2);
+    setPantalla("jugando");
+    setCodigo(nuevoCod);
+  }
+
+  function rechazarRevancha() {
+    setRevanchaEstado(null);
+    if (channelRef.current) channelRef.current.send({ type: "broadcast", event: "revancha_reject" });
+  }
+  /* ─────────────── */
+
   const miTurno = partida?.turno === user.id;
   const mesaActual = partida?.mesa ? JSON.parse(partida.mesa) : [];
 
   if (resultadoPartida) return (
     <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Lato',sans-serif",padding:24 }}>
-      <div style={{ textAlign:"center",maxWidth:320 }}>
+      <div style={{ textAlign:"center",maxWidth:320,width:"100%" }}>
         <div style={{ fontSize:64,marginBottom:16 }}>{resultadoPartida.ganaste?"🏆":"💀"}</div>
         <div style={{ fontSize:28,fontWeight:900,color:resultadoPartida.ganaste?"#fbbf24":"#f87171",marginBottom:8 }}>
           {resultadoPartida.ganaste?"¡Ganaste!":"Perdiste"}
@@ -612,13 +774,67 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             Perdiste {fmtARS(resultadoPartida.apuesta)}
           </div>
         )}
-        <button
-          onClick={onVolver}
-          style={{ marginTop:16,padding:"12px 28px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}
-        >
-          Volver al inicio
-        </button>
+
+        <div style={{ display:"flex",flexDirection:"column",gap:10,marginTop:20 }}>
+          {/* Botón revancha */}
+          {revanchaEstado === null && (
+            <button onClick={solicitarRevancha} style={{ padding:"12px 28px",borderRadius:12,cursor:"pointer",background:"rgba(251,191,36,0.1)",border:"1px solid #fbbf24",color:"#fbbf24",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>
+              🔄 Revancha
+            </button>
+          )}
+
+          {/* Esperando respuesta */}
+          {revanchaEstado === "esperando_rival" && (
+            <div style={{ background:"rgba(251,191,36,0.07)",border:"1px solid rgba(251,191,36,0.3)",borderRadius:12,padding:"14px 16px" }}>
+              <div style={{ fontSize:13,color:"#fbbf24",fontWeight:700,marginBottom:4 }}>Esperando respuesta del rival...</div>
+              <div style={{ fontSize:28,color:"#fbbf24",fontWeight:900,marginBottom:10 }}>{revanchaTimer}s</div>
+              <button onClick={cancelarRevancha} style={{ padding:"6px 16px",borderRadius:8,cursor:"pointer",background:"none",border:"1px solid #374151",color:"#6b7280",fontFamily:"'Lato',sans-serif",fontSize:12 }}>
+                Cancelar
+              </button>
+            </div>
+          )}
+
+          {/* Procesando */}
+          {revanchaEstado === "procesando" && (
+            <div style={{ fontSize:13,color:"#4ade80",padding:"10px" }}>⏳ Preparando la revancha...</div>
+          )}
+
+          {/* Rechazada */}
+          {(revanchaEstado === "rechazada" || revanchaEstado === "cancelada") && (
+            <div style={{ fontSize:13,color:"#f87171",background:"rgba(248,113,113,0.07)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:10,padding:"12px" }}>
+              {revanchaEstado === "rechazada" ? "El rival no aceptó la revancha" : "La revancha fue cancelada"}
+            </div>
+          )}
+
+          <button onClick={onVolver} style={{ padding:"12px 28px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>
+            Volver al inicio
+          </button>
+        </div>
       </div>
+
+      {/* Popup: rival quiere revancha */}
+      {revanchaEstado === "rival_pide" && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:70,padding:16 }}>
+          <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)",border:"1px solid rgba(251,191,36,0.45)",borderRadius:20,padding:"28px 24px",maxWidth:300,width:"100%",textAlign:"center",fontFamily:"'Lato',sans-serif" }}>
+            <div style={{ fontSize:48,marginBottom:10 }}>🔄</div>
+            <div style={{ fontSize:18,color:"#fbbf24",fontWeight:900,marginBottom:6 }}>¡Tu rival quiere una revancha!</div>
+            <div style={{ fontSize:14,color:"rgba(255,255,255,0.7)",marginBottom: (partidaRef.current?.apuesta || 0) > 0 ? 6 : 20 }}>¿Aceptás?</div>
+            {(partidaRef.current?.apuesta || 0) > 0 && (
+              <div style={{ fontSize:13,color:"#9ca3af",marginBottom:20 }}>
+                Se descontarán {fmtARS(partidaRef.current.apuesta)} de tu saldo
+              </div>
+            )}
+            <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+              <button onClick={aceptarRevancha} style={{ padding:"13px",borderRadius:10,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>
+                ✅ Aceptar
+              </button>
+              <button onClick={rechazarRevancha} style={{ padding:"13px",borderRadius:10,cursor:"pointer",background:"rgba(248,113,113,0.08)",border:"1px solid #f87171",color:"#f87171",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>
+                ❌ Rechazar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
