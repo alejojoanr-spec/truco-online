@@ -197,13 +197,18 @@ export default function BotonSoporte({ perfil }) {
                 Cargando...
               </div>
             ) : mensajes.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "32px 16px" }}>
-                <div style={{ fontSize: 36, marginBottom: 12 }}>👋</div>
-                <div style={{ fontSize: 14, color: "#e2f5e9", fontWeight: 700, marginBottom: 8 }}>
-                  ¿Necesitás ayuda?
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                <div style={{ fontSize: 10, color: "#60a5fa", fontWeight: 700, marginBottom: 3, paddingLeft: 4 }}>
+                  Soporte
                 </div>
-                <div style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.7 }}>
-                  Escribí tu consulta y un asesor te responderá a la brevedad.
+                <div style={{
+                  maxWidth: "82%", padding: "9px 13px",
+                  borderRadius: "2px 12px 12px 12px",
+                  background: "rgba(96,165,250,0.1)",
+                  border: "1px solid rgba(96,165,250,0.25)",
+                  fontSize: 13, color: "#e2f5e9", lineHeight: 1.55,
+                }}>
+                  ¡Hola {perfil.nombre}! ¿En qué puedo ayudarte?
                 </div>
               </div>
             ) : (
