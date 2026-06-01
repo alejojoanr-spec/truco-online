@@ -226,8 +226,8 @@ function CardJugando({ sala }) {
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f87171" }} />
-        <span style={{ fontSize: 11, color: "#f87171", fontWeight: 700 }}>Jugando</span>
+        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 6px #4ade80" }} />
+        <span style={{ fontSize: 11, color: "#4ade80", fontWeight: 700 }}>Jugando</span>
       </div>
     </div>
   );
