@@ -92,6 +92,37 @@ function CartaMulti({ carta, oculta, onClick, jugada, seleccionada }) {
   );
 }
 
+function CartaMesaSmall({ carta, ganadora }) {
+  return (
+    <div style={{
+      width:48, height:72, borderRadius:8, flexShrink:0,
+      background:"linear-gradient(135deg,#fffef7,#fef9e7)",
+      border:`2px solid ${ganadora?"#fbbf24":"#d4a017"}`,
+      display:"flex", flexDirection:"column", alignItems:"center",
+      justifyContent:"space-between", padding:"4px 3px", userSelect:"none",
+      boxShadow: ganadora
+        ? "0 0 0 1px rgba(0,0,0,0.7), 0 4px 12px rgba(0,0,0,0.4), 0 0 8px rgba(251,191,36,0.35)"
+        : "0 0 0 1px rgba(0,0,0,0.6), 0 3px 8px rgba(0,0,0,0.35)",
+    }}>
+      <span style={{ fontSize:10,fontWeight:900,color:"#1a1a1a" }}>{carta.num}</span>
+      <span style={{ fontSize:16 }}>{SIMBOLO[carta.palo]}</span>
+      <span style={{ fontSize:6,fontWeight:700,color:COLOR_PALO[carta.palo],textTransform:"uppercase" }}>{carta.palo}</span>
+    </div>
+  );
+}
+
+function SlotMesaVacio() {
+  return (
+    <div style={{
+      width:48, height:72, borderRadius:8, flexShrink:0,
+      border:"1px dashed rgba(107,114,128,0.25)",
+      background:"rgba(0,0,0,0.12)",
+      display:"flex", alignItems:"center", justifyContent:"center",
+      fontSize:14, color:"rgba(107,114,128,0.25)",
+    }}>⏳</div>
+  );
+}
+
 export default function Multijugador({ user, perfil, onVolver, codigoInicial, autoCrear, apuesta, puntos, esTorneo, codigoYaCreado }) {
   const [pantalla, setPantalla] = useState("menu");
   const [codigo, setCodigo] = useState("");
@@ -926,14 +957,70 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         </div>
       </div>
 
-      <div style={{ background:"rgba(0,0,0,0.25)",border:"1px solid rgba(45,106,79,0.4)",borderRadius:16,padding:"12px 24px",marginBottom:16,minHeight:80,display:"flex",alignItems:"center",justifyContent:"center",gap:24,width:"100%",maxWidth:400 }}>
-        {mesaActual.length===0&&<div style={{ color:"rgba(255,255,255,0.1)" }}>Mesa vacía</div>}
-        {mesaActual.map((m,i)=>(
-          <div key={i} style={{ textAlign:"center" }}>
-            <div style={{ fontSize:9,color:m.jugador===user.id?"#4ade80":"#f87171",marginBottom:4 }}>{m.jugador===user.id?"VOS":"RIVAL"}</div>
-            <CartaMulti carta={m.carta} />
-          </div>
-        ))}
+      {/* Mesa: rondas acumuladas */}
+      <div style={{ background:"rgba(0,0,0,0.25)",border:"1px solid rgba(45,106,79,0.4)",borderRadius:16,padding:"14px 20px",marginBottom:16,minHeight:180,display:"flex",alignItems:"center",justifyContent:"center",gap:16,width:"100%",maxWidth:400 }}>
+        {mesaActual.length === 0 ? (
+          <div style={{ color:"rgba(255,255,255,0.1)", fontSize:13 }}>Mesa vacía</div>
+        ) : (() => {
+          // Agrupar en rondas de 2 cartas
+          const rondas = [];
+          for (let i = 0; i < mesaActual.length; i += 2) {
+            const par       = mesaActual.slice(i, i + 2);
+            const miCarta    = par.find(c => c.jugador === user.id) || null;
+            const rivalCarta = par.find(c => c.jugador !== user.id) || null;
+            const completa   = par.length === 2;
+            let ganador = null;
+            if (completa && miCarta && rivalCarta) {
+              const vm = valorTruco(miCarta.carta), vr = valorTruco(rivalCarta.carta);
+              ganador = vm > vr ? 'yo' : vr > vm ? 'rival' : 'empate';
+            }
+            rondas.push({ miCarta, rivalCarta, completa, ganador, n: rondas.length + 1 });
+          }
+          const total = rondas.length;
+          return rondas.map((r, ri) => {
+            const esUltima    = ri === total - 1;
+            const colorGanador =
+              r.ganador === 'yo' ? '#4ade80' :
+              r.ganador === 'rival' ? '#f87171' : '#fbbf24';
+            return (
+              <div key={ri} style={{
+                display:"flex", flexDirection:"column", alignItems:"center", gap:5,
+                opacity: esUltima ? 1 : 0.65,
+                transform: esUltima ? "none" : `translateY(${(total - 1 - ri) * 4}px)`,
+                transition:"all 0.25s",
+              }}>
+                {/* Carta del rival */}
+                <div style={{ position:"relative" }}>
+                  {r.rivalCarta
+                    ? <CartaMesaSmall carta={r.rivalCarta.carta} ganadora={r.ganador === 'rival'} />
+                    : <SlotMesaVacio />}
+                  {r.ganador === 'rival' && (
+                    <span style={{ position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",fontSize:11 }}>👑</span>
+                  )}
+                </div>
+
+                {/* Indicador de resultado */}
+                {r.completa ? (
+                  <div style={{ fontSize:11,fontWeight:900,color:colorGanador,lineHeight:1 }}>
+                    {r.ganador === 'yo' ? '✓' : r.ganador === 'rival' ? '✗' : '═'}
+                  </div>
+                ) : (
+                  <div style={{ fontSize:9,color:"rgba(107,114,128,0.5)" }}>R{r.n}</div>
+                )}
+
+                {/* Mi carta */}
+                <div style={{ position:"relative" }}>
+                  {r.miCarta
+                    ? <CartaMesaSmall carta={r.miCarta.carta} ganadora={r.ganador === 'yo'} />
+                    : <SlotMesaVacio />}
+                  {r.ganador === 'yo' && (
+                    <span style={{ position:"absolute",bottom:-8,left:"50%",transform:"translateX(-50%)",fontSize:11 }}>👑</span>
+                  )}
+                </div>
+              </div>
+            );
+          });
+        })()}
       </div>
 
       <div style={{ background:"rgba(0,0,0,0.35)",border:"1px solid rgba(45,106,79,0.3)",borderRadius:10,padding:"8px 12px",width:"100%",maxWidth:500,marginBottom:10,maxHeight:70,overflowY:"auto" }}>
@@ -969,7 +1056,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         </div>
         <div style={{ display:"flex",gap:10,justifyContent:"center" }}>
           {miMano.map((c,i)=>(
-            <CartaMulti key={i} carta={c} seleccionada={cartaSeleccionada===i}
+            <CartaMulti key={`${c.num}-${c.palo}`} carta={c} seleccionada={cartaSeleccionada===i}
               onClick={()=>miTurno&&!partida?.accion_pendiente&&jugarCarta(i)} />
           ))}
         </div>
