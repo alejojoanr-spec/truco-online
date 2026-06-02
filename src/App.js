@@ -161,30 +161,31 @@ function Carta({ carta, oculta, onClick, jugada, seleccionada }) {
     },
   };
 
-  const p = palos[carta.palo] || palos.espada;
-
   return (
-    <svg width="70" height="110" onClick={onClick} style={{
-      cursor: onClick && !jugada ? "pointer" : "default",
-      userSelect: "none",
-      transform: seleccionada ? "translateY(-12px) scale(1.05)" : jugada ? "scale(0.95)" : "none",
-      opacity: jugada ? 0.5 : 1,
-      transition: "all 0.2s",
-      filter: seleccionada
-        ? "drop-shadow(0 6px 16px rgba(0,0,0,0.6)) drop-shadow(0 0 10px rgba(245,158,11,0.75))"
-        : jugada
-          ? "drop-shadow(0 2px 5px rgba(0,0,0,0.3))"
-          : "drop-shadow(0 6px 16px rgba(0,0,0,0.45)) drop-shadow(0 2px 6px rgba(0,0,0,0.3))",
-    }}>
-      <rect width="70" height="110" rx="8" fill="#fffef0"/>
-      <rect width="70" height="110" rx="8" fill="none" stroke={seleccionada ? "#f59e0b" : jugada ? "#555" : "#c8960c"} strokeWidth={seleccionada ? "2.5" : "1.5"}/>
-      <rect x="4" y="4" width="62" height="102" rx="6" fill="none" stroke="#c8960c" strokeWidth="0.5"/>
-      <rect width="70" height="110" rx="8" fill="none" stroke="rgba(0,0,0,0.78)" strokeWidth="1"/>
-      <text x="6" y="20" style={{ fontSize:14, fontWeight:900, fontFamily:"'Lato',sans-serif", fill: jugada ? "#888" : "#1a1a1a" }}>{carta.num}</text>
-      <text x="64" y="98" style={{ fontSize:14, fontWeight:900, fontFamily:"'Lato',sans-serif", fill: jugada ? "#888" : "#1a1a1a", textAnchor:"end" }}>{carta.num}</text>
-      {p.svg}
-      <text x="35" y="107" style={{ fontSize:7, fontWeight:800, fontFamily:"'Lato',sans-serif", fill: jugada ? "#888" : p.color, textAnchor:"middle", letterSpacing:"1.5px" }}>{p.label}</text>
-    </svg>
+    <div
+      onClick={onClick}
+      style={{
+        width: 70, height: 110, borderRadius: 8, flexShrink: 0,
+        overflow: "hidden", userSelect: "none",
+        cursor: onClick && !jugada ? "pointer" : "default",
+        opacity: jugada ? 0.5 : 1,
+        transform: seleccionada ? "translateY(-12px) scale(1.05)" : jugada ? "scale(0.95)" : "none",
+        transition: "all 0.2s",
+        border: seleccionada ? "2.5px solid #f59e0b" : "none",
+        boxShadow: seleccionada
+          ? "0 6px 16px rgba(0,0,0,0.6), 0 0 10px rgba(245,158,11,0.75)"
+          : jugada
+          ? "0 2px 5px rgba(0,0,0,0.3)"
+          : "0 0 0 1px rgba(0,0,0,0.78), 0 6px 16px rgba(0,0,0,0.45)",
+      }}
+    >
+      <img
+        src={`/cartas/${carta.palo}_${carta.num}.png`}
+        alt={`${carta.num} de ${carta.palo}`}
+        style={{ width: "100%", height: "100%", display: "block", objectFit: "cover" }}
+        draggable={false}
+      />
+    </div>
   );
 }
 
