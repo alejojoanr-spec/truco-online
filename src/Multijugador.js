@@ -76,8 +76,6 @@ function valorEnvido(mano) {
   return max;
 }
 
-const SIMBOLO = { espada: "⚔", basto: "🪄", copa: "🏆", oro: "⭕" };
-const COLOR_PALO = { espada: "#60a5fa", basto: "#4ade80", copa: "#f472b6", oro: "#fbbf24" };
 
 function CartaMulti({ carta, oculta, onClick, jugada, seleccionada }) {
   if (oculta) return (
