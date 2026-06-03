@@ -131,16 +131,13 @@ function CartaMulti({ carta, oculta, onClick, jugada, seleccionada }) {
   );
 }
 
-function CartaMesaSmall({ carta, ganadora }) {
+function CartaMesaSmall({ carta }) {
   return (
     <div style={{
       width: 48, height: 72, borderRadius: 8, flexShrink: 0,
       overflow: "hidden", userSelect: "none", position: "relative",
       background: "white",
-      border: `2px solid ${ganadora ? "#fbbf24" : "transparent"}`,
-      boxShadow: ganadora
-        ? "0 0 0 1px rgba(0,0,0,0.7), 0 4px 12px rgba(0,0,0,0.4), 0 0 8px rgba(251,191,36,0.35)"
-        : "0 0 0 1px rgba(0,0,0,0.6), 0 3px 8px rgba(0,0,0,0.35)",
+      boxShadow: "0 0 0 1px rgba(0,0,0,0.6), 0 3px 8px rgba(0,0,0,0.35)",
     }}>
       <img
         src={`/cartas/${carta.palo}_${carta.num}.png`}
@@ -1086,10 +1083,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           }
           const total = rondas.length;
           return rondas.map((r, ri) => {
-            const esUltima    = ri === total - 1;
-            const colorGanador =
-              r.ganador === 'yo' ? '#4ade80' :
-              r.ganador === 'rival' ? '#f87171' : '#fbbf24';
+            const esUltima = ri === total - 1;
             return (
               <div key={ri} style={{
                 display:"flex", flexDirection:"column", alignItems:"center", gap:5,
@@ -1098,33 +1092,13 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
                 transition:"all 0.25s",
               }}>
                 {/* Carta del rival */}
-                <div style={{ position:"relative" }}>
-                  {r.rivalCarta
-                    ? <CartaMesaSmall carta={r.rivalCarta.carta} ganadora={r.ganador === 'rival'} />
-                    : <SlotMesaVacio />}
-                  {r.ganador === 'rival' && (
-                    <span style={{ position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",fontSize:11 }}>👑</span>
-                  )}
-                </div>
+                {r.rivalCarta ? <CartaMesaSmall carta={r.rivalCarta.carta} /> : <SlotMesaVacio />}
 
-                {/* Indicador de resultado */}
-                {r.completa ? (
-                  <div style={{ fontSize:11,fontWeight:900,color:colorGanador,lineHeight:1 }}>
-                    {r.ganador === 'yo' ? '✓' : r.ganador === 'rival' ? '✗' : '═'}
-                  </div>
-                ) : (
-                  <div style={{ fontSize:9,color:"rgba(107,114,128,0.5)" }}>R{r.n}</div>
-                )}
+                {/* Separador de ronda */}
+                <div style={{ height:5 }} />
 
                 {/* Mi carta */}
-                <div style={{ position:"relative" }}>
-                  {r.miCarta
-                    ? <CartaMesaSmall carta={r.miCarta.carta} ganadora={r.ganador === 'yo'} />
-                    : <SlotMesaVacio />}
-                  {r.ganador === 'yo' && (
-                    <span style={{ position:"absolute",bottom:-8,left:"50%",transform:"translateX(-50%)",fontSize:11 }}>👑</span>
-                  )}
-                </div>
+                {r.miCarta ? <CartaMesaSmall carta={r.miCarta.carta} /> : <SlotMesaVacio />}
               </div>
             );
           });
