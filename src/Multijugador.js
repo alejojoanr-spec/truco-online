@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 import { leerConfig } from "./Configuracion";
 
 function reproducirVoz(nombre) {
-  if (!leerConfig().sonidoCartas) return;
+  if (!leerConfig().voces) return;
   new Audio(`/sounds/${nombre}.mp3`).play().catch(() => {});
 }
 const VOZ_ENV = { envido: 'envido', real_envido: 'real_envido', falta_envido: 'falta_envido' };

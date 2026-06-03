@@ -224,7 +224,7 @@ function reproducirSonidoDerrota() {
 }
 
 function reproducirVoz(nombre) {
-  if (!leerConfig().sonidoCartas) return;
+  if (!leerConfig().voces) return;
   new Audio(`/sounds/${nombre}.mp3`).play().catch(() => {});
 }
 
