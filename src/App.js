@@ -80,9 +80,10 @@ function repartir() {
 }
 
 
-function Carta({ carta, oculta, onClick, jugada, seleccionada }) {
+function Carta({ carta, oculta, onClick, jugada, seleccionada, escala = 1 }) {
+  const W = 70 * escala, H = 110 * escala;
   if (oculta) return (
-    <svg width="70" height="110" style={{ cursor:"default", userSelect:"none", opacity: jugada ? 0.5 : 1, filter:"drop-shadow(0 5px 14px rgba(0,0,0,0.45)) drop-shadow(0 2px 5px rgba(0,0,0,0.3))" }}>
+    <svg width={W} height={H} viewBox="0 0 70 110" style={{ cursor:"default", userSelect:"none", flexShrink:0, opacity: jugada ? 0.5 : 1, filter:"drop-shadow(0 5px 14px rgba(0,0,0,0.45)) drop-shadow(0 2px 5px rgba(0,0,0,0.3))" }}>
       <defs>
         <pattern id="dorso-rombos" x="0" y="0" width="10" height="8" patternUnits="userSpaceOnUse">
           <polygon points="5,0 10,4 5,8 0,4" fill="#0e2617" stroke="#3a7a55" strokeWidth="0.9"/>
@@ -97,19 +98,18 @@ function Carta({ carta, oculta, onClick, jugada, seleccionada }) {
     </svg>
   );
 
-
   return (
     <div
       onClick={onClick}
       style={{
-        width: 70, height: 110, borderRadius: 8, flexShrink: 0,
+        width: W, height: H, borderRadius: 8 * escala, flexShrink: 0,
         overflow: "hidden", userSelect: "none", position: "relative",
         background: "white",
         cursor: onClick && !jugada ? "pointer" : "default",
         opacity: jugada ? 0.5 : 1,
-        transform: seleccionada ? "translateY(-12px) scale(1.05)" : jugada ? "scale(0.95)" : "none",
+        transform: seleccionada ? `translateY(${-12*escala}px) scale(1.05)` : jugada ? "scale(0.95)" : "none",
         transition: "all 0.2s",
-        border: seleccionada ? "2.5px solid #f59e0b" : "none",
+        border: seleccionada ? `${2.5*escala}px solid #f59e0b` : "none",
         boxShadow: seleccionada
           ? "0 6px 16px rgba(0,0,0,0.6), 0 0 10px rgba(245,158,11,0.75)"
           : jugada
@@ -120,7 +120,7 @@ function Carta({ carta, oculta, onClick, jugada, seleccionada }) {
       <img
         src={`/cartas/${carta.palo}_${carta.num}.png`}
         alt={`${carta.num} de ${carta.palo}`}
-        style={{ position: "absolute", width: 110, height: 70, top: 20, left: -20, transform: "rotate(-90deg)", transformOrigin: "center center" }}
+        style={{ position:"absolute", width:H, height:W, top:(H-W)/2, left:(W-H)/2, transform:"rotate(-90deg)", transformOrigin:"center center" }}
         draggable={false}
       />
     </div>
@@ -569,33 +569,66 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         ))}
       </div>
 
-      <div style={{ flex:1,display:"flex",alignItems:"center",justifyContent:"center",minHeight:0 }}>
-        <div style={{ display:"flex",gap:8,justifyContent:"center" }}>
-          {manoRival.map((c,i)=><Carta key={i} carta={c} oculta={!jugadasRival.includes(i)} jugada={jugadasRival.includes(i)} />)}
-        </div>
+      {/* Mano del rival */}
+      <div style={{ display:"flex",gap:8,justifyContent:"center",flexShrink:0 }}>
+        {manoRival.map((c,i)=>(
+          <Carta key={i} carta={c} escala={1.1} oculta={!jugadasRival.includes(i)} jugada={jugadasRival.includes(i)} />
+        ))}
       </div>
 
-      <div style={{ background:"rgba(0,0,0,0.25)",border:"1px solid rgba(45,106,79,0.4)",borderRadius:16,padding:"8px 24px",display:"flex",alignItems:"center",justifyContent:"center",gap:24,width:"100%",maxWidth:400,minWidth:280,flexShrink:0 }}>
-        <div style={{ textAlign:"center" }}>
-          {mesaRival.length>0?(<><div style={{ fontSize:9,color:"#9ca",marginBottom:4 }}>RIVAL</div><Carta carta={mesaRival[mesaRival.length-1]} /></>):<div style={{ color:"rgba(255,255,255,0.1)",fontSize:12 }}>—</div>}
-        </div>
-        <div style={{ color:"#2d6a4f",fontSize:20 }}>VS</div>
-        <div style={{ textAlign:"center" }}>
-          {mesaJugador.length>0?(<><div style={{ fontSize:9,color:"#4ade80",marginBottom:4 }}>VOS</div><Carta carta={mesaJugador[mesaJugador.length-1]} /></>):<div style={{ color:"rgba(255,255,255,0.1)",fontSize:12 }}>—</div>}
-        </div>
+      {/* Mesa — 3 slots fijos (1 por ronda) */}
+      <div style={{ background:"rgba(0,0,0,0.25)",border:"1px solid rgba(45,106,79,0.4)",borderRadius:16,padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"center",gap:14,width:"100%",maxWidth:420,height:190,flexShrink:0 }}>
+        {[0,1,2].map(ri => {
+          const mc = mesaJugador[ri] || null;
+          const rc = mesaRival[ri] || null;
+          const gan = ganadoresRondas[ri];
+          const col = gan==='jugador'?'#4ade80':gan==='rival'?'#f87171':'#fbbf24';
+          const MESA_E = 0.68;
+          const MW = 70*MESA_E, MH = 110*MESA_E;
+          const Slot = () => (
+            <div style={{ width:MW,height:MH,borderRadius:8*MESA_E,border:"1px dashed rgba(107,114,128,0.22)",background:"rgba(0,0,0,0.12)",flexShrink:0 }} />
+          );
+          return (
+            <div key={ri} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:4 }}>
+              {/* Carta del rival */}
+              <div style={{ position:"relative" }}>
+                {rc ? (
+                  <div style={{ outline: gan==='rival'?`2px solid #fbbf24`:"none", borderRadius:8*MESA_E }}>
+                    <Carta carta={rc} escala={MESA_E} />
+                  </div>
+                ) : <Slot />}
+                {gan==='rival' && <span style={{ position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",fontSize:10 }}>👑</span>}
+              </div>
+              {/* Indicador */}
+              {gan ? (
+                <div style={{ fontSize:10,fontWeight:900,color:col,lineHeight:1 }}>
+                  {gan==='jugador'?'✓':gan==='rival'?'✗':'═'}
+                </div>
+              ) : <div style={{ height:12 }} />}
+              {/* Mi carta */}
+              <div style={{ position:"relative" }}>
+                {mc ? (
+                  <div style={{ outline: gan==='jugador'?`2px solid #fbbf24`:"none", borderRadius:8*MESA_E }}>
+                    <Carta carta={mc} escala={MESA_E} />
+                  </div>
+                ) : <Slot />}
+                {gan==='jugador' && <span style={{ position:"absolute",bottom:-8,left:"50%",transform:"translateX(-50%)",fontSize:10 }}>👑</span>}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      <div style={{ background:"rgba(0,0,0,0.35)",border:"1px solid rgba(45,106,79,0.3)",borderRadius:10,padding:"8px 12px",width:"100%",maxWidth:500,flexShrink:0 }}>
-        {log.slice(-2).map((msg,i)=><div key={i} style={{ fontSize:11,color:"#ffffff",lineHeight:1.6,fontFamily:"'Lato',sans-serif" }}>{msg}</div>)}
-      </div>
-
-      <div style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:0 }}>
-        <div style={{ fontSize:10,color:"#4ade80",letterSpacing:2,textTransform:"uppercase",marginBottom:8 }}>{puedeJugar?"👆 Tocá una carta para jugar":turno==="rival"?"Esperando rival...":"Tu mano"}</div>
-        <div style={{ display:"inline-flex", gap:10 }}>
+      {/* Mano del jugador */}
+      <div style={{ display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0 }}>
+        <div style={{ fontSize:10,color:"#4ade80",letterSpacing:2,textTransform:"uppercase",marginBottom:8 }}>
+          {puedeJugar?"👆 Tocá una carta para jugar":turno==="rival"?"Esperando rival...":"Tu mano"}
+        </div>
+        <div style={{ display:"inline-flex",gap:10 }}>
           {manoJugador.map((c,i)=>(
             i===0 ? (
               <div key={i} style={{ position:"relative" }}>
-                <Carta carta={c} jugada={jugadasJugador.includes(i)} seleccionada={cartaSeleccionada===i}
+                <Carta carta={c} escala={1.1} jugada={jugadasJugador.includes(i)} seleccionada={cartaSeleccionada===i}
                   onClick={()=>{ if(!puedeJugar||jugadasJugador.includes(i))return; if(cartaSeleccionada===i)jugarCarta(i); else setCartaSeleccionada(i); }} />
                 {turno==="jugador"&&fasePartida==="jugando"&&timerSegundos>0&&(
                   <svg width="44" height="44" style={{ position:"absolute",left:-10,bottom:-10,zIndex:10,filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
@@ -612,7 +645,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
                 )}
               </div>
             ) : (
-              <Carta key={i} carta={c} jugada={jugadasJugador.includes(i)} seleccionada={cartaSeleccionada===i}
+              <Carta key={i} carta={c} escala={1.1} jugada={jugadasJugador.includes(i)} seleccionada={cartaSeleccionada===i}
                 onClick={()=>{ if(!puedeJugar||jugadasJugador.includes(i))return; if(cartaSeleccionada===i)jugarCarta(i); else setCartaSeleccionada(i); }} />
             )
           ))}
