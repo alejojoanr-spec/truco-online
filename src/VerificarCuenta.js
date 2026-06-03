@@ -84,7 +84,7 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
     genero: "",
   });
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
-  const [recibeNovedades, setRecibeNovedades] = useState(false);
+  const [recibeNovedades, setRecibeNovedades] = useState(true);
   const [verTerminos, setVerTerminos] = useState(false);
   const [verPrivacidad, setVerPrivacidad] = useState(false);
   const [error, setError] = useState("");
@@ -117,9 +117,7 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
       genero: form.genero || null,
       dni: form.dni.replace(/\D/g, "") || null,
     };
-    if (recibeNovedades && !perfil.recibe_novedades) {
-      updatePayload.recibe_novedades = true;
-    }
+    updatePayload.recibe_novedades = recibeNovedades;
     const { error: dbError } = await supabase
       .from("perfiles")
       .update(updatePayload)
