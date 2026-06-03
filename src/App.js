@@ -306,7 +306,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     setTurno("jugador"); setEstadoTruco(null); setEstadoEnvido(null);
     setTrucoCantadoPor(null); setPtsTrucoApostados(0); setRondaActual(1); setGanadoresRondas([]);
     setFasePartida("jugando"); setGanadorPartida(null);
-    setLog(["🃏 Nueva partida. ¡A jugar!"]); setCartaSeleccionada(null);
+    setCartaSeleccionada(null);
   }
 
   async function actualizarEstadisticas(gano) {
