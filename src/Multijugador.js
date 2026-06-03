@@ -55,10 +55,13 @@ function valorTruco(c) {
   return 0; // 4
 }
 
+const LABEL_ENV = { envido: 'Envido', real_envido: 'Real Envido', falta_envido: 'Falta Envido' };
+
 function getCantoLabel(acc) {
   if (!acc) return '';
   if (acc.tipo === 'truco') return ['', 'Truco', 'Retruco', 'Vale cuatro'][acc.nivel] || 'Truco';
-  return { envido: 'Envido', real_envido: 'Real Envido', falta_envido: 'Falta Envido' }[acc.subtipo] || acc.subtipo;
+  const cadena = acc.cadena || [acc.subtipo];
+  return cadena.map(s => LABEL_ENV[s] || s).join(' + ');
 }
 
 function valorEnvido(mano) {
@@ -650,14 +653,35 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (JSON.parse(partida.mesa || "[]").length > 0) return;
     const puntosObj = partida.puntos || 15;
     const falta = Math.max(1, puntosObj - Math.max(partida.puntos1 || 0, partida.puntos2 || 0));
-    const cfg = { envido: { si_quiero: 2, si_no: 1 }, real_envido: { si_quiero: 3, si_no: 1 }, falta_envido: { si_quiero: falta, si_no: 1 } };
-    const { si_quiero, si_no } = cfg[subtipo];
-    const labels = { envido: 'Envido', real_envido: 'Real Envido', falta_envido: 'Falta Envido' };
+    const VALS = { envido: 2, real_envido: 3, falta_envido: falta };
     await supabase.from("partidas").update({
-      accion_pendiente: { tipo: 'envido', subtipo, cantado_por: user.id, si_quiero, si_no },
+      accion_pendiente: {
+        tipo: 'envido', subtipo, cadena: [subtipo],
+        cantado_por: user.id, si_quiero: VALS[subtipo], si_no: 1,
+      },
       envido_jugado: true,
     }).eq("codigo", codigo);
-    addLog(`¡${labels[subtipo]}!`);
+    addLog(`¡${LABEL_ENV[subtipo]}!`);
+  }
+
+  async function escalarEnvido(subtipo) {
+    const acc = partida?.accion_pendiente;
+    if (!acc || acc.tipo !== 'envido' || acc.cantado_por === user.id) return;
+    if (acc.subtipo === 'falta_envido') return;
+    if (acc.subtipo === 'real_envido' && subtipo !== 'falta_envido') return;
+    const puntosObj = partida.puntos || 15;
+    const falta = Math.max(1, puntosObj - Math.max(partida.puntos1 || 0, partida.puntos2 || 0));
+    const VALS = { envido: 2, real_envido: 3, falta_envido: falta };
+    const nuevaCadena = [...(acc.cadena || [acc.subtipo]), subtipo];
+    await supabase.from("partidas").update({
+      accion_pendiente: {
+        tipo: 'envido', subtipo, cadena: nuevaCadena,
+        cantado_por: user.id,
+        si_quiero: subtipo === 'falta_envido' ? falta : acc.si_quiero + VALS[subtipo],
+        si_no: acc.si_quiero,
+      },
+    }).eq("codigo", codigo);
+    addLog(`¡${nuevaCadena.map(s => LABEL_ENV[s]).join(' + ')}!`);
   }
 
   async function quiero() {
@@ -1112,27 +1136,73 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       {/* Overlay: el rival cantó algo, tengo que responder */}
       {partida?.accion_pendiente && partida.accion_pendiente.cantado_por !== user.id && (
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.82)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50,padding:16 }}>
-          <div style={{ background:"radial-gradient(ellipse at top,#1a2a0f 0%,#050f08 100%)",border:`1px solid ${partida.accion_pendiente.tipo==='truco'?"rgba(251,191,36,0.5)":"rgba(167,139,250,0.5)"}`,borderRadius:20,padding:"28px 24px",maxWidth:300,width:"100%",textAlign:"center",fontFamily:"'Lato',sans-serif" }}>
-            <div style={{ fontSize:40,marginBottom:8 }}>{partida.accion_pendiente.tipo==='truco'?"🤺":"🃏"}</div>
-            <div style={{ fontSize:10,color:"#6b7280",letterSpacing:3,textTransform:"uppercase",marginBottom:4 }}>El rival canta</div>
-            <div style={{ fontSize:28,fontWeight:900,color:partida.accion_pendiente.tipo==='truco'?"#fbbf24":"#a78bfa",marginBottom:4 }}>
-              ¡{getCantoLabel(partida.accion_pendiente)}!
-            </div>
-            <div style={{ fontSize:12,color:"#6b7280",marginBottom:20 }}>
-              {partida.accion_pendiente.tipo==='truco'
-                ? `Quiero → mano vale ${partida.accion_pendiente.si_quiero} pts · No quiero → rival suma ${partida.accion_pendiente.si_no}`
-                : `Quiero → se comparan envidos · No quiero → rival suma ${partida.accion_pendiente.si_no}`}
-            </div>
-            <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-              <button onClick={quiero} style={{ padding:"12px",borderRadius:10,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>✅ Quiero</button>
-              {partida.accion_pendiente.tipo==='truco' && partida.accion_pendiente.nivel < 3 && (
-                <button onClick={subirTruco} style={{ padding:"12px",borderRadius:10,cursor:"pointer",background:"rgba(251,191,36,0.08)",border:"1px solid #fbbf24",color:"#fbbf24",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
-                  🔥 {partida.accion_pendiente.nivel===1?'Retruco':'Vale cuatro'}
-                </button>
-              )}
-              <button onClick={noQuiero} style={{ padding:"12px",borderRadius:10,cursor:"pointer",background:"rgba(248,113,113,0.08)",border:"1px solid #f87171",color:"#f87171",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>❌ No quiero</button>
-            </div>
-          </div>
+          {(() => {
+            const acc = partida.accion_pendiente;
+            const esTruco = acc.tipo === 'truco';
+            const puntosObj = partida.puntos || 15;
+            const faltaVal = Math.max(1, puntosObj - Math.max(partida.puntos1||0, partida.puntos2||0));
+            const accentColor = esTruco ? "#fbbf24" : "#a78bfa";
+            const borderColor = esTruco ? "rgba(251,191,36,0.5)" : "rgba(167,139,250,0.5)";
+            const BTN_ESCALAR = { padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(167,139,250,0.08)",border:"1px solid #a78bfa",color:"#a78bfa",fontFamily:"'Lato',sans-serif",fontSize:13,fontWeight:700 };
+            return (
+              <div style={{ background:"radial-gradient(ellipse at top,#1a2a0f 0%,#050f08 100%)",border:`1px solid ${borderColor}`,borderRadius:20,padding:"24px 20px",maxWidth:300,width:"100%",textAlign:"center",fontFamily:"'Lato',sans-serif" }}>
+                <div style={{ fontSize:36,marginBottom:6 }}>{esTruco?"🤺":"🃏"}</div>
+                <div style={{ fontSize:9,color:"#6b7280",letterSpacing:3,textTransform:"uppercase",marginBottom:4 }}>
+                  El rival {esTruco?"canta":"toca"}
+                </div>
+                <div style={{ fontSize:22,fontWeight:900,color:accentColor,marginBottom:6 }}>
+                  ¡{getCantoLabel(acc)}!
+                </div>
+                <div style={{ fontSize:11,color:"#6b7280",marginBottom:16,lineHeight:1.6 }}>
+                  {esTruco
+                    ? `Quiero → mano vale ${acc.si_quiero} pt${acc.si_quiero>1?'s':''} · No quiero → rival suma ${acc.si_no}`
+                    : `Quiero → se comparan · No quiero → rival suma ${acc.si_no} pt${acc.si_no>1?'s':''}`}
+                </div>
+                <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+                  <button onClick={quiero} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
+                    ✅ Quiero
+                  </button>
+
+                  {/* Escalación Truco */}
+                  {esTruco && acc.nivel === 1 && (
+                    <button onClick={subirTruco} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(251,191,36,0.08)",border:"1px solid #fbbf24",color:"#fbbf24",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
+                      🔥 Quiero Retruco
+                    </button>
+                  )}
+                  {esTruco && acc.nivel === 2 && (
+                    <button onClick={subirTruco} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(251,191,36,0.08)",border:"1px solid #fbbf24",color:"#fbbf24",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
+                      🔥 Quiero Vale Cuatro
+                    </button>
+                  )}
+
+                  {/* Escalación Envido desde Envido */}
+                  {!esTruco && acc.subtipo === 'envido' && (
+                    <>
+                      <button onClick={()=>escalarEnvido('envido')} style={BTN_ESCALAR}>
+                        ↗ Envido ({acc.si_quiero + 2} pts)
+                      </button>
+                      <button onClick={()=>escalarEnvido('real_envido')} style={BTN_ESCALAR}>
+                        ↗ Real Envido ({acc.si_quiero + 3} pts)
+                      </button>
+                      <button onClick={()=>escalarEnvido('falta_envido')} style={BTN_ESCALAR}>
+                        ↗ Falta Envido ({faltaVal} pts)
+                      </button>
+                    </>
+                  )}
+                  {/* Escalación Envido desde Real Envido */}
+                  {!esTruco && acc.subtipo === 'real_envido' && (
+                    <button onClick={()=>escalarEnvido('falta_envido')} style={BTN_ESCALAR}>
+                      ↗ Falta Envido ({faltaVal} pts)
+                    </button>
+                  )}
+
+                  <button onClick={noQuiero} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(248,113,113,0.08)",border:"1px solid #f87171",color:"#f87171",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
+                    ❌ No quiero
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
