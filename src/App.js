@@ -581,39 +581,15 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         {[0,1,2].map(ri => {
           const mc = mesaJugador[ri] || null;
           const rc = mesaRival[ri] || null;
-          const gan = ganadoresRondas[ri];
-          const col = gan==='jugador'?'#4ade80':gan==='rival'?'#f87171':'#fbbf24';
           const MESA_E = 0.68;
           const MW = 70*MESA_E, MH = 110*MESA_E;
           const Slot = () => (
             <div style={{ width:MW,height:MH,borderRadius:8*MESA_E,border:"1px dashed rgba(107,114,128,0.22)",background:"rgba(0,0,0,0.12)",flexShrink:0 }} />
           );
           return (
-            <div key={ri} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:4 }}>
-              {/* Carta del rival */}
-              <div style={{ position:"relative" }}>
-                {rc ? (
-                  <div style={{ outline: gan==='rival'?`2px solid #fbbf24`:"none", borderRadius:8*MESA_E }}>
-                    <Carta carta={rc} escala={MESA_E} />
-                  </div>
-                ) : <Slot />}
-                {gan==='rival' && <span style={{ position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",fontSize:10 }}>👑</span>}
-              </div>
-              {/* Indicador */}
-              {gan ? (
-                <div style={{ fontSize:10,fontWeight:900,color:col,lineHeight:1 }}>
-                  {gan==='jugador'?'✓':gan==='rival'?'✗':'═'}
-                </div>
-              ) : <div style={{ height:12 }} />}
-              {/* Mi carta */}
-              <div style={{ position:"relative" }}>
-                {mc ? (
-                  <div style={{ outline: gan==='jugador'?`2px solid #fbbf24`:"none", borderRadius:8*MESA_E }}>
-                    <Carta carta={mc} escala={MESA_E} />
-                  </div>
-                ) : <Slot />}
-                {gan==='jugador' && <span style={{ position:"absolute",bottom:-8,left:"50%",transform:"translateX(-50%)",fontSize:10 }}>👑</span>}
-              </div>
+            <div key={ri} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:8 }}>
+              {rc ? <Carta carta={rc} escala={MESA_E} /> : <Slot />}
+              {mc ? <Carta carta={mc} escala={MESA_E} /> : <Slot />}
             </div>
           );
         })}
