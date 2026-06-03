@@ -223,6 +223,11 @@ function reproducirSonidoDerrota() {
   } catch {}
 }
 
+function reproducirVoz(nombre) {
+  if (!leerConfig().sonidoCartas) return;
+  new Audio(`/sounds/${nombre}.mp3`).play().catch(() => {});
+}
+
 function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerminos, onVerTorneos, onHome, rivalNombre = "IA", rivalAvatar = "🤖" }) {
   const [manoJugador, setManoJugador] = useState([]);
   const [manoRival, setManoRival] = useState([]);
@@ -427,15 +432,19 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
   function cantarTruco() {
     if (!trucoDisponible) return;
+    reproducirVoz('truco');
     setEstadoTruco("truco"); setTrucoCantadoPor("jugador"); addLog("Vos: ¡TRUCO!");
     setTimeout(() => {
       const rand = Math.random();
       if (rand < 0.3) {
+        reproducirVoz('no_quiero');
         setEstadoTruco("noquiero"); addLog("Rival: No quiero");
         addLog("✅ Ganaste 1 punto"); setPuntosJugador(p => p + 1); reproducirSonidoPunto();
       } else if (rand < 0.55) {
+        reproducirVoz('retruco');
         setEstadoTruco("retruco"); setTrucoCantadoPor("rival"); addLog("Rival: ¡RETRUCO!");
       } else {
+        reproducirVoz('quiero');
         setEstadoTruco("quiero"); setPtsTrucoApostados(2); addLog("Rival: ¡Quiero!");
       }
     }, 1000);
@@ -443,16 +452,21 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
   function responderRetruco(respuesta) {
     if (respuesta === "quiero") {
+      reproducirVoz('quiero');
       setEstadoTruco("quiero"); setPtsTrucoApostados(3); addLog("Vos: ¡Quiero!");
     } else if (respuesta === "noquiero") {
+      reproducirVoz('no_quiero');
       setEstadoTruco("noquiero"); addLog("Vos: No quiero");
       addLog("❌ Rival gana 2 puntos"); setPuntosRival(p => p + 2); reproducirSonidoPunto();
     } else {
+      reproducirVoz('vale_cuatro');
       setEstadoTruco("valecuatro"); setTrucoCantadoPor("jugador"); addLog("Vos: ¡VALE CUATRO!");
       setTimeout(() => {
         if (Math.random() > 0.35) {
+          reproducirVoz('quiero');
           setEstadoTruco("quiero"); setPtsTrucoApostados(4); addLog("Rival: ¡Quiero!");
         } else {
+          reproducirVoz('no_quiero');
           setEstadoTruco("noquiero"); addLog("Rival: No quiero");
           addLog("✅ Ganaste 3 puntos"); setPuntosJugador(p => p + 3); reproducirSonidoPunto();
         }
@@ -462,12 +476,15 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
   function cantarEnvido(tipo) {
     if (turno !== "jugador" || fasePartida !== "jugando" || estadoEnvido) return;
+    const vozEnv = tipo === 'realenvido' ? 'real_envido' : tipo === 'faltaenvido' ? 'falta_envido' : 'envido';
+    reproducirVoz(vozEnv);
     setEstadoEnvido(tipo); addLog(`Vos: ¡${tipo === "envido-envido" ? "ENVIDO ENVIDO" : tipo.toUpperCase()}!`);
     const ptsJ = puntosJugador;
     const ptsR = puntosRival;
     setTimeout(() => {
       const envidoRival = calcularEnvido(manoRival);
       const r = envidoRival >= 25 || Math.random() > 0.5 ? "quiero" : "noquiero";
+      reproducirVoz(r === 'quiero' ? 'quiero' : 'no_quiero');
       setEstadoEnvido(r); addLog(`Rival: ${r === "quiero" ? "¡Quiero!" : "No quiero"}`);
       if (r === "quiero") {
         const envJ = calcularEnvido(manoJugador);
@@ -493,6 +510,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   }
 
   function irseAlMazo() {
+    reproducirVoz('me_voy_al_mazo');
     addLog("Te fuiste al mazo."); setPuntosRival(p=>p+1); reproducirSonidoPunto();
     setTimeout(()=>resolverMano("rival"),500);
   }

@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
+import { leerConfig } from "./Configuracion";
+
+function reproducirVoz(nombre) {
+  if (!leerConfig().sonidoCartas) return;
+  new Audio(`/sounds/${nombre}.mp3`).play().catch(() => {});
+}
+const VOZ_ENV = { envido: 'envido', real_envido: 'real_envido', falta_envido: 'falta_envido' };
 
 function fmtARS(n) {
   const num = parseFloat(n) || 0;
@@ -341,10 +348,16 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         else { setMiMano(mano2); setManoRival(mano1); }
       }
       if (p.accion_pendiente && p.accion_pendiente.cantado_por !== user.id) {
-        const key = p.accion_pendiente.tipo + (p.accion_pendiente.nivel || '') + (p.accion_pendiente.subtipo || '');
+        const acc = p.accion_pendiente;
+        const key = acc.tipo + (acc.nivel || '') + (acc.subtipo || '') + (acc.si_quiero || '');
         if (accionLogueadaRef.current !== key) {
           accionLogueadaRef.current = key;
-          addLog(`¡El rival canta ${getCantoLabel(p.accion_pendiente)}!`);
+          addLog(`¡El rival canta ${getCantoLabel(acc)}!`);
+          if (acc.tipo === 'truco') {
+            reproducirVoz(['', 'truco', 'retruco', 'vale_cuatro'][acc.nivel] || 'truco');
+          } else if (acc.tipo === 'envido') {
+            reproducirVoz(VOZ_ENV[acc.subtipo] || 'envido');
+          }
         }
       } else if (!p.accion_pendiente) {
         accionLogueadaRef.current = null;
@@ -630,6 +643,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   async function cantarTruco() {
     if (!partida || partida.accion_pendiente || partida.truco_jugado) return;
+    reproducirVoz('truco');
     await supabase.from("partidas").update({
       accion_pendiente: { tipo: 'truco', nivel: 1, cantado_por: user.id, si_quiero: 2, si_no: 1 },
       truco_jugado: true,
@@ -642,6 +656,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (!acc || acc.tipo !== 'truco' || acc.cantado_por === user.id || acc.nivel >= 3) return;
     const nuevoNivel = acc.nivel + 1;
     const labels = { 2: 'Retruco', 3: 'Vale cuatro' };
+    reproducirVoz(nuevoNivel === 2 ? 'retruco' : 'vale_cuatro');
     await supabase.from("partidas").update({
       accion_pendiente: { tipo: 'truco', nivel: nuevoNivel, cantado_por: user.id, si_quiero: nuevoNivel + 1, si_no: nuevoNivel },
     }).eq("codigo", codigo);
@@ -654,6 +669,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const puntosObj = partida.puntos || 15;
     const falta = Math.max(1, puntosObj - Math.max(partida.puntos1 || 0, partida.puntos2 || 0));
     const VALS = { envido: 2, real_envido: 3, falta_envido: falta };
+    reproducirVoz(VOZ_ENV[subtipo] || 'envido');
     await supabase.from("partidas").update({
       accion_pendiente: {
         tipo: 'envido', subtipo, cadena: [subtipo],
@@ -673,6 +689,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const falta = Math.max(1, puntosObj - Math.max(partida.puntos1 || 0, partida.puntos2 || 0));
     const VALS = { envido: 2, real_envido: 3, falta_envido: falta };
     const nuevaCadena = [...(acc.cadena || [acc.subtipo]), subtipo];
+    reproducirVoz(VOZ_ENV[subtipo] || 'envido');
     await supabase.from("partidas").update({
       accion_pendiente: {
         tipo: 'envido', subtipo, cadena: nuevaCadena,
@@ -687,6 +704,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   async function quiero() {
     const acc = partida?.accion_pendiente;
     if (!acc || acc.cantado_por === user.id) return;
+    reproducirVoz('quiero');
     const puntosObj = partida.puntos || 15;
 
     if (acc.tipo === 'truco') {
@@ -716,6 +734,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   async function noQuiero() {
     const acc = partida?.accion_pendiente;
     if (!acc || acc.cantado_por === user.id) return;
+    reproducirVoz('no_quiero');
     const puntosObj = partida.puntos || 15;
     const callerEsJ1 = acc.cantado_por === partida.jugador1_id;
     const np1 = (partida.puntos1 || 0) + (callerEsJ1 ? acc.si_no : 0);
