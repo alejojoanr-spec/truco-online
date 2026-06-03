@@ -832,30 +832,24 @@ export default function App() {
     </>
   );
   if (modoJuego === "multi") return (
-    <>
-      <Multijugador
-        user={user}
-        perfil={perfil}
-        codigoInicial={codigoUnirse}
-        autoCrear={autoCrearSala}
-        apuesta={apuestaInicial}
-        codigoYaCreado={codigoYaCreadoInicial}
-        onVolver={() => {
-          setCodigoUnirse(null);
-          setAutoCrearSala(false);
-          setCodigoYaCreadoInicial(null);
-          setModoJuego(origenMulti === "lobby" ? "lobby" : null);
-          setOrigenMulti("home");
-        }}
-      />
-      <BotonSoporte perfil={perfil} />
-    </>
+    <Multijugador
+      user={user}
+      perfil={perfil}
+      codigoInicial={codigoUnirse}
+      autoCrear={autoCrearSala}
+      apuesta={apuestaInicial}
+      codigoYaCreado={codigoYaCreadoInicial}
+      onVolver={() => {
+        setCodigoUnirse(null);
+        setAutoCrearSala(false);
+        setCodigoYaCreadoInicial(null);
+        setModoJuego(origenMulti === "lobby" ? "lobby" : null);
+        setOrigenMulti("home");
+      }}
+    />
   );
   if (modoJuego === "single") return (
-    <>
-      <TrucoApp user={user} perfil={perfil} setPerfil={setPerfil} onLogout={handleLogout} onMultijugador={()=>setModoJuego("multi")} onVerTerminos={()=>setVerTerminos(true)} onVerTorneos={()=>setVerTorneos(true)} onHome={()=>setModoJuego(null)} />
-      <BotonSoporte perfil={perfil} />
-    </>
+    <TrucoApp user={user} perfil={perfil} setPerfil={setPerfil} onLogout={handleLogout} onMultijugador={()=>setModoJuego("multi")} onVerTerminos={()=>setVerTerminos(true)} onVerTorneos={()=>setVerTorneos(true)} onHome={()=>setModoJuego(null)} />
   );
   return (
     <>
