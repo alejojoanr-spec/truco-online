@@ -253,7 +253,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [estadoEnvido, setEstadoEnvido] = useState(null);
   const [trucoCantadoPor, setTrucoCantadoPor] = useState(null);
   const [ptsTrucoApostados, setPtsTrucoApostados] = useState(0);
-  const [log, setLog] = useState([]);
   const [rondaActual, setRondaActual] = useState(1);
   const [ganadoresRondas, setGanadoresRondas] = useState([]);
   const [fasePartida, setFasePartida] = useState("jugando");
@@ -274,7 +273,8 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     setPerfil(p => ({ ...p, avatar: av }));
     setCambiarAvatar(false);
   }
-  const addLog = useCallback((msg) => { setLog((prev) => [...prev.slice(-8), msg]); }, []);
+  // eslint-disable-next-line no-unused-vars
+  const addLog = useCallback((_msg) => {}, []);
 
 
   useEffect(() => { iniciarPartida(); }, []);
