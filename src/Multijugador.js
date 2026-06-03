@@ -103,7 +103,7 @@ function CartaMulti({ carta, oculta, onClick, jugada, seleccionada }) {
       <img
         src={`/cartas/${carta.palo}_${carta.num}.png`}
         alt={`${carta.num} de ${carta.palo}`}
-        style={{ position: "absolute", width: 100, height: 65, top: 17.5, left: -17.5, transform: "rotate(90deg)", transformOrigin: "center center" }}
+        style={{ position: "absolute", width: 100, height: 65, top: 17.5, left: -17.5, transform: "rotate(-90deg)", transformOrigin: "center center" }}
         draggable={false}
       />
     </div>
@@ -124,7 +124,7 @@ function CartaMesaSmall({ carta, ganadora }) {
       <img
         src={`/cartas/${carta.palo}_${carta.num}.png`}
         alt={`${carta.num} de ${carta.palo}`}
-        style={{ position: "absolute", width: 72, height: 48, top: 12, left: -12, transform: "rotate(90deg)", transformOrigin: "center center" }}
+        style={{ position: "absolute", width: 72, height: 48, top: 12, left: -12, transform: "rotate(-90deg)", transformOrigin: "center center" }}
         draggable={false}
       />
     </div>
