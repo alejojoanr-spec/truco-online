@@ -715,6 +715,7 @@ export default function App() {
   const [esBaneado, setEsBaneado] = useState(false);
   const [verAdmin, setVerAdmin] = useState(false);
   const [cargando, setCargando] = useState(true);
+  const [codigoRejoin, setCodigoRejoin] = useState(null);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -771,6 +772,22 @@ export default function App() {
       const esAsesorUser = data.rol === 'asesor';
       if ((esAdminUser || esAsesorUser) && sessionStorage.getItem('truco_panel') === '1') {
         setVerAdmin(true);
+      }
+      // Verificar si hay una partida activa guardada (para recuperar tras recarga)
+      const savedCodigo = sessionStorage.getItem(`truco_partida_${u.id}`);
+      if (savedCodigo) {
+        const { data: p } = await supabase
+          .from("partidas")
+          .select("jugador1_id, jugador2_id, estado")
+          .eq("codigo", savedCodigo)
+          .maybeSingle();
+        if (p?.estado === "jugando" &&
+            (p.jugador1_id === u.id || p.jugador2_id === u.id)) {
+          setCodigoRejoin(savedCodigo);
+          setModoJuego("multi");
+        } else {
+          sessionStorage.removeItem(`truco_partida_${u.id}`);
+        }
       }
     } else {
       setNecesitaNombre(true);
@@ -839,7 +856,9 @@ export default function App() {
       autoCrear={autoCrearSala}
       apuesta={apuestaInicial}
       codigoYaCreado={codigoYaCreadoInicial}
+      codigoRejoin={codigoRejoin}
       onVolver={() => {
+        setCodigoRejoin(null);
         setCodigoUnirse(null);
         setAutoCrearSala(false);
         setCodigoYaCreadoInicial(null);

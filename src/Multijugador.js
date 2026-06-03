@@ -143,7 +143,7 @@ function SlotMesaVacio() {
   );
 }
 
-export default function Multijugador({ user, perfil, onVolver, codigoInicial, autoCrear, apuesta, puntos, esTorneo, codigoYaCreado }) {
+export default function Multijugador({ user, perfil, onVolver, codigoInicial, autoCrear, apuesta, puntos, esTorneo, codigoYaCreado, codigoRejoin }) {
   const [pantalla, setPantalla] = useState("menu");
   const [codigo, setCodigo] = useState("");
   const [codigoInput, setCodigoInput] = useState("");
@@ -171,6 +171,12 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const revanchaTimerRef = useRef(null);
 
   useEffect(() => { partidaRef.current = partida; }, [partida]);
+
+  // Persistir partida activa en sessionStorage para sobrevivir recargas
+  useEffect(() => {
+    if (codigo) sessionStorage.setItem(`truco_partida_${user.id}`, codigo);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [codigo]);
   useEffect(() => {
     return () => { if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current); };
   }, []);
@@ -178,6 +184,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   async function procesarFinPartida(p) {
     if (pagoProcesadoRef.current) return;
     pagoProcesadoRef.current = true;
+    sessionStorage.removeItem(`truco_partida_${user.id}`);
     const apuestaPartida = p.apuesta || 0;
     const pot = apuestaPartida * 2;
 
@@ -291,6 +298,24 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         setPartida(data);
         setPantalla("jugando");
         addLog("¡Partida iniciada!");
+      })();
+    } else if (codigoRejoin) {
+      (async () => {
+        const cod = codigoRejoin.toUpperCase().trim();
+        const { data, error: err } = await supabase.from("partidas").select("*").eq("codigo", cod).single();
+        if (err || !data || data.estado !== "jugando") {
+          sessionStorage.removeItem(`truco_partida_${user.id}`);
+          setError("La partida ya no está activa");
+          return;
+        }
+        const esJ1 = data.jugador1_id === user.id;
+        setCodigo(cod);
+        setSoyJugador1(esJ1);
+        setMiMano(JSON.parse(esJ1 ? data.mano_jugador1 : data.mano_jugador2));
+        setManoRival(JSON.parse(esJ1 ? data.mano_jugador2 : data.mano_jugador1));
+        setPartida(data);
+        setPantalla("jugando");
+        addLog("🔄 Reconectado a la partida");
       })();
     } else if (autoCrear) {
       crearSala();
@@ -587,6 +612,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function salirDePartida() {
+    sessionStorage.removeItem(`truco_partida_${user.id}`);
     if (partida && partida.estado === "jugando") {
       const rivalId = soyJugador1 ? partida.jugador2_id : partida.jugador1_id;
       if (rivalId) {
