@@ -223,9 +223,20 @@ function reproducirSonidoDerrota() {
   } catch {}
 }
 
+const _vozQueue = [];
+let _vozPlaying = false;
+function _procesarVozQueue() {
+  if (_vozPlaying || _vozQueue.length === 0) return;
+  _vozPlaying = true;
+  const audio = new Audio(`/sounds/${_vozQueue.shift()}.mp3`);
+  audio.onended = () => { _vozPlaying = false; _procesarVozQueue(); };
+  audio.onerror  = () => { _vozPlaying = false; _procesarVozQueue(); };
+  audio.play().catch(() => { _vozPlaying = false; _procesarVozQueue(); });
+}
 function reproducirVoz(nombre) {
   if (!leerConfig().voces) return;
-  new Audio(`/sounds/${nombre}.mp3`).play().catch(() => {});
+  _vozQueue.push(nombre);
+  _procesarVozQueue();
 }
 
 function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerminos, onVerTorneos, onHome, rivalNombre = "IA", rivalAvatar = "🤖" }) {
