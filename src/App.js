@@ -714,12 +714,27 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       )}
 
       {fasePartida==="fin"&&(
-        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20,flexDirection:"column",gap:16 }}>
-          <div style={{ fontSize:64 }}>{ganadorPartida==="jugador"?"🏆":"💀"}</div>
-          <div style={{ fontSize:32,fontWeight:900,color:ganadorPartida==="jugador"?"#fbbf24":"#f87171" }}>{ganadorPartida==="jugador"?"¡GANASTE!":"PERDISTE"}</div>
-          <div style={{ color:"#9ca3af",fontSize:14 }}>{puntosJugador} – {puntosRival}</div>
-          {perfil&&<div style={{ color:"#4ade80",fontSize:13 }}>Partidas ganadas: {perfil.partidas_ganadas} / {perfil.partidas_jugadas}</div>}
-          <button onClick={iniciarPartida} style={{ ...btnStyle("#1a472a","#4ade80"),fontSize:16,padding:"12px 32px",marginTop:8 }}>Jugar de nuevo</button>
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20,padding:16 }}>
+          {ganadorPartida==="jugador" ? (
+            <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:16 }}>
+              <div style={{ fontSize:64 }}>🏆</div>
+              <div style={{ fontSize:32,fontWeight:900,color:"#fbbf24" }}>¡GANASTE!</div>
+              <div style={{ color:"#9ca3af",fontSize:14 }}>{puntosJugador} – {puntosRival}</div>
+              {perfil&&<div style={{ color:"#4ade80",fontSize:13 }}>Partidas ganadas: {perfil.partidas_ganadas} / {perfil.partidas_jugadas}</div>}
+              <button onClick={iniciarPartida} style={{ ...btnStyle("#1a472a","#4ade80"),fontSize:16,padding:"12px 32px",marginTop:8 }}>Jugar de nuevo</button>
+            </div>
+          ) : (
+            <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:24,padding:"36px 28px",maxWidth:300,width:"100%",textAlign:"center",fontFamily:"'Lato',sans-serif",boxShadow:"0 24px 60px rgba(0,0,0,0.7),0 0 0 1px rgba(248,113,113,0.12)" }}>
+              <div style={{ fontSize:56,marginBottom:12 }}>😞</div>
+              <div style={{ fontSize:28,fontWeight:900,color:"#f87171",marginBottom:6 }}>¡Perdiste!</div>
+              <div style={{ fontSize:14,color:"#9ca3af",marginBottom:4 }}>Volvé a intentarlo</div>
+              <div style={{ fontSize:13,color:"#4b5563",marginBottom:20 }}>{puntosJugador} – {puntosRival}</div>
+              {perfil&&<div style={{ fontSize:12,color:"#6b7280",marginBottom:20 }}>Partidas ganadas: {perfil.partidas_ganadas} / {perfil.partidas_jugadas}</div>}
+              <button onClick={iniciarPartida} style={{ width:"100%",padding:"13px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>
+                Nueva partida
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

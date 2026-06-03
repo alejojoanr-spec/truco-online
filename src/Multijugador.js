@@ -883,65 +883,73 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   if (resultadoPartida) return (
     <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Lato',sans-serif",padding:24 }}>
-      <div style={{ textAlign:"center",maxWidth:320,width:"100%" }}>
-        <div style={{ fontSize:64,marginBottom:16 }}>{resultadoPartida.ganaste?"🏆":"💀"}</div>
-        <div style={{ fontSize:28,fontWeight:900,color:resultadoPartida.ganaste?"#fbbf24":"#f87171",marginBottom:8 }}>
-          {resultadoPartida.ganaste?"¡Ganaste!":"Perdiste"}
-        </div>
-        {resultadoPartida.ganaste && resultadoPartida.premio > 0 && (
-          <>
-            <div style={{ fontSize:18,color:"#4ade80",fontWeight:700,marginBottom:4 }}>
-              +{fmtARS(resultadoPartida.premio)} acreditados
-            </div>
-            {resultadoPartida.rake > 0 && (
-              <div style={{ fontSize:12,color:"#6b7280",marginBottom:8 }}>
-                Comisión de la casa: −{fmtARS(resultadoPartida.rake)}
+      {resultadoPartida.ganaste ? (
+        /* ── Pantalla de victoria ── */
+        <div style={{ textAlign:"center",maxWidth:320,width:"100%" }}>
+          <div style={{ fontSize:64,marginBottom:16 }}>🏆</div>
+          <div style={{ fontSize:28,fontWeight:900,color:"#fbbf24",marginBottom:8 }}>¡Ganaste!</div>
+          {resultadoPartida.premio > 0 && (
+            <>
+              <div style={{ fontSize:18,color:"#4ade80",fontWeight:700,marginBottom:4 }}>
+                +{fmtARS(resultadoPartida.premio)} acreditados
+              </div>
+              {resultadoPartida.rake > 0 && (
+                <div style={{ fontSize:12,color:"#6b7280",marginBottom:8 }}>
+                  Comisión de la casa: −{fmtARS(resultadoPartida.rake)}
+                </div>
+              )}
+            </>
+          )}
+          <div style={{ display:"flex",flexDirection:"column",gap:10,marginTop:20 }}>
+            {revanchaEstado === null && (
+              <button onClick={solicitarRevancha} style={{ padding:"12px 28px",borderRadius:12,cursor:"pointer",background:"rgba(251,191,36,0.1)",border:"1px solid #fbbf24",color:"#fbbf24",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>🔄 Revancha</button>
+            )}
+            {revanchaEstado === "esperando_rival" && (
+              <div style={{ background:"rgba(251,191,36,0.07)",border:"1px solid rgba(251,191,36,0.3)",borderRadius:12,padding:"14px 16px" }}>
+                <div style={{ fontSize:13,color:"#fbbf24",fontWeight:700,marginBottom:4 }}>Esperando respuesta del rival...</div>
+                <div style={{ fontSize:28,color:"#fbbf24",fontWeight:900,marginBottom:10 }}>{revanchaTimer}s</div>
+                <button onClick={cancelarRevancha} style={{ padding:"6px 16px",borderRadius:8,cursor:"pointer",background:"none",border:"1px solid #374151",color:"#6b7280",fontFamily:"'Lato',sans-serif",fontSize:12 }}>Cancelar</button>
               </div>
             )}
-          </>
-        )}
-        {!resultadoPartida.ganaste && resultadoPartida.apuesta > 0 && (
-          <div style={{ fontSize:14,color:"#9ca3af",marginBottom:8 }}>
-            Perdiste {fmtARS(resultadoPartida.apuesta)}
+            {revanchaEstado === "procesando" && <div style={{ fontSize:13,color:"#4ade80",padding:"10px" }}>⏳ Preparando la revancha...</div>}
+            {(revanchaEstado === "rechazada" || revanchaEstado === "cancelada") && (
+              <div style={{ fontSize:13,color:"#f87171",background:"rgba(248,113,113,0.07)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:10,padding:"12px" }}>
+                {revanchaEstado === "rechazada" ? "El rival no aceptó la revancha" : "La revancha fue cancelada"}
+              </div>
+            )}
+            <button onClick={onVolver} style={{ padding:"12px 28px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>Volver al inicio</button>
           </div>
-        )}
-
-        <div style={{ display:"flex",flexDirection:"column",gap:10,marginTop:20 }}>
-          {/* Botón revancha */}
-          {revanchaEstado === null && (
-            <button onClick={solicitarRevancha} style={{ padding:"12px 28px",borderRadius:12,cursor:"pointer",background:"rgba(251,191,36,0.1)",border:"1px solid #fbbf24",color:"#fbbf24",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>
-              🔄 Revancha
-            </button>
-          )}
-
-          {/* Esperando respuesta */}
-          {revanchaEstado === "esperando_rival" && (
-            <div style={{ background:"rgba(251,191,36,0.07)",border:"1px solid rgba(251,191,36,0.3)",borderRadius:12,padding:"14px 16px" }}>
-              <div style={{ fontSize:13,color:"#fbbf24",fontWeight:700,marginBottom:4 }}>Esperando respuesta del rival...</div>
-              <div style={{ fontSize:28,color:"#fbbf24",fontWeight:900,marginBottom:10 }}>{revanchaTimer}s</div>
-              <button onClick={cancelarRevancha} style={{ padding:"6px 16px",borderRadius:8,cursor:"pointer",background:"none",border:"1px solid #374151",color:"#6b7280",fontFamily:"'Lato',sans-serif",fontSize:12 }}>
-                Cancelar
-              </button>
-            </div>
-          )}
-
-          {/* Procesando */}
-          {revanchaEstado === "procesando" && (
-            <div style={{ fontSize:13,color:"#4ade80",padding:"10px" }}>⏳ Preparando la revancha...</div>
-          )}
-
-          {/* Rechazada */}
-          {(revanchaEstado === "rechazada" || revanchaEstado === "cancelada") && (
-            <div style={{ fontSize:13,color:"#f87171",background:"rgba(248,113,113,0.07)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:10,padding:"12px" }}>
-              {revanchaEstado === "rechazada" ? "El rival no aceptó la revancha" : "La revancha fue cancelada"}
-            </div>
-          )}
-
-          <button onClick={onVolver} style={{ padding:"12px 28px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>
-            Volver al inicio
-          </button>
         </div>
-      </div>
+      ) : (
+        /* ── Modal de derrota ── */
+        <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:24,padding:"36px 28px",maxWidth:300,width:"100%",textAlign:"center",fontFamily:"'Lato',sans-serif",boxShadow:"0 24px 60px rgba(0,0,0,0.7),0 0 0 1px rgba(248,113,113,0.12)" }}>
+          <div style={{ fontSize:56,marginBottom:12 }}>😞</div>
+          <div style={{ fontSize:28,fontWeight:900,color:"#f87171",marginBottom:6 }}>¡Perdiste!</div>
+          <div style={{ fontSize:14,color:"#9ca3af",marginBottom:4 }}>Volvé a intentarlo</div>
+          {resultadoPartida.apuesta > 0 && (
+            <div style={{ fontSize:13,color:"#4b5563",marginBottom:16 }}>Perdiste {fmtARS(resultadoPartida.apuesta)}</div>
+          )}
+          <div style={{ display:"flex",flexDirection:"column",gap:10,marginTop:20 }}>
+            {revanchaEstado === null && (
+              <button onClick={solicitarRevancha} style={{ padding:"12px 28px",borderRadius:12,cursor:"pointer",background:"rgba(251,191,36,0.1)",border:"1px solid #fbbf24",color:"#fbbf24",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>🔄 Revancha</button>
+            )}
+            {revanchaEstado === "esperando_rival" && (
+              <div style={{ background:"rgba(251,191,36,0.07)",border:"1px solid rgba(251,191,36,0.3)",borderRadius:12,padding:"14px 16px" }}>
+                <div style={{ fontSize:13,color:"#fbbf24",fontWeight:700,marginBottom:4 }}>Esperando respuesta del rival...</div>
+                <div style={{ fontSize:28,color:"#fbbf24",fontWeight:900,marginBottom:10 }}>{revanchaTimer}s</div>
+                <button onClick={cancelarRevancha} style={{ padding:"6px 16px",borderRadius:8,cursor:"pointer",background:"none",border:"1px solid #374151",color:"#6b7280",fontFamily:"'Lato',sans-serif",fontSize:12 }}>Cancelar</button>
+              </div>
+            )}
+            {revanchaEstado === "procesando" && <div style={{ fontSize:13,color:"#4ade80",padding:"10px" }}>⏳ Preparando la revancha...</div>}
+            {(revanchaEstado === "rechazada" || revanchaEstado === "cancelada") && (
+              <div style={{ fontSize:13,color:"#f87171",background:"rgba(248,113,113,0.07)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:10,padding:"12px" }}>
+                {revanchaEstado === "rechazada" ? "El rival no aceptó la revancha" : "La revancha fue cancelada"}
+              </div>
+            )}
+            <button onClick={onVolver} style={{ width:"100%",padding:"13px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>Volver al inicio</button>
+          </div>
+        </div>
+      )}
 
       {/* Popup: rival quiere revancha */}
       {revanchaEstado === "rival_pide" && (
