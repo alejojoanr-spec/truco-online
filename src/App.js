@@ -563,12 +563,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         style={{ position:"fixed",top:14,right:14,zIndex:30,width:36,height:36,borderRadius:10,border:"1px solid #374151",background:"rgba(0,0,0,0.6)",color:"#9ca3af",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1 }}
       >✕</button>
 
-      <div style={{ display:"flex",gap:6,flexShrink:0 }}>
-        {[1,2,3].map(r=>(
-          <div key={r} style={{ width:28,height:8,borderRadius:4,background:r<rondaActual?(ganadoresRondas[r-1]==="jugador"?"#4ade80":ganadoresRondas[r-1]==="rival"?"#f87171":"#888"):r===rondaActual?"#fbbf24":"rgba(255,255,255,0.1)",border:r===rondaActual?"1px solid #fbbf24":"1px solid transparent" }} />
-        ))}
-      </div>
-
       {/* Mano del rival */}
       <div style={{ display:"flex",gap:8,justifyContent:"center",flexShrink:0 }}>
         {manoRival.map((c,i)=>(
