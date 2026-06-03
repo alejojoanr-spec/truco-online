@@ -103,7 +103,8 @@ function Carta({ carta, oculta, onClick, jugada, seleccionada }) {
       onClick={onClick}
       style={{
         width: 70, height: 110, borderRadius: 8, flexShrink: 0,
-        overflow: "hidden", userSelect: "none",
+        overflow: "hidden", userSelect: "none", position: "relative",
+        background: "white",
         cursor: onClick && !jugada ? "pointer" : "default",
         opacity: jugada ? 0.5 : 1,
         transform: seleccionada ? "translateY(-12px) scale(1.05)" : jugada ? "scale(0.95)" : "none",
@@ -119,7 +120,7 @@ function Carta({ carta, oculta, onClick, jugada, seleccionada }) {
       <img
         src={`/cartas/${carta.palo}_${carta.num}.png`}
         alt={`${carta.num} de ${carta.palo}`}
-        style={{ width: "100%", height: "100%", display: "block", objectFit: "cover" }}
+        style={{ position: "absolute", width: 110, height: 70, top: 20, left: -20, transform: "rotate(90deg)", transformOrigin: "center center" }}
         draggable={false}
       />
     </div>

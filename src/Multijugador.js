@@ -86,7 +86,8 @@ function CartaMulti({ carta, oculta, onClick, jugada, seleccionada }) {
       onClick={onClick}
       style={{
         width: 65, height: 100, borderRadius: 10, flexShrink: 0,
-        overflow: "hidden", userSelect: "none",
+        overflow: "hidden", userSelect: "none", position: "relative",
+        background: "white",
         cursor: onClick && !jugada ? "pointer" : "default",
         opacity: jugada ? 0.5 : 1,
         transform: seleccionada ? "translateY(-10px) scale(1.05)" : jugada ? "scale(0.95)" : "none",
@@ -102,7 +103,7 @@ function CartaMulti({ carta, oculta, onClick, jugada, seleccionada }) {
       <img
         src={`/cartas/${carta.palo}_${carta.num}.png`}
         alt={`${carta.num} de ${carta.palo}`}
-        style={{ width: "100%", height: "100%", display: "block", objectFit: "cover" }}
+        style={{ position: "absolute", width: 100, height: 65, top: 17.5, left: -17.5, transform: "rotate(90deg)", transformOrigin: "center center" }}
         draggable={false}
       />
     </div>
@@ -113,7 +114,8 @@ function CartaMesaSmall({ carta, ganadora }) {
   return (
     <div style={{
       width: 48, height: 72, borderRadius: 8, flexShrink: 0,
-      overflow: "hidden", userSelect: "none",
+      overflow: "hidden", userSelect: "none", position: "relative",
+      background: "white",
       border: `2px solid ${ganadora ? "#fbbf24" : "transparent"}`,
       boxShadow: ganadora
         ? "0 0 0 1px rgba(0,0,0,0.7), 0 4px 12px rgba(0,0,0,0.4), 0 0 8px rgba(251,191,36,0.35)"
@@ -122,7 +124,7 @@ function CartaMesaSmall({ carta, ganadora }) {
       <img
         src={`/cartas/${carta.palo}_${carta.num}.png`}
         alt={`${carta.num} de ${carta.palo}`}
-        style={{ width: "100%", height: "100%", display: "block", objectFit: "cover" }}
+        style={{ position: "absolute", width: 72, height: 48, top: 12, left: -12, transform: "rotate(90deg)", transformOrigin: "center center" }}
         draggable={false}
       />
     </div>
