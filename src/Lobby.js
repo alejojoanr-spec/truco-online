@@ -225,9 +225,21 @@ function CardJugando({ sala }) {
           {sala.es_torneo && <span style={{ fontSize: 10, color: "#fbbf24" }}>· 🏆</span>}
         </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 6px #4ade80" }} />
-        <span style={{ fontSize: 11, color: "#4ade80", fontWeight: 700 }}>Jugando</span>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+        {(() => {
+          const maxPts = Math.max(sala.puntos1 || 0, sala.puntos2 || 0);
+          if (!maxPts) return null;
+          const pct = maxPts <= 3 ? 25 : maxPts <= 7 ? 50 : maxPts <= 11 ? 75 : 100;
+          return (
+            <div style={{ width: 52, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.1)", overflow: "hidden" }}>
+              <div style={{ width: `${pct}%`, height: "100%", borderRadius: 2, background: "#4ade80", transition: "width 0.3s" }} />
+            </div>
+          );
+        })()}
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 6px #4ade80" }} />
+          <span style={{ fontSize: 11, color: "#4ade80", fontWeight: 700 }}>Jugando</span>
+        </div>
       </div>
     </div>
   );
@@ -447,7 +459,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
     cargandoRef.current = true;
     const { data: rawSalas } = await supabase
       .from("partidas")
-      .select("id, codigo, estado, jugador1_id, jugador1_nombre, jugador1_avatar, jugador2_id, jugador2_nombre, jugador2_avatar, apuesta, puntos, es_torneo")
+      .select("id, codigo, estado, jugador1_id, jugador1_nombre, jugador1_avatar, jugador2_id, jugador2_nombre, jugador2_avatar, apuesta, puntos, puntos1, puntos2, es_torneo")
       .in("estado", ["esperando", "jugando"])
       .not("jugador1_id", "is", null)
       .order("id", { ascending: false })
