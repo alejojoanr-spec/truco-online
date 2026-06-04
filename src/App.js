@@ -360,7 +360,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     const nuevosGanadores = [...ganadoresRondas, ganador];
     setGanadoresRondas(nuevosGanadores);
     setTimeout(() => {
-      setMesaJugador([]); setMesaRival([]);
+      // No limpiar la mesa entre rondas: las cartas se acumulan durante toda la mano
       const ganadorMano = determinarGanadorMano(nuevosGanadores);
       if (ganadorMano || rondaActual+1 > 3 || jugadasJ.length >= 3) {
         resolverMano(ganadorMano || "empate");
@@ -375,7 +375,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
             const nuevasJugadasR = [...jugadasR, idxRival];
             setTimeout(() => {
               setJugadasRival(nuevasJugadasR);
-              setMesaRival([cartaRival]);
+              setMesaRival(prev => [...prev, cartaRival]);
               reproducirSonidoCarta();
               addLog(`Rival jugó: ${cartaRival.num} de ${cartaRival.palo}`);
               setTurno("jugador");
