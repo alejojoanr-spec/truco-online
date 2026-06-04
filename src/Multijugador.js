@@ -134,7 +134,7 @@ function CartaMulti({ carta, oculta, onClick, jugada, seleccionada }) {
 function CartaMesaSmall({ carta }) {
   return (
     <div style={{
-      width: 48, height: 72, borderRadius: 8, flexShrink: 0,
+      width: 60, height: 90, borderRadius: 8, flexShrink: 0,
       overflow: "hidden", userSelect: "none", position: "relative",
       background: "white",
       boxShadow: "0 0 0 1px rgba(0,0,0,0.6), 0 3px 8px rgba(0,0,0,0.35)",
@@ -152,7 +152,7 @@ function CartaMesaSmall({ carta }) {
 function SlotMesaVacio() {
   return (
     <div style={{
-      width:48, height:72, borderRadius:8, flexShrink:0,
+      width:60, height:90, borderRadius:8, flexShrink:0,
       border:"1px dashed rgba(107,114,128,0.25)",
       background:"rgba(0,0,0,0.12)",
       display:"flex", alignItems:"center", justifyContent:"center",
@@ -1064,7 +1064,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       </div>
 
       {/* Mesa: rondas acumuladas */}
-      <div style={{ background:"rgba(0,0,0,0.25)",border:"1px solid rgba(45,106,79,0.4)",borderRadius:16,padding:"14px 20px",marginBottom:16,minHeight:180,display:"flex",alignItems:"center",justifyContent:"center",gap:16,width:"100%",maxWidth:400 }}>
+      <div style={{ background:"rgba(0,0,0,0.25)",border:"1px solid rgba(45,106,79,0.4)",borderRadius:16,padding:"14px 20px",marginBottom:16,minHeight:220,display:"flex",alignItems:"center",justifyContent:"center",gap:16,width:"100%",maxWidth:400 }}>
         {mesaActual.length === 0 ? (
           <div style={{ color:"rgba(255,255,255,0.1)", fontSize:13 }}>Mesa vacía</div>
         ) : (() => {

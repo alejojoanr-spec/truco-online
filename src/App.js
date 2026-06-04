@@ -570,11 +570,11 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       </div>
 
       {/* Mesa — 3 slots fijos (1 por ronda) */}
-      <div style={{ background:"rgba(0,0,0,0.25)",border:"1px solid rgba(45,106,79,0.4)",borderRadius:16,padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"center",gap:14,width:"100%",maxWidth:420,height:190,flexShrink:0 }}>
+      <div style={{ background:"rgba(0,0,0,0.25)",border:"1px solid rgba(45,106,79,0.4)",borderRadius:16,padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"center",gap:14,width:"100%",maxWidth:420,height:225,flexShrink:0 }}>
         {[0,1,2].map(ri => {
           const mc = mesaJugador[ri] || null;
           const rc = mesaRival[ri] || null;
-          const MESA_E = 0.68;
+          const MESA_E = 0.85;
           const MW = 70*MESA_E, MH = 110*MESA_E;
           const Slot = () => (
             <div style={{ width:MW,height:MH,borderRadius:8*MESA_E,border:"1px dashed rgba(107,114,128,0.22)",background:"rgba(0,0,0,0.12)",flexShrink:0 }} />
