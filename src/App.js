@@ -565,7 +565,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       {/* Mano del rival */}
       <div style={{ display:"flex",gap:8,justifyContent:"center",flexShrink:0 }}>
         {manoRival.map((c,i)=>(
-          <Carta key={i} carta={c} escala={1.1} oculta={!jugadasRival.includes(i)} jugada={jugadasRival.includes(i)} />
+          <Carta key={i} carta={c} escala={0.82} oculta={!jugadasRival.includes(i)} jugada={jugadasRival.includes(i)} />
         ))}
       </div>
 
