@@ -1051,6 +1051,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             <div style={{ color:"#2d6a4f" }}>–</div>
             <div><div style={{ fontSize:10,color:"#9ca" }}>Rival</div><div style={{ fontSize:24,color:"#f87171",fontWeight:900 }}>{soyJugador1?partida?.puntos2:partida?.puntos1||0}</div></div>
           </div>
+          <div style={{ fontSize:9,color:"#4b5563",marginTop:3,lineHeight:1 }}>/ {partida?.puntos || 15}</div>
         </div>
         <button onClick={salirDePartida} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #7f1d1d",borderRadius:8,padding:"6px 12px",color:"#f87171",fontSize:11,cursor:"pointer" }}>Salir</button>
       </div>

@@ -155,18 +155,17 @@ function GrupoCinco({ activos }) {
 function PalitosPuntaje({ puntos, total=15 }) {
   const POR_GRUPO = 5;
   const GRUPOS_POR_FILA = 3;
-  const POR_FILA = POR_GRUPO * GRUPOS_POR_FILA;
-  const filas = total / POR_FILA;
+  // Siempre 15 palitos; en partidas a 30 cada palito vale 2 pts
+  const puntosEscalados = Math.floor(puntos / (total / 15));
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-      {Array.from({ length:filas }, (_,fila) => (
-        <div key={fila} style={{ display:"flex", gap:8 }}>
-          {Array.from({ length:GRUPOS_POR_FILA }, (_,grupo) => {
-            const base = fila*POR_FILA + grupo*POR_GRUPO;
-            return <GrupoCinco key={grupo} activos={Math.min(POR_GRUPO, Math.max(0, puntos-base))} />;
-          })}
-        </div>
-      ))}
+    <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+      <div style={{ display:"flex", gap:8 }}>
+        {Array.from({ length:GRUPOS_POR_FILA }, (_,grupo) => {
+          const base = grupo * POR_GRUPO;
+          return <GrupoCinco key={grupo} activos={Math.min(POR_GRUPO, Math.max(0, puntosEscalados-base))} />;
+        })}
+      </div>
+      <div style={{ fontSize:8, color:"#4b5563", textAlign:"right", lineHeight:1 }}>/ {total}</div>
     </div>
   );
 }
