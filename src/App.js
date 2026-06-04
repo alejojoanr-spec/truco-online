@@ -120,7 +120,7 @@ function Carta({ carta, oculta, onClick, jugada, seleccionada, escala = 1 }) {
       <img
         src={`/cartas/${carta.palo}_${carta.num}.png`}
         alt={`${carta.num} de ${carta.palo}`}
-        style={{ position:"absolute", width:H, height:W, top:(H-W)/2, left:(W-H)/2, transform:"rotate(-90deg)", transformOrigin:"center center" }}
+        style={{ width:"100%", height:"100%", display:"block", objectFit:"cover" }}
         draggable={false}
       />
     </div>
