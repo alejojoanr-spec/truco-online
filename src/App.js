@@ -332,12 +332,12 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     addLog(`Vos jugaste: ${carta.num} de ${carta.palo}`);
     setCartaSeleccionada(null); setTurno("rival");
     if (mesaRival.length > 0) {
-      // El rival ya jugó primero esta ronda, evaluar directamente
+      // Rival ya jugó primero esta ronda → "rival" fue el primero en la ronda
       const mesaRivalActual = mesaRival;
       const jugadasRivalActual = jugadasRival;
-      setTimeout(() => evaluarRonda(nuevaMesa, mesaRivalActual, nuevasJugadas, jugadasRivalActual), 600);
+      setTimeout(() => evaluarRonda(nuevaMesa, mesaRivalActual, nuevasJugadas, jugadasRivalActual, "rival"), 500);
     } else {
-      setTimeout(() => jugarRival(nuevasJugadas, nuevaMesa), 900);
+      setTimeout(() => jugarRival(nuevasJugadas, nuevaMesa), 700);
     }
   }
 
@@ -350,10 +350,13 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     setJugadasRival(nuevasJugadasR); setMesaRival(nuevaMesaR);
     reproducirSonidoCarta();
     addLog(`Rival jugó: ${carta.num} de ${carta.palo}`);
-    setTimeout(() => evaluarRonda(mesaJ, nuevaMesaR, jugadasJ, nuevasJugadasR), 600);
+    // Jugador fue el primero en la ronda (él inició con jugarCarta)
+    setTimeout(() => evaluarRonda(mesaJ, nuevaMesaR, jugadasJ, nuevasJugadasR, "jugador"), 500);
   }
 
-  function evaluarRonda(mesaJ, mesaR, jugadasJ, jugadasR) {
+  // primerEnRonda: quién jugó primero en esta ronda ("jugador" | "rival")
+  // Determina quién abre la siguiente en caso de empate
+  function evaluarRonda(mesaJ, mesaR, jugadasJ, jugadasR, primerEnRonda = "jugador") {
     const cartaJ = mesaJ[mesaJ.length-1], cartaR = mesaR[mesaR.length-1];
     const vJ = valorTruco(cartaJ), vR = valorTruco(cartaR);
     const ganador = vJ > vR ? "jugador" : vR > vJ ? "rival" : "empate";
@@ -361,14 +364,17 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     const nuevosGanadores = [...ganadoresRondas, ganador];
     setGanadoresRondas(nuevosGanadores);
     setTimeout(() => {
-      // No limpiar la mesa entre rondas: las cartas se acumulan durante toda la mano
       const ganadorMano = determinarGanadorMano(nuevosGanadores);
       if (ganadorMano || rondaActual+1 > 3 || jugadasJ.length >= 3) {
         resolverMano(ganadorMano || "empate");
       } else {
-        setRondaActual(rondaActual+1);
-        if (ganador === "rival") {
-          // El rival ganó la ronda: juega primero en la siguiente
+        setRondaActual(r => r + 1);
+        // Quién abre la próxima ronda:
+        // - rival ganó → rival abre
+        // - empate → quien abrió esta ronda abre la siguiente (regla oficial)
+        // - jugador ganó → jugador abre
+        const rivalAbre = ganador === "rival" || (ganador === "empate" && primerEnRonda === "rival");
+        if (rivalAbre) {
           setTurno("rival");
           const idxRival = iaJugarCarta(manoRival, jugadasR);
           if (idxRival !== -1) {
@@ -380,13 +386,16 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
               reproducirSonidoCarta();
               addLog(`Rival jugó: ${cartaRival.num} de ${cartaRival.palo}`);
               setTurno("jugador");
-            }, 900);
+            }, 600);
+          } else {
+            // Seguridad: si por alguna razón no hay carta disponible, devolver turno
+            setTurno("jugador");
           }
         } else {
           setTurno("jugador");
         }
       }
-    }, 1200);
+    }, 800);
   }
 
   function determinarGanadorMano(ganadores) {
@@ -436,9 +445,9 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         setMesaJugador([]); setMesaRival([]);
         setTurno("jugador"); setEstadoTruco(null); setEstadoEnvido(null);
         setTrucoCantadoPor(null); setPtsTrucoApostados(0); setRondaActual(1); setGanadoresRondas([]);
-        setCartaSeleccionada(null); addLog("🃏 Nueva mano repartida");
+        setCartaSeleccionada(null); setRivalMsg(""); addLog("🃏 Nueva mano repartida");
       }
-    }, 2000);
+    }, 1500);
   }
 
   function mostrarRivalMsg(txt) {
