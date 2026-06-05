@@ -603,11 +603,11 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
                   <svg width="44" height="44" style={{ position:"absolute",left:-10,bottom:-10,zIndex:10,filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
                     <circle cx="22" cy="22" r="17" fill="rgba(0,0,0,0.75)" stroke="rgba(255,255,255,0.06)" strokeWidth="3"/>
                     <circle cx="22" cy="22" r="17" fill="none"
-                      stroke={timerSegundos>10?"#4ade80":timerSegundos>5?"#fbbf24":"#f87171"} strokeWidth="3"
+                      stroke="#4ade80" strokeWidth="3"
                       strokeDasharray={2*Math.PI*17} strokeDashoffset={2*Math.PI*17*(1-timerSegundos/15)}
                       strokeLinecap="round" style={{transform:"rotate(-90deg)",transformOrigin:"22px 22px"}}/>
                     <text x="22" y="22" textAnchor="middle" dominantBaseline="middle"
-                      fill={timerSegundos>10?"#4ade80":timerSegundos>5?"#fbbf24":"#f87171"} fontSize="13" fontWeight="700">
+                      fill="#4ade80" fontSize="13" fontWeight="700">
                       {timerSegundos}
                     </text>
                   </svg>
