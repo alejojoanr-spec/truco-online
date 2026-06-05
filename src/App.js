@@ -857,39 +857,47 @@ export default function App() {
   if (cargando || !splashOculto) return (
     <>
       <style>{`
-        @keyframes splashEntrar {
-          0%   { transform: translateY(-30px); opacity: 0; }
-          60%  { transform: translateY(5px);   opacity: 1; }
-          80%  { transform: translateY(-4px);              }
-          100% { transform: translateY(0);     opacity: 1; }
-        }
-        @keyframes splashPulso {
-          0%, 100% { transform: scale(1);    }
-          50%       { transform: scale(1.05); }
+        @keyframes splashFadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
         @keyframes splashSalir {
           from { opacity: 1; }
           to   { opacity: 0; }
         }
+        @keyframes splashPunto {
+          0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+          40%            { opacity: 1;   transform: scale(1.2); }
+        }
       `}</style>
       <div style={{
         position: "fixed", inset: 0,
-        background: "#000000",
-        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "#0a2414",
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", gap: 24,
         zIndex: 9999,
         animation: splashSaliendo ? "splashSalir 0.32s ease-out forwards" : "none",
       }}>
-        <img
-          src="/logo_truco_online.png"
-          alt="Truco Online"
-          style={{
-            width: "min(220px, 55vw)",
-            height: "auto",
-            animation: "splashEntrar 0.8s ease-out, splashPulso 1.6s ease-in-out 0.8s infinite",
-            willChange: "transform, opacity",
-          }}
-          draggable={false}
-        />
+        <div style={{
+          fontFamily: "'Lato', sans-serif",
+          fontSize: "clamp(3rem, 12vw, 5.5rem)",
+          fontWeight: 900,
+          color: "#f59e0b",
+          letterSpacing: "0.04em",
+          animation: "splashFadeIn 0.6s ease-out both",
+        }}>
+          Truco
+        </div>
+        <div style={{ display: "flex", gap: 10, animation: "splashFadeIn 0.6s ease-out 0.3s both" }}>
+          {[0, 1, 2].map(i => (
+            <span key={i} style={{
+              width: 10, height: 10, borderRadius: "50%",
+              background: "#4ade80",
+              display: "inline-block",
+              animation: `splashPunto 1.2s ease-in-out ${i * 0.2}s infinite`,
+            }} />
+          ))}
+        </div>
       </div>
     </>
   );
