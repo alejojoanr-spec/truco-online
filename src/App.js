@@ -761,7 +761,18 @@ export default function App() {
   const [esBaneado, setEsBaneado] = useState(false);
   const [verAdmin, setVerAdmin] = useState(false);
   const [cargando, setCargando] = useState(true);
+  const [splashSaliendo, setSplashSaliendo] = useState(false);
+  const [splashOculto, setSplashOculto] = useState(false);
   const [codigoRejoin, setCodigoRejoin] = useState(null);
+
+  useEffect(() => {
+    if (!cargando && !splashOculto) {
+      setSplashSaliendo(true);
+      const t = setTimeout(() => setSplashOculto(true), 320);
+      return () => clearTimeout(t);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cargando]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -843,8 +854,44 @@ export default function App() {
 
   async function handleLogout() { sessionStorage.removeItem('truco_panel'); await supabase.auth.signOut(); }
 
-  if (cargando) return (
-    <div style={{ minHeight:"100vh",background:"#050f08",display:"flex",alignItems:"center",justifyContent:"center",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:18 }}>Cargando...</div>
+  if (cargando || !splashOculto) return (
+    <>
+      <style>{`
+        @keyframes splashEntrar {
+          0%   { transform: translateY(-30px); opacity: 0; }
+          60%  { transform: translateY(5px);   opacity: 1; }
+          80%  { transform: translateY(-4px);              }
+          100% { transform: translateY(0);     opacity: 1; }
+        }
+        @keyframes splashPulso {
+          0%, 100% { transform: scale(1);    }
+          50%       { transform: scale(1.05); }
+        }
+        @keyframes splashSalir {
+          from { opacity: 1; }
+          to   { opacity: 0; }
+        }
+      `}</style>
+      <div style={{
+        position: "fixed", inset: 0,
+        background: "#000000",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        zIndex: 9999,
+        animation: splashSaliendo ? "splashSalir 0.32s ease-out forwards" : "none",
+      }}>
+        <img
+          src="/logo_truco_online.png"
+          alt="Truco Online"
+          style={{
+            width: "min(220px, 55vw)",
+            height: "auto",
+            animation: "splashEntrar 0.8s ease-out, splashPulso 1.6s ease-in-out 0.8s infinite",
+            willChange: "transform, opacity",
+          }}
+          draggable={false}
+        />
+      </div>
+    </>
   );
   if (!user) return <Auth />;
   if (esBaneado) return (
