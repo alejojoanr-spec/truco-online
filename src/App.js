@@ -250,6 +250,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [puntosRival, setPuntosRival] = useState(0);
   const [estadoTruco, setEstadoTruco] = useState(null);
   const [estadoEnvido, setEstadoEnvido] = useState(null);
+  const [rivalMsg, setRivalMsg] = useState("");
   const [trucoCantadoPor, setTrucoCantadoPor] = useState(null);
   const [ptsTrucoApostados, setPtsTrucoApostados] = useState(0);
   const [rondaActual, setRondaActual] = useState(1);
@@ -440,6 +441,11 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     }, 2000);
   }
 
+  function mostrarRivalMsg(txt) {
+    setRivalMsg(txt);
+    setTimeout(() => setRivalMsg(""), 2800);
+  }
+
   function cantarTruco() {
     if (!trucoDisponible) return;
     reproducirVoz('truco');
@@ -448,6 +454,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       const rand = Math.random();
       if (rand < 0.3) {
         reproducirVoz('no_quiero');
+        mostrarRivalMsg("🙅 El rival se fue al mazo");
         setEstadoTruco("noquiero"); addLog("Rival: No quiero");
         addLog("✅ Ganaste 1 punto"); setPuntosJugador(p => p + 1); reproducirSonidoPunto();
       } else if (rand < 0.55) {
@@ -477,6 +484,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
           setEstadoTruco("quiero"); setPtsTrucoApostados(4); addLog("Rival: ¡Quiero!");
         } else {
           reproducirVoz('no_quiero');
+          mostrarRivalMsg("🙅 El rival se fue al mazo");
           setEstadoTruco("noquiero"); addLog("Rival: No quiero");
           addLog("✅ Ganaste 3 puntos"); setPuntosJugador(p => p + 3); reproducirSonidoPunto();
         }
@@ -634,7 +642,10 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
           <button onClick={()=>cantarEnvido("realenvido")} style={btnStyle("#5b21b6","#a78bfa")}>Real Envido</button>
           <button onClick={()=>cantarEnvido("faltaenvido")} style={btnStyle("#065f46","#34d399")}>Falta Envido</button>
         </>}
-        <button onClick={irseAlMazo} style={btnStyle("#7f1d1d","#f87171")}>Ir al mazo</button>
+        {rivalMsg
+          ? <div style={{ padding:"6px 14px",borderRadius:8,background:"rgba(248,113,113,0.15)",border:"1px solid rgba(248,113,113,0.5)",color:"#f87171",fontSize:12,fontWeight:700,fontFamily:"'Lato',sans-serif" }}>{rivalMsg}</div>
+          : <button onClick={irseAlMazo} style={btnStyle("#7f1d1d","#f87171")}>Ir al mazo</button>
+        }
       </div>
 
 
