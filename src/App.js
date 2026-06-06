@@ -197,30 +197,14 @@ function reproducirSonidoPunto() {
   } catch {}
 }
 
-const _audioVictoriaCache = { obj: null };
 function reproducirSonidoVictoria() {
   if (!leerConfig().sonidoVictoria) return;
-  try {
-    if (!_audioVictoriaCache.obj) {
-      _audioVictoriaCache.obj = new Audio("/sounds/victoria.wav");
-      _audioVictoriaCache.obj.volume = 0.55;
-    }
-    _audioVictoriaCache.obj.currentTime = 0;
-    _audioVictoriaCache.obj.play().catch(() => {});
-  } catch {}
+  new Audio("/sounds/victoria.wav").play().catch(() => {});
 }
 
-const _audioDerrotaCache = { obj: null };
 function reproducirSonidoDerrota() {
   if (!leerConfig().sonidoVictoria) return;
-  try {
-    if (!_audioDerrotaCache.obj) {
-      _audioDerrotaCache.obj = new Audio("/sounds/derrota.wav");
-      _audioDerrotaCache.obj.volume = 0.55;
-    }
-    _audioDerrotaCache.obj.currentTime = 0;
-    _audioDerrotaCache.obj.play().catch(() => {});
-  } catch {}
+  new Audio("/sounds/derrota.wav").play().catch(() => {});
 }
 
 const _audioRepartirCache = { obj: null };
