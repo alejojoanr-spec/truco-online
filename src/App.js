@@ -360,12 +360,13 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     reproducirSonidoCarta();
     addLog(`Vos jugaste: ${carta.num} de ${carta.palo}`);
     setCartaSeleccionada(null); setTurno("rival");
-    if (mesaRival.length > 0) {
-      // Rival ya jugó primero esta ronda → "rival" fue el primero en la ronda
+    if (mesaRival.length >= nuevasJugadas.length) {
+      // Rival ya jugó primero en esta ronda → evaluarRonda
       const mesaRivalActual = mesaRival;
       const jugadasRivalActual = jugadasRival;
       setTimeout(() => evaluarRonda(nuevaMesa, mesaRivalActual, nuevasJugadas, jugadasRivalActual, "rival"), 500);
     } else {
+      // Rival aún no jugó en esta ronda → jugarRival
       setTimeout(() => jugarRival(nuevasJugadas, nuevaMesa), 700);
     }
   }
