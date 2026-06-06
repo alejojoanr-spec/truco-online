@@ -19,7 +19,7 @@ function reproducirSonidoClick() {
 function MenuItem({ icono, label, onClick, peligro }) {
   return (
     <button
-      onClick={onClick}
+      onClick={() => { reproducirSonidoClick(); onClick?.(); }}
       style={{
         display: "flex", alignItems: "center", gap: 14,
         width: "100%", padding: "14px 16px", background: "none",
@@ -210,7 +210,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
         display: "flex", flexDirection: "column",
         position: "relative",
       }}>
-        <button onClick={abrirEditar} style={{
+        <button onClick={() => { reproducirSonidoClick(); abrirEditar(); }} style={{
           position: "absolute", top: 10, right: 12,
           background: "rgba(255,255,255,0.05)", border: "1px solid rgba(45,106,79,0.5)",
           borderRadius: 8, width: 28, height: 28, cursor: "pointer",
@@ -256,10 +256,10 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
 
         {/* Botones centrados */}
         <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-          <button onClick={() => setMostrarDepositar(true)} style={{ padding: "7px 16px", borderRadius: 8, background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ade80", fontSize: 14, cursor: "pointer", fontFamily: "'Lato', sans-serif", fontWeight: 700 }}>
+          <button onClick={() => { reproducirSonidoClick(); setMostrarDepositar(true); }} style={{ padding: "7px 16px", borderRadius: 8, background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ade80", fontSize: 14, cursor: "pointer", fontFamily: "'Lato', sans-serif", fontWeight: 700 }}>
             + Depositar
           </button>
-          <button onClick={() => { setMostrarRetirar(true); setRetiroMonto(""); setRetiroCbu(""); setRetiroError(""); setRetiroExito(false); }} style={{ padding: "7px 16px", borderRadius: 8, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.4)", color: "#f87171", fontSize: 14, cursor: "pointer", fontFamily: "'Lato', sans-serif", fontWeight: 700 }}>
+          <button onClick={() => { reproducirSonidoClick(); setMostrarRetirar(true); setRetiroMonto(""); setRetiroCbu(""); setRetiroError(""); setRetiroExito(false); }} style={{ padding: "7px 16px", borderRadius: 8, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.4)", color: "#f87171", fontSize: 14, cursor: "pointer", fontFamily: "'Lato', sans-serif", fontWeight: 700 }}>
             − Retirar
           </button>
         </div>
@@ -284,7 +284,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
               Verificá tu identidad para habilitar partidas competitivas
             </div>
             <button
-              onClick={() => setMostrarVerificar(true)}
+              onClick={() => { reproducirSonidoClick(); setMostrarVerificar(true); }}
               style={{
                 alignSelf: "flex-start", marginTop: 4,
                 padding: "6px 14px", borderRadius: 8,
@@ -369,7 +369,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
             <div style={{ fontSize: 16, color: "#fbbf24", fontWeight: 900 }}>Menú</div>
           </div>
           <button
-            onClick={() => setMenuAbierto(false)}
+            onClick={() => { reproducirSonidoClick(); setMenuAbierto(false); }}
             style={{
               background: "rgba(255,255,255,0.05)", border: "1px solid #374151",
               borderRadius: 8, width: 32, height: 32, cursor: "pointer",
@@ -418,7 +418,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                 </div>
               ))}
             </div>
-            <button onClick={() => setMostrarRanking(false)} style={{ background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 8, padding: "10px 28px", color: "#4ade80", fontSize: 14, cursor: "pointer", fontFamily: "'Lato', sans-serif" }}>Cerrar</button>
+            <button onClick={() => { reproducirSonidoClick(); setMostrarRanking(false); }} style={{ background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 8, padding: "10px 28px", color: "#4ade80", fontSize: 14, cursor: "pointer", fontFamily: "'Lato', sans-serif" }}>Cerrar</button>
           </div>
         </div>
       )}
@@ -445,7 +445,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                 <div style={{ color: "#ffffff", fontSize: 12, lineHeight: 1.6, paddingLeft: 24 }}>{texto}</div>
               </div>
             ))}
-            <button onClick={() => setMostrarReglas(false)} style={{ width: "100%", background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 8, padding: "10px", color: "#4ade80", fontSize: 14, cursor: "pointer", fontFamily: "'Lato', sans-serif", marginTop: 8 }}>Cerrar</button>
+            <button onClick={() => { reproducirSonidoClick(); setMostrarReglas(false); }} style={{ width: "100%", background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 8, padding: "10px", color: "#4ade80", fontSize: 14, cursor: "pointer", fontFamily: "'Lato', sans-serif", marginTop: 8 }}>Cerrar</button>
           </div>
         </div>
       )}
@@ -461,7 +461,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                 <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 3, textTransform: "uppercase" }}>Truco Argentino</div>
                 <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900 }}>Editar perfil</div>
               </div>
-              <button onClick={() => setMostrarEditar(false)} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+              <button onClick={() => { reproducirSonidoClick(); setMostrarEditar(false); }} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
             </div>
 
             {/* Avatar seleccionado grande */}
@@ -471,7 +471,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6, width: "100%" }}>
                 {AVATARES.map(av => (
-                  <button key={av} onClick={() => setAvatarEdit(av)} style={{ fontSize: 24, padding: "6px 0", borderRadius: 10, cursor: "pointer", background: avatarEdit === av ? "rgba(74,222,128,0.15)" : "rgba(0,0,0,0.3)", border: avatarEdit === av ? "2px solid #4ade80" : "2px solid rgba(45,106,79,0.3)", transform: avatarEdit === av ? "scale(1.1)" : "scale(1)", transition: "all 0.15s" }}>{av}</button>
+                  <button key={av} onClick={() => { reproducirSonidoClick(); setAvatarEdit(av); }} style={{ fontSize: 24, padding: "6px 0", borderRadius: 10, cursor: "pointer", background: avatarEdit === av ? "rgba(74,222,128,0.15)" : "rgba(0,0,0,0.3)", border: avatarEdit === av ? "2px solid #4ade80" : "2px solid rgba(45,106,79,0.3)", transform: avatarEdit === av ? "scale(1.1)" : "scale(1)", transition: "all 0.15s" }}>{av}</button>
                 ))}
               </div>
             </div>
@@ -494,8 +494,8 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
 
             {/* Botones */}
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setMostrarEditar(false)} style={{ flex: 1, padding: "12px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>Cancelar</button>
-              <button onClick={guardarEdicion} disabled={cargandoEdit} style={{ flex: 1, padding: "12px", borderRadius: 10, cursor: cargandoEdit ? "not-allowed" : "pointer", background: "linear-gradient(135deg,#1a472a,#2d6a4f)", border: "1px solid #4ade80", color: "#4ade80", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700, opacity: cargandoEdit ? 0.7 : 1 }}>{cargandoEdit ? "⏳ Guardando..." : "✅ Guardar"}</button>
+              <button onClick={() => { reproducirSonidoClick(); setMostrarEditar(false); }} style={{ flex: 1, padding: "12px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>Cancelar</button>
+              <button onClick={() => { reproducirSonidoClick(); guardarEdicion(); }} disabled={cargandoEdit} style={{ flex: 1, padding: "12px", borderRadius: 10, cursor: cargandoEdit ? "not-allowed" : "pointer", background: "linear-gradient(135deg,#1a472a,#2d6a4f)", border: "1px solid #4ade80", color: "#4ade80", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700, opacity: cargandoEdit ? 0.7 : 1 }}>{cargandoEdit ? "⏳ Guardando..." : "✅ Guardar"}</button>
             </div>
 
           </div>
@@ -513,7 +513,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                 <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: 3, textTransform: "uppercase", marginBottom: 2 }}>Cuenta</div>
                 <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900 }}>📊 Mis movimientos</div>
               </div>
-              <button onClick={() => setMostrarMovimientos(false)} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 34, height: 34, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+              <button onClick={() => { reproducirSonidoClick(); setMostrarMovimientos(false); }} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 34, height: 34, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
             </div>
 
             {/* Filtros */}
@@ -525,7 +525,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                 { id: "apuesta",  label: "Apuestas" },
                 { id: "premio",   label: "Ganancias" },
               ].map(f => (
-                <button key={f.id} onClick={() => setFiltroMov(f.id)} style={{
+                <button key={f.id} onClick={() => { reproducirSonidoClick(); setFiltroMov(f.id); }} style={{
                   padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
                   cursor: "pointer", whiteSpace: "nowrap", fontFamily: "'Lato', sans-serif",
                   background: filtroMov === f.id ? "rgba(74,222,128,0.15)" : "rgba(0,0,0,0.3)",
@@ -640,7 +640,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                     <div style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(45,106,79,0.5)", background: "rgba(0,0,0,0.4)", color: "#ffffff", fontSize: 13, fontFamily: "monospace", wordBreak: "break-all" }}>
                       {cuentaActiva.alias}
                     </div>
-                    <button onClick={() => copiar(cuentaActiva.alias, "ALIAS")} style={{ padding: "10px 12px", borderRadius: 8, background: copiado === "ALIAS" ? "rgba(74,222,128,0.2)" : "rgba(0,0,0,0.3)", border: "1px solid rgba(45,106,79,0.5)", color: copiado === "ALIAS" ? "#4ade80" : "#ffffff", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", whiteSpace: "nowrap", transition: "all 0.2s" }}>
+                    <button onClick={() => { reproducirSonidoClick(); copiar(cuentaActiva.alias, "ALIAS"); }} style={{ padding: "10px 12px", borderRadius: 8, background: copiado === "ALIAS" ? "rgba(74,222,128,0.2)" : "rgba(0,0,0,0.3)", border: "1px solid rgba(45,106,79,0.5)", color: copiado === "ALIAS" ? "#4ade80" : "#ffffff", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", whiteSpace: "nowrap", transition: "all 0.2s" }}>
                       {copiado === "ALIAS" ? "✓ Copiado" : "📋 Copiar"}
                     </button>
                   </div>
@@ -652,7 +652,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                     <div style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(45,106,79,0.5)", background: "rgba(0,0,0,0.4)", color: "#ffffff", fontSize: 12, fontFamily: "monospace", wordBreak: "break-all", letterSpacing: "0.03em" }}>
                       {cuentaActiva.cbu}
                     </div>
-                    <button onClick={() => copiar(cuentaActiva.cbu, "CBU")} style={{ padding: "10px 12px", borderRadius: 8, background: copiado === "CBU" ? "rgba(74,222,128,0.2)" : "rgba(0,0,0,0.3)", border: "1px solid rgba(45,106,79,0.5)", color: copiado === "CBU" ? "#4ade80" : "#ffffff", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", whiteSpace: "nowrap", transition: "all 0.2s" }}>
+                    <button onClick={() => { reproducirSonidoClick(); copiar(cuentaActiva.cbu, "CBU"); }} style={{ padding: "10px 12px", borderRadius: 8, background: copiado === "CBU" ? "rgba(74,222,128,0.2)" : "rgba(0,0,0,0.3)", border: "1px solid rgba(45,106,79,0.5)", color: copiado === "CBU" ? "#4ade80" : "#ffffff", fontSize: 12, cursor: "pointer", fontFamily: "'Lato', sans-serif", whiteSpace: "nowrap", transition: "all 0.2s" }}>
                       {copiado === "CBU" ? "✓ Copiado" : "📋 Copiar"}
                     </button>
                   </div>
@@ -676,7 +676,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
               ⏱ Tiempo promedio de acreditación: 5 a 10 minutos
             </div>
 
-            <button onClick={() => setMostrarDepositar(false)} style={{ width: "100%", padding: "12px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#ffffff", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>
+            <button onClick={() => { reproducirSonidoClick(); setMostrarDepositar(false); }} style={{ width: "100%", padding: "12px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#ffffff", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>
               ← Volver
             </button>
 
@@ -700,7 +700,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                     Tu retiro quedó pendiente de aprobación. Lo verás reflejado en tu cuenta en breve.
                   </div>
                 </div>
-                <button onClick={() => setMostrarRetirar(false)} style={{ width: "100%", padding: "12px", borderRadius: 10, cursor: "pointer", background: "linear-gradient(135deg,#1a472a,#2d6a4f)", border: "1px solid #4ade80", color: "#4ade80", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700 }}>
+                <button onClick={() => { reproducirSonidoClick(); setMostrarRetirar(false); }} style={{ width: "100%", padding: "12px", borderRadius: 10, cursor: "pointer", background: "linear-gradient(135deg,#1a472a,#2d6a4f)", border: "1px solid #4ade80", color: "#4ade80", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700 }}>
                   Cerrar
                 </button>
               </>
@@ -752,11 +752,12 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                 )}
 
                 <div style={{ display: "flex", gap: 10 }}>
-                  <button onClick={() => setMostrarRetirar(false)} style={{ flex: 1, padding: "12px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>
+                  <button onClick={() => { reproducirSonidoClick(); setMostrarRetirar(false); }} style={{ flex: 1, padding: "12px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>
                     Cancelar
                   </button>
                   <button
                     onClick={async () => {
+                      reproducirSonidoClick();
                       const monto = parseFloat(retiroMonto);
                       if (!retiroMonto || isNaN(monto) || monto < 500) { setRetiroError("El monto mínimo es $500."); return; }
                       if (monto > (perfil.saldo || 0)) { setRetiroError("No tenés saldo suficiente."); return; }
@@ -806,8 +807,8 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
             <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900, marginBottom: 8 }}>Cerrar sesión</div>
             <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 24, lineHeight: 1.6 }}>¿Estás seguro que deseas cerrar sesión?</div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setMostrarConfirmSalir(false)} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>Cancelar</button>
-              <button onClick={onLogout} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: "pointer", background: "linear-gradient(135deg,#7f1d1d,#991b1b)", border: "1px solid #f87171", color: "#f87171", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700 }}>Salir</button>
+              <button onClick={() => { reproducirSonidoClick(); setMostrarConfirmSalir(false); }} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>Cancelar</button>
+              <button onClick={() => { reproducirSonidoClick(); onLogout(); }} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: "pointer", background: "linear-gradient(135deg,#7f1d1d,#991b1b)", border: "1px solid #f87171", color: "#f87171", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700 }}>Salir</button>
             </div>
           </div>
         </div>
@@ -824,7 +825,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                 <div style={{ fontSize: 9, color: "#a78bfa", letterSpacing: 3, textTransform: "uppercase" }}>Truco Argentino</div>
                 <div style={{ fontSize: 20, color: "#fbbf24", fontWeight: 900 }}>¿Cómo querés jugar?</div>
               </div>
-              <button onClick={() => setMostrarSalaPrivada(false)} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+              <button onClick={() => { reproducirSonidoClick(); setMostrarSalaPrivada(false); }} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
             </div>
 
             {/* SECCIÓN 1 — Crear partida */}
@@ -852,7 +853,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
               </div>
 
               <button
-                onClick={() => { onCrearSalaPrivada(parseFloat(salaCrearApuesta) || 0); setMostrarSalaPrivada(false); }}
+                onClick={() => { reproducirSonidoClick(); onCrearSalaPrivada(parseFloat(salaCrearApuesta) || 0); setMostrarSalaPrivada(false); }}
                 disabled={parseFloat(salaCrearApuesta) > (perfil.saldo || 0)}
                 style={{ width: "100%", padding: "13px", borderRadius: 10, cursor: parseFloat(salaCrearApuesta) > (perfil.saldo || 0) ? "not-allowed" : "pointer", background: "linear-gradient(135deg,#3b0764,#5b21b6)", border: "1px solid #a78bfa", color: "#a78bfa", fontFamily: "'Lato',sans-serif", fontSize: 15, fontWeight: 700, opacity: parseFloat(salaCrearApuesta) > (perfil.saldo || 0) ? 0.45 : 1, transition: "opacity 0.15s" }}
               >
@@ -904,6 +905,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
 
               <button
                 onClick={() => {
+                  reproducirSonidoClick();
                   if (!salaUnirseCodigo.trim()) { setSalaError("Ingresá el código de la partida."); return; }
                   onUnirsePrivado(salaUnirseCodigo.trim(), parseFloat(salaUnirseApuesta) || 0);
                   setMostrarSalaPrivada(false);
