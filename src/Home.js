@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 import { leerConfig } from "./Configuracion";
+import { getLunesActual } from "./ranking";
 import VerificarCuenta from "./VerificarCuenta";
 
 const _audioClickCache = { obj: null };
@@ -44,9 +45,12 @@ const REGEX_NOMBRE = /^[a-zA-Z0-9.]{4,13}$/;
 export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePrivado, onLogout, onVerTerminos, onVerPrivacidad, onConfig, onPerfilActualizado, esAdmin, esAsesor, onAdmin }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [mostrarRanking, setMostrarRanking] = useState(false);
+  const [ranking, setRanking] = useState([]);
+  const [countdown, setCountdown] = useState("");
+  const [miPuesto, setMiPuesto] = useState(null);
+  const [mostrarTooltip, setMostrarTooltip] = useState(false);
   const [mostrarReglas, setMostrarReglas] = useState(false);
   const [mostrarConfirmSalir, setMostrarConfirmSalir] = useState(false);
-  const [ranking, setRanking] = useState([]);
   const [mostrarEditar, setMostrarEditar] = useState(false);
   const [nombreEdit, setNombreEdit] = useState("");
   const [avatarEdit, setAvatarEdit] = useState("");
@@ -77,6 +81,28 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
     supabase.from("cuentas_cobro").select("*").eq("activa", true).maybeSingle()
       .then(({ data }) => { if (data) setCuentaActiva(data); });
   }, []);
+
+  useEffect(() => {
+    if (!mostrarRanking) return;
+    function calcular() {
+      const ahora = new Date();
+      const day = ahora.getDay();
+      const diasHasta = day === 0 ? 1 : 8 - day;
+      const proximo = new Date(ahora);
+      proximo.setDate(ahora.getDate() + diasHasta);
+      proximo.setHours(0, 0, 0, 0);
+      const ms = Math.max(0, proximo - ahora);
+      const tot = Math.floor(ms / 1000);
+      const d = Math.floor(tot / 86400);
+      const h = Math.floor((tot % 86400) / 3600);
+      const m = Math.floor((tot % 3600) / 60);
+      const s = tot % 60;
+      setCountdown(`${d}d ${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`);
+    }
+    calcular();
+    const id = setInterval(calcular, 1000);
+    return () => clearInterval(id);
+  }, [mostrarRanking]);
 
   function abrirEditar() {
     setNombreEdit(perfil.nombre);
@@ -147,12 +173,35 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
 
   async function abrirRanking() {
     setMenuAbierto(false);
+    setMiPuesto(null);
+    setMostrarTooltip(false);
+    const semana = getLunesActual();
     const { data } = await supabase
-      .from("perfiles")
-      .select("nombre, partidas_jugadas, partidas_ganadas")
-      .order("partidas_ganadas", { ascending: false })
+      .from("ranking_semanal")
+      .select("user_id, username, avatar, puntos")
+      .eq("semana", semana)
+      .order("puntos", { ascending: false })
       .limit(10);
-    if (data) setRanking(data);
+    const lista = data || [];
+    setRanking(lista);
+    // Si el usuario no está en el top 10, buscar su puesto
+    const estaEnTop = lista.some(p => p.user_id === perfil?.usuario_id);
+    if (!estaEnTop) {
+      const { data: miEntrada } = await supabase
+        .from("ranking_semanal")
+        .select("puntos")
+        .eq("user_id", perfil?.usuario_id)
+        .eq("semana", semana)
+        .maybeSingle();
+      if (miEntrada) {
+        const { count } = await supabase
+          .from("ranking_semanal")
+          .select("user_id", { count: "exact", head: true })
+          .eq("semana", semana)
+          .gt("puntos", miEntrada.puntos);
+        setMiPuesto({ posicion: (count || 0) + 1, puntos: miEntrada.puntos });
+      }
+    }
     setMostrarRanking(true);
   }
 
@@ -401,23 +450,62 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
       {/* ── MODAL RANKING ── */}
       {mostrarRanking && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.88)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 16 }}>
-          <div style={{ background: "#0a2414", border: "1px solid #2d6a4f", borderRadius: 16, padding: "28px", textAlign: "center", width: "100%", maxWidth: 360 }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>🏆</div>
-            <div style={{ fontSize: 20, color: "#fbbf24", fontWeight: 900, marginBottom: 16 }}>Ranking</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-              {ranking.length === 0 && <div style={{ color: "#6b7280", fontSize: 13 }}>Sin jugadores aún</div>}
+          <div style={{ background: "#0a2414", border: "1px solid #2d6a4f", borderRadius: 16, padding: "24px 20px 20px", textAlign: "center", width: "100%", maxWidth: 360, maxHeight: "90vh", overflowY: "auto" }}>
+            <div style={{ fontSize: 32, marginBottom: 6 }}>🏆</div>
+
+            {/* Título + ℹ */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10 }}>
+              <div style={{ fontSize: 20, color: "#fbbf24", fontWeight: 900 }}>Ranking Semanal</div>
+              <button
+                onClick={() => { reproducirSonidoClick(); setMostrarTooltip(v => !v); }}
+                style={{ background: "none", border: "1px solid #4b5563", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", color: "#6b7280", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}
+              >ℹ</button>
+            </div>
+
+            {/* Tooltip puntos */}
+            {mostrarTooltip && (
+              <div style={{ background: "rgba(0,0,0,0.5)", border: "1px solid #374151", borderRadius: 8, padding: "10px 14px", marginBottom: 10, fontSize: 12, color: "#9ca3af", lineHeight: 1.9, textAlign: "left" }}>
+                <div>+100 por victoria</div>
+                <div>+75 paliza <span style={{ color: "#6b7280" }}>(rival termina con menos de 5 pts)</span></div>
+                <div>+50 victoria ajustada <span style={{ color: "#6b7280" }}>(rival termina con 10 pts o más)</span></div>
+                <div>+25 el rival se fue al mazo</div>
+              </div>
+            )}
+
+            {/* Countdown */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 14, background: "rgba(0,0,0,0.3)", borderRadius: 8, padding: "7px 12px" }}>
+              <span style={{ fontSize: 11, color: "#6b7280" }}>Resetea en</span>
+              <span style={{ fontSize: 13, color: "#4ade80", fontWeight: 700, fontFamily: "monospace", letterSpacing: 0.5 }}>{countdown}</span>
+            </div>
+
+            {/* Lista */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+              {ranking.length === 0 && (
+                <div style={{ color: "#6b7280", fontSize: 13, padding: "20px 0" }}>Sin partidas esta semana aún</div>
+              )}
               {ranking.map((p, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(0,0,0,0.3)", borderRadius: 10, padding: "10px 14px" }}>
-                  <div style={{ fontSize: 18, width: 28 }}>{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`}</div>
-                  <div style={{ fontSize: 22, width: 28 }}>{p.nombre === perfil?.nombre ? (perfil?.avatar || "👤") : "👤"}</div>
-                  <div style={{ flex: 1, textAlign: "left" }}>
-                    <div style={{ color: p.nombre === perfil?.nombre ? "#4ade80" : "#e2f5e9", fontSize: 13, fontWeight: 700 }}>{p.nombre}</div>
-                    <div style={{ color: "#6b9", fontSize: 10 }}>{p.partidas_jugadas} jugadas</div>
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: p.user_id === perfil?.usuario_id ? "rgba(74,222,128,0.08)" : "rgba(0,0,0,0.3)", border: `1px solid ${p.user_id === perfil?.usuario_id ? "rgba(74,222,128,0.3)" : "transparent"}`, borderRadius: 10, padding: "10px 14px" }}>
+                  <div style={{ fontSize: 18, width: 28, textAlign: "center", flexShrink: 0 }}>{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`}</div>
+                  <div style={{ fontSize: 22, width: 28, flexShrink: 0 }}>{p.avatar || "👤"}</div>
+                  <div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
+                    <div style={{ color: p.user_id === perfil?.usuario_id ? "#4ade80" : "#e2f5e9", fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.username}</div>
                   </div>
-                  <div style={{ color: "#fbbf24", fontSize: 15, fontWeight: 900 }}>{p.partidas_ganadas} 🏆</div>
+                  <div style={{ color: "#fbbf24", fontSize: 14, fontWeight: 900, flexShrink: 0 }}>{p.puntos} pts</div>
                 </div>
               ))}
             </div>
+
+            {/* Tu puesto (si no está en top 10) */}
+            {miPuesto && (
+              <div style={{ marginBottom: 16, padding: "10px 14px", background: "rgba(74,222,128,0.05)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 10 }}>
+                <div style={{ fontSize: 10, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Tu puesto esta semana</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
+                  <span style={{ fontSize: 24, color: "#fbbf24", fontWeight: 900 }}>#{miPuesto.posicion}</span>
+                  <span style={{ fontSize: 13, color: "#9ca3af" }}>{miPuesto.puntos} pts</span>
+                </div>
+              </div>
+            )}
+
             <button onClick={() => { reproducirSonidoClick(); setMostrarRanking(false); }} style={{ background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 8, padding: "10px 28px", color: "#4ade80", fontSize: 14, cursor: "pointer", fontFamily: "'Lato', sans-serif" }}>Cerrar</button>
           </div>
         </div>

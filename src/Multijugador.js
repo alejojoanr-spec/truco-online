@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import { leerConfig } from "./Configuracion";
+import { sumarPuntosRanking } from "./ranking";
 
 const _vozQueue = [];
 let _vozPlaying = false;
@@ -304,7 +305,13 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     }
 
     const ganoPartida = p.ganador_id === user.id;
-    if (ganoPartida) reproducirSonidoVictoria(); else reproducirSonidoDerrota();
+    if (ganoPartida) {
+      reproducirSonidoVictoria();
+      const rivalPuntos = soyJugador1 ? (p.puntos2 || 0) : (p.puntos1 || 0);
+      sumarPuntosRanking(user, perfil, rivalPuntos, false).catch(() => {});
+    } else {
+      reproducirSonidoDerrota();
+    }
     setResultadoPartida({
       ganaste: ganoPartida,
       premio: ganoPartida ? premio : 0,

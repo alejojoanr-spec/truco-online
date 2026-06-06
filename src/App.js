@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "./supabase";
+import { sumarPuntosRanking } from "./ranking";
 import Auth from "./Auth";
 import Multijugador from "./Multijugador";
 import Terminos from "./Terminos";
@@ -280,6 +281,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
   const [timerSegundos, setTimerSegundos] = useState(15);
   const timerRef = useRef(null);
+  const rivalFueAlMazoRef = useRef(false);
 
   function guardarAvatar(av) {
     localStorage.setItem(`truco_avatar_${user.id}`, av);
@@ -431,6 +433,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         juegoTerminado = true;
         setFasePartida("fin"); setGanadorPartida("jugador");
         actualizarEstadisticas(true);
+        sumarPuntosRanking(user, perfil, puntosRival, rivalFueAlMazoRef.current).catch(() => {});
         addLog("🏆 ¡GANASTE LA PARTIDA!");
         reproducirSonidoVictoria();
       } else {
@@ -479,6 +482,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       if (rand < 0.3) {
         reproducirVoz('no_quiero');
         mostrarRivalMsg("🙅 El rival se fue al mazo");
+        rivalFueAlMazoRef.current = true;
         setEstadoTruco("noquiero"); addLog("Rival: No quiero");
         addLog("✅ Ganaste 1 punto"); setPuntosJugador(p => p + 1); reproducirSonidoPunto();
       } else if (rand < 0.55) {
@@ -509,6 +513,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         } else {
           reproducirVoz('no_quiero');
           mostrarRivalMsg("🙅 El rival se fue al mazo");
+          rivalFueAlMazoRef.current = true;
           setEstadoTruco("noquiero"); addLog("Rival: No quiero");
           addLog("✅ Ganaste 3 puntos"); setPuntosJugador(p => p + 3); reproducirSonidoPunto();
         }
