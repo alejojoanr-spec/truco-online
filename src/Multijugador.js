@@ -17,6 +17,59 @@ function reproducirVoz(nombre) {
   _vozQueue.push(nombre);
   _procesarVozQueue();
 }
+
+const _audioCartaCacheM = { obj: null };
+function reproducirSonidoCarta() {
+  if (!leerConfig().sonidoCartas) return;
+  try {
+    if (!_audioCartaCacheM.obj) {
+      _audioCartaCacheM.obj = new Audio("/sounds/carta.wav");
+      _audioCartaCacheM.obj.volume = 0.45;
+    }
+    _audioCartaCacheM.obj.currentTime = 0;
+    _audioCartaCacheM.obj.play().catch(() => {});
+  } catch {}
+}
+
+const _audioVictoriaCacheM = { obj: null };
+function reproducirSonidoVictoria() {
+  if (!leerConfig().sonidoVictoria) return;
+  try {
+    if (!_audioVictoriaCacheM.obj) {
+      _audioVictoriaCacheM.obj = new Audio("/sounds/victoria.wav");
+      _audioVictoriaCacheM.obj.volume = 0.55;
+    }
+    _audioVictoriaCacheM.obj.currentTime = 0;
+    _audioVictoriaCacheM.obj.play().catch(() => {});
+  } catch {}
+}
+
+const _audioDerrotaCacheM = { obj: null };
+function reproducirSonidoDerrota() {
+  if (!leerConfig().sonidoVictoria) return;
+  try {
+    if (!_audioDerrotaCacheM.obj) {
+      _audioDerrotaCacheM.obj = new Audio("/sounds/derrota.wav");
+      _audioDerrotaCacheM.obj.volume = 0.55;
+    }
+    _audioDerrotaCacheM.obj.currentTime = 0;
+    _audioDerrotaCacheM.obj.play().catch(() => {});
+  } catch {}
+}
+
+const _audioRepartirCacheM = { obj: null };
+function reproducirSonidoRepartir() {
+  if (!leerConfig().sonidoCartas) return;
+  try {
+    if (!_audioRepartirCacheM.obj) {
+      _audioRepartirCacheM.obj = new Audio("/sounds/repartir.mp3");
+      _audioRepartirCacheM.obj.volume = 0.55;
+    }
+    _audioRepartirCacheM.obj.currentTime = 0;
+    _audioRepartirCacheM.obj.play().catch(() => {});
+  } catch {}
+}
+
 const VOZ_ENV = { envido: 'envido', real_envido: 'real_envido', falta_envido: 'falta_envido' };
 
 function fmtARS(n) {
@@ -250,11 +303,13 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       }
     }
 
+    const ganoPartida = p.ganador_id === user.id;
+    if (ganoPartida) reproducirSonidoVictoria(); else reproducirSonidoDerrota();
     setResultadoPartida({
-      ganaste: p.ganador_id === user.id,
-      premio: p.ganador_id === user.id ? premio : 0,
+      ganaste: ganoPartida,
+      premio: ganoPartida ? premio : 0,
       apuesta: apuestaPartida,
-      rake: p.ganador_id === user.id ? rakeAmount : 0,
+      rake: ganoPartida ? rakeAmount : 0,
     });
   }
 
@@ -348,6 +403,15 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       if (!p) return;
       if (p.ganador_id) { procesarFinPartida(p); return; }
       if (p.estado === "jugando") setPantalla("jugando");
+      // Detect a card added by the rival (only plays sound for cards the rival adds, not our own)
+      const prevMesa = JSON.parse(partidaRef.current?.mesa || "[]");
+      const newMesa = JSON.parse(p.mesa || "[]");
+      if (newMesa.length === prevMesa.length + 1) {
+        const lastCard = newMesa[newMesa.length - 1];
+        if (lastCard?.jugador !== user.id) reproducirSonidoCarta();
+      }
+      // Detect new hand dealt (mesa cleared after cards were on table)
+      if (newMesa.length === 0 && prevMesa.length > 0) reproducirSonidoRepartir();
       if (p.mano_jugador1) {
         const mano1 = JSON.parse(p.mano_jugador1);
         const mano2 = JSON.parse(p.mano_jugador2);
@@ -552,6 +616,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     // Optimistic update: remove played card immediately
     setMiMano(nuevaMiMano);
     setCartaSeleccionada(null);
+    reproducirSonidoCarta();
     addLog(`Jugaste: ${carta.num} de ${carta.palo}`);
 
     let updateData = {
@@ -620,6 +685,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           // Step 2: after delay, clear mesa and deal new hand
           await new Promise(resolve => setTimeout(resolve, 1500));
           const nuevoMazo = mezclar(MAZO);
+          reproducirSonidoRepartir();
           await supabase.from("partidas").update({
             mesa: JSON.stringify([]),
             mano_jugador1: JSON.stringify(nuevoMazo.slice(0, 3)),

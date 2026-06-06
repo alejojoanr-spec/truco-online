@@ -222,6 +222,19 @@ function reproducirSonidoDerrota() {
   } catch {}
 }
 
+const _audioRepartirCache = { obj: null };
+function reproducirSonidoRepartir() {
+  if (!leerConfig().sonidoCartas) return;
+  try {
+    if (!_audioRepartirCache.obj) {
+      _audioRepartirCache.obj = new Audio("/sounds/repartir.mp3");
+      _audioRepartirCache.obj.volume = 0.55;
+    }
+    _audioRepartirCache.obj.currentTime = 0;
+    _audioRepartirCache.obj.play().catch(() => {});
+  } catch {}
+}
+
 const _vozQueue = [];
 let _vozPlaying = false;
 function _procesarVozQueue() {
@@ -307,6 +320,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     setTrucoCantadoPor(null); setPtsTrucoApostados(0); setRondaActual(1); setGanadoresRondas([]);
     setFasePartida("jugando"); setGanadorPartida(null);
     setCartaSeleccionada(null);
+    reproducirSonidoRepartir();
   }
 
   async function actualizarEstadisticas(gano) {
@@ -446,6 +460,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         setTurno("jugador"); setEstadoTruco(null); setEstadoEnvido(null);
         setTrucoCantadoPor(null); setPtsTrucoApostados(0); setRondaActual(1); setGanadoresRondas([]);
         setCartaSeleccionada(null); setRivalMsg(""); addLog("🃏 Nueva mano repartida");
+        reproducirSonidoRepartir();
       }
     }, 1500);
   }

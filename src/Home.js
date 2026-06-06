@@ -1,6 +1,20 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
+import { leerConfig } from "./Configuracion";
 import VerificarCuenta from "./VerificarCuenta";
+
+const _audioClickCache = { obj: null };
+function reproducirSonidoClick() {
+  if (!leerConfig().sonidoCartas) return;
+  try {
+    if (!_audioClickCache.obj) {
+      _audioClickCache.obj = new Audio("/sounds/click.wav");
+      _audioClickCache.obj.volume = 0.4;
+    }
+    _audioClickCache.obj.currentTime = 0;
+    _audioClickCache.obj.play().catch(() => {});
+  } catch {}
+}
 
 function MenuItem({ icono, label, onClick, peligro }) {
   return (
@@ -169,7 +183,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
 
       {/* Botón hamburguesa */}
       <button
-        onClick={() => setMenuAbierto(true)}
+        onClick={() => { reproducirSonidoClick(); setMenuAbierto(true); }}
         style={{
           position: "fixed", top: 16, right: 16, zIndex: 40,
           background: "rgba(0,0,0,0.5)", border: "1px solid #2d6a4f",
@@ -289,7 +303,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
 
       {/* Opciones principales */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 340, marginTop: 24 }}>
-        <button onClick={onJugar} style={{
+        <button onClick={() => { reproducirSonidoClick(); onJugar(); }} style={{
           background: "linear-gradient(135deg,#1a472a,#2d6a4f)",
           border: "1px solid #4ade80", borderRadius: 16, padding: "20px 24px",
           cursor: "pointer", textAlign: "left", width: "100%",
@@ -307,7 +321,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
           </div>
         </button>
 
-        <button onClick={() => { setSalaCrearApuesta(""); setSalaUnirseCodigo(""); setSalaUnirseApuesta(""); setSalaError(""); setMostrarSalaPrivada(true); }} style={{
+        <button onClick={() => { reproducirSonidoClick(); setSalaCrearApuesta(""); setSalaUnirseCodigo(""); setSalaUnirseApuesta(""); setSalaError(""); setMostrarSalaPrivada(true); }} style={{
           background: "rgba(0,0,0,0.4)",
           border: "1px solid #a78bfa", borderRadius: 16, padding: "20px 24px",
           cursor: "pointer", textAlign: "left", width: "100%",
