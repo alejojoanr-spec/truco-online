@@ -157,7 +157,7 @@ function PalitosPuntaje({ puntos, total=15 }) {
   const POR_GRUPO = 5;
   const GRUPOS_POR_FILA = 3;
   // Siempre 15 palitos; en partidas a 30 cada palito vale 2 pts
-  const puntosEscalados = Math.floor(puntos / (total / 15));
+  const puntosEscalados = Math.round(puntos / (total / 15));
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
       <div style={{ display:"flex", gap:8 }}>
@@ -279,6 +279,8 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
   const AVATARES = ["👨","👩","👴","👵","🧔","👱","🧑","👮","🧑‍🍳","🥷","🧙","🤠","👸","🤴","🧛","🧜","🧝","🧞","🤖","👾"];
 
+  const [limitePuntos, setLimitePuntos] = useState(() => parseInt(localStorage.getItem('truco_limite')) || 30);
+  const [eligiendo, setEligiendo] = useState(true);
   const [timerSegundos, setTimerSegundos] = useState(15);
   const timerRef = useRef(null);
   const rivalFueAlMazoRef = useRef(false);
@@ -295,7 +297,13 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const addLog = useCallback((_msg) => {}, []);
 
 
-  useEffect(() => { iniciarPartida(); }, []);
+  function confirmarLimite(n) {
+    localStorage.setItem('truco_limite', String(n));
+    setLimitePuntos(n);
+    setEligiendo(false);
+  }
+
+  useEffect(() => { if (!eligiendo) iniciarPartida(); }, [eligiendo]); // eslint-disable-line
 
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -380,7 +388,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     }
 
     // Feature 1: IA canta truco por iniciativa propia
-    if (!estadoTruco && !(puntosJugador >= 29 || puntosRival >= 29)) {
+    if (!estadoTruco && !(puntosJugador >= limitePuntos - 1 || puntosRival >= limitePuntos - 1)) {
       const disponibles = manoRival.filter((_, i) => !jugadasR.includes(i));
       const tieneCartaFuerte = disponibles.some(c => valorTruco(c) >= 10);
       if (tieneCartaFuerte && Math.random() < 0.7) {
@@ -477,7 +485,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     if (ganador === "jugador") {
       const nuevos = puntosJugador + ptsTruco;
       addLog(`🏆 Ganaste la mano (+${ptsTruco} pts)`);
-      if (nuevos >= 30) {
+      if (nuevos >= limitePuntos) {
         juegoTerminado = true;
         setFasePartida("fin"); setGanadorPartida("jugador");
         actualizarEstadisticas(true);
@@ -491,7 +499,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     } else if (ganador === "rival") {
       const nuevos = puntosRival + ptsTruco;
       addLog(`💀 El rival ganó la mano (+${ptsTruco} pts)`);
-      if (nuevos >= 30) {
+      if (nuevos >= limitePuntos) {
         juegoTerminado = true;
         setFasePartida("fin"); setGanadorPartida("rival");
         actualizarEstadisticas(false);
@@ -605,7 +613,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         addLog(`Vos: ${envJ} - Rival: ${envidoRival}`);
         const jugadorGana = envJ >= envidoRival;
         if (tipo === "faltaenvido") {
-          const pts = jugadorGana ? 30 - ptsR : 30 - ptsJ;
+          const pts = jugadorGana ? limitePuntos - ptsR : limitePuntos - ptsJ;
           if (jugadorGana) { addLog(`✅ Ganaste Falta Envido (+${pts})`); setPuntosJugador(p => p + pts); reproducirSonidoPunto(); }
           else { addLog(`❌ Rival ganó Falta Envido (+${pts})`); setPuntosRival(p => p + pts); reproducirSonidoPunto(); }
         } else if (tipo === "envido-envido") {
@@ -691,7 +699,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     setTimeout(()=>resolverMano("rival"),500);
   }
 
-  const esManoDeLasAceites = puntosJugador >= 29 || puntosRival >= 29;
+  const esManoDeLasAceites = puntosJugador >= limitePuntos - 1 || puntosRival >= limitePuntos - 1;
   const envidoDisponible = !estadoEnvido && rondaActual === 1 && jugadasJugador.length === 0;
   const trucoDisponible = !estadoTruco && turno === "jugador" && fasePartida === "jugando" && !esManoDeLasAceites;
   const esperandoRespuestaRetruco = estadoTruco === "retruco" && trucoCantadoPor === "rival";
@@ -700,6 +708,38 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const puedeJugar = turno === "jugador" && fasePartida === "jugando" && !esperandoRespuestaRetruco && !esperandoRespuestaTruco && !esperandoRespuestaEnvido && !(estadoTruco && !["quiero","noquiero"].includes(estadoTruco) && trucoCantadoPor === "rival");
   const winRate = perfil && perfil.partidas_jugadas > 0 ? Math.round((perfil.partidas_ganadas/perfil.partidas_jugadas)*100) : 0;
   const nombreJugador = perfil?.nombre || user.email?.split("@")[0] || "Vos";
+
+  if (eligiendo) {
+    return (
+      <div style={{ height:"100dvh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Lato',sans-serif",padding:24,boxSizing:"border-box" }}>
+        <div style={{ background:"rgba(0,0,0,0.55)",border:"1px solid #2d6a4f",borderRadius:20,padding:"36px 32px",textAlign:"center",maxWidth:320,width:"100%" }}>
+          <div style={{ fontSize:28,marginBottom:4 }}>🃏</div>
+          <div style={{ fontSize:20,fontWeight:900,color:"#fbbf24",letterSpacing:1,marginBottom:6 }}>Partida vs IA</div>
+          <div style={{ fontSize:13,color:"#9ca3af",marginBottom:28 }}>¿A cuántos puntos querés jugar?</div>
+          <div style={{ display:"flex",gap:14,justifyContent:"center" }}>
+            {[15, 30].map(n => (
+              <button
+                key={n}
+                onClick={() => confirmarLimite(n)}
+                style={{
+                  flex:1, padding:"18px 0", borderRadius:14, fontSize:22, fontWeight:900,
+                  cursor:"pointer", fontFamily:"'Lato',sans-serif", letterSpacing:0.5,
+                  transition:"all 0.15s",
+                  background: limitePuntos === n ? "rgba(74,222,128,0.18)" : "rgba(0,0,0,0.35)",
+                  border: limitePuntos === n ? "2px solid #4ade80" : "2px solid rgba(45,106,79,0.5)",
+                  color: limitePuntos === n ? "#4ade80" : "#9ca3af",
+                  boxShadow: limitePuntos === n ? "0 0 18px rgba(74,222,128,0.2)" : "none",
+                }}
+              >
+                <div>{n}</div>
+                <div style={{ fontSize:11,fontWeight:400,marginTop:2,letterSpacing:1,textTransform:"uppercase" }}>puntos</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ height:"100dvh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",fontFamily:"'Lato',sans-serif",display:"flex",flexDirection:"column",alignItems:"center",padding:"8px 8px 4px",overflow:"hidden",boxSizing:"border-box",gap:4 }}>
@@ -712,7 +752,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
             <span style={{ fontSize:13,flexShrink:0 }}>{perfil?.avatar || "👤"}</span>
             <span style={{ fontSize:12,color:"#4ade80",letterSpacing:0.5,fontFamily:"'Lato',sans-serif",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{nombreJugador}</span>
           </div>
-          <PalitosPuntaje puntos={puntosJugador} total={30} />
+          <PalitosPuntaje puntos={puntosJugador} total={limitePuntos} />
         </div>
         <div style={{ width:1,alignSelf:"stretch",background:"#2d6a4f",margin:"0 2px" }}/>
         <div>
@@ -720,7 +760,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
             <span style={{ fontSize:13,flexShrink:0 }}>{rivalAvatar}</span>
             <span style={{ fontSize:12,color:"#f87171",letterSpacing:0.5,fontFamily:"'Lato',sans-serif",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{rivalNombre}</span>
           </div>
-          <PalitosPuntaje puntos={puntosRival} total={30} />
+          <PalitosPuntaje puntos={puntosRival} total={limitePuntos} />
         </div>
       </div>
 
@@ -903,7 +943,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
               <div style={{ fontSize:32,fontWeight:900,color:"#fbbf24" }}>¡GANASTE!</div>
               <div style={{ color:"#9ca3af",fontSize:14 }}>{puntosJugador} – {puntosRival}</div>
               {perfil&&<div style={{ color:"#4ade80",fontSize:13 }}>Partidas ganadas: {perfil.partidas_ganadas} / {perfil.partidas_jugadas}</div>}
-              <button onClick={iniciarPartida} style={{ ...btnStyle("#1a472a","#4ade80"),fontSize:16,padding:"12px 32px",marginTop:8 }}>Jugar de nuevo</button>
+              <button onClick={() => setEligiendo(true)} style={{ ...btnStyle("#1a472a","#4ade80"),fontSize:16,padding:"12px 32px",marginTop:8 }}>Jugar de nuevo</button>
             </div>
           ) : (
             <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:24,padding:"36px 28px",maxWidth:300,width:"100%",textAlign:"center",fontFamily:"'Lato',sans-serif",boxShadow:"0 24px 60px rgba(0,0,0,0.7),0 0 0 1px rgba(248,113,113,0.12)" }}>
@@ -912,7 +952,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
               <div style={{ fontSize:14,color:"#9ca3af",marginBottom:4 }}>Volvé a intentarlo</div>
               <div style={{ fontSize:13,color:"#4b5563",marginBottom:20 }}>{puntosJugador} – {puntosRival}</div>
               {perfil&&<div style={{ fontSize:12,color:"#6b7280",marginBottom:20 }}>Partidas ganadas: {perfil.partidas_ganadas} / {perfil.partidas_jugadas}</div>}
-              <button onClick={iniciarPartida} style={{ width:"100%",padding:"13px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>
+              <button onClick={() => setEligiendo(true)} style={{ width:"100%",padding:"13px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>
                 Nueva partida
               </button>
             </div>
