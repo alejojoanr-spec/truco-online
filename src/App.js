@@ -287,11 +287,18 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const pendingJugarRivalRef = useRef(null);
   const [envidoCantadoPor, setEnvidoCantadoPor] = useState(null);
   const [envidoMonto, setEnvidoMonto] = useState({ quiero: 0, noquiero: 0 });
+  const [envidoGlobos, setEnvidoGlobos] = useState(null);
 
   function guardarAvatar(av) {
     localStorage.setItem(`truco_avatar_${user.id}`, av);
     setPerfil(p => ({ ...p, avatar: av }));
     setCambiarAvatar(false);
+  }
+
+  function mostrarGlobosEnvido(textoJugador, textoRival) {
+    setEnvidoGlobos({ jugador: textoJugador, rival: textoRival, visible: true });
+    setTimeout(() => setEnvidoGlobos(g => g ? { ...g, visible: false } : null), 2000);
+    setTimeout(() => setEnvidoGlobos(null), 2500);
   }
   // eslint-disable-next-line no-unused-vars
   const addLog = useCallback((_msg) => {}, []);
@@ -334,6 +341,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     setFasePartida("jugando"); setGanadorPartida(null);
     setCartaSeleccionada(null);
     setEnvidoCantadoPor(null); setEnvidoMonto({ quiero: 0, noquiero: 0 });
+    setEnvidoGlobos(null);
     pendingJugarRivalRef.current = null; rivalFueAlMazoRef.current = false;
     reproducirSonidoRepartir();
   }
@@ -625,10 +633,12 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
           if (jugadorGana) { addLog(`✅ Ganaste envido (+${ptsEnv})`); setPuntosJugador(p => p + ptsEnv); reproducirSonidoPunto(); }
           else { addLog(`❌ Rival ganó envido (+${ptsEnv})`); setPuntosRival(p => p + ptsEnv); reproducirSonidoPunto(); }
         }
+        mostrarGlobosEnvido(jugadorGana ? `¡Son ${envJ}!` : "Son buenas", jugadorGana ? "Son buenas" : `¡Son ${envidoRival}!`);
       } else {
         const ptsNoQ = tipo === "envido-envido" ? 2 : tipo === "faltaenvido" ? 2 : 1;
         addLog(`✅ Ganaste ${ptsNoQ} punto${ptsNoQ > 1 ? "s" : ""} por envido`);
         setPuntosJugador(p => p + ptsNoQ); reproducirSonidoPunto();
+        mostrarGlobosEnvido(`¡Son ${calcularEnvido(manoJugador)}!`, "Son buenas");
       }
     }, 1000);
   }
@@ -684,11 +694,13 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       if (jugadorGana) { addLog(`✅ Ganaste envido (+${monto.quiero})`); setPuntosJugador(p => p + monto.quiero); }
       else { addLog(`❌ Rival ganó envido (+${monto.quiero})`); setPuntosRival(p => p + monto.quiero); }
       reproducirSonidoPunto();
+      mostrarGlobosEnvido(jugadorGana ? `¡Son ${envJ}!` : "Son buenas", jugadorGana ? "Son buenas" : `¡Son ${envidoRival}!`);
       setEstadoEnvido("quiero");
     } else {
       reproducirVoz('no_quiero');
       addLog(`Vos: No quiero. Rival suma ${monto.noquiero} punto${monto.noquiero > 1 ? "s" : ""}`);
       setPuntosRival(p => p + monto.noquiero); reproducirSonidoPunto();
+      mostrarGlobosEnvido("Son buenas", `¡Son ${envidoRival}!`);
       setEstadoEnvido("noquiero");
     }
     if (pending) setTimeout(() => jugarRival(pending.jugadasJ, pending.mesaJ, pending.jugadasR), 700);
@@ -716,9 +728,11 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         const jugadorGana = envJ >= envidoRival;
         if (jugadorGana) { addLog(`✅ Ganaste (+${siQuiero})`); setPuntosJugador(p => p + siQuiero); }
         else { addLog(`❌ Rival ganó (+${siQuiero})`); setPuntosRival(p => p + siQuiero); }
+        mostrarGlobosEnvido(jugadorGana ? `¡Son ${envJ}!` : "Son buenas", jugadorGana ? "Son buenas" : `¡Son ${envidoRival}!`);
       } else {
         addLog(`Ganás ${siNo} punto${siNo > 1 ? "s" : ""}`);
         setPuntosJugador(p => p + siNo);
+        mostrarGlobosEnvido(`¡Son ${calcularEnvido(manoJugador)}!`, "Son buenas");
       }
       reproducirSonidoPunto();
       setEstadoEnvido("quiero");
@@ -898,6 +912,21 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         }
       </div>
 
+
+      {envidoGlobos && (
+        <div style={{ position:"fixed", inset:0, zIndex:15, pointerEvents:"none", display:"flex", flexDirection:"column", justifyContent:"space-between", padding:"70px 24px 90px" }}>
+          <div style={{ opacity: envidoGlobos.visible ? 1 : 0, transition:"opacity 0.5s", alignSelf:"center", position:"relative", background:"#fff", border:"3px solid #111", borderRadius:14, padding:"10px 20px", fontWeight:900, fontSize:22, color:"#111", boxShadow:"3px 3px 0 #111", whiteSpace:"nowrap" }}>
+            {envidoGlobos.rival}
+            <div style={{ position:"absolute", top:-15, left:"50%", transform:"translateX(-50%)", width:0, height:0, borderLeft:"11px solid transparent", borderRight:"11px solid transparent", borderBottom:"15px solid #111" }}/>
+            <div style={{ position:"absolute", top:-11, left:"50%", transform:"translateX(-50%)", width:0, height:0, borderLeft:"9px solid transparent", borderRight:"9px solid transparent", borderBottom:"12px solid #fff" }}/>
+          </div>
+          <div style={{ opacity: envidoGlobos.visible ? 1 : 0, transition:"opacity 0.5s", alignSelf:"center", position:"relative", background:"#fff", border:"3px solid #111", borderRadius:14, padding:"10px 20px", fontWeight:900, fontSize:22, color:"#111", boxShadow:"3px 3px 0 #111", whiteSpace:"nowrap" }}>
+            {envidoGlobos.jugador}
+            <div style={{ position:"absolute", bottom:-15, left:"50%", transform:"translateX(-50%)", width:0, height:0, borderLeft:"11px solid transparent", borderRight:"11px solid transparent", borderTop:"15px solid #111" }}/>
+            <div style={{ position:"absolute", bottom:-11, left:"50%", transform:"translateX(-50%)", width:0, height:0, borderLeft:"9px solid transparent", borderRight:"9px solid transparent", borderTop:"12px solid #fff" }}/>
+          </div>
+        </div>
+      )}
 
       {mostrarPerfil&&(
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20,padding:"16px" }}>
