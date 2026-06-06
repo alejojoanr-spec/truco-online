@@ -915,15 +915,13 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
       {envidoGlobos && (
         <div style={{ position:"fixed", inset:0, zIndex:15, pointerEvents:"none", display:"flex", flexDirection:"column", justifyContent:"space-between", padding:"70px 24px 90px" }}>
-          <div style={{ opacity: envidoGlobos.visible ? 1 : 0, transition:"opacity 0.5s", alignSelf:"center", position:"relative", background:"#fff", border:"3px solid #111", borderRadius:14, padding:"10px 20px", fontWeight:900, fontSize:22, color:"#111", boxShadow:"3px 3px 0 #111", whiteSpace:"nowrap" }}>
+          <div style={{ opacity: envidoGlobos.visible ? 1 : 0, transition:"opacity 0.5s", alignSelf:"center", position:"relative", background:"#fff", borderRadius:10, padding:"7px 14px", fontWeight:900, fontSize:15, color:"#111", boxShadow:"2px 2px 0 #111", whiteSpace:"nowrap" }}>
             {envidoGlobos.rival}
-            <div style={{ position:"absolute", top:-15, left:"50%", transform:"translateX(-50%)", width:0, height:0, borderLeft:"11px solid transparent", borderRight:"11px solid transparent", borderBottom:"15px solid #111" }}/>
-            <div style={{ position:"absolute", top:-11, left:"50%", transform:"translateX(-50%)", width:0, height:0, borderLeft:"9px solid transparent", borderRight:"9px solid transparent", borderBottom:"12px solid #fff" }}/>
+            <div style={{ position:"absolute", top:-8, left:"50%", transform:"translateX(-50%)", width:0, height:0, borderLeft:"6px solid transparent", borderRight:"6px solid transparent", borderBottom:"8px solid #fff" }}/>
           </div>
-          <div style={{ opacity: envidoGlobos.visible ? 1 : 0, transition:"opacity 0.5s", alignSelf:"center", position:"relative", background:"#fff", border:"3px solid #111", borderRadius:14, padding:"10px 20px", fontWeight:900, fontSize:22, color:"#111", boxShadow:"3px 3px 0 #111", whiteSpace:"nowrap" }}>
+          <div style={{ opacity: envidoGlobos.visible ? 1 : 0, transition:"opacity 0.5s", alignSelf:"center", position:"relative", background:"#fff", borderRadius:10, padding:"7px 14px", fontWeight:900, fontSize:15, color:"#111", boxShadow:"2px 2px 0 #111", whiteSpace:"nowrap" }}>
             {envidoGlobos.jugador}
-            <div style={{ position:"absolute", bottom:-15, left:"50%", transform:"translateX(-50%)", width:0, height:0, borderLeft:"11px solid transparent", borderRight:"11px solid transparent", borderTop:"15px solid #111" }}/>
-            <div style={{ position:"absolute", bottom:-11, left:"50%", transform:"translateX(-50%)", width:0, height:0, borderLeft:"9px solid transparent", borderRight:"9px solid transparent", borderTop:"12px solid #fff" }}/>
+            <div style={{ position:"absolute", bottom:-8, left:"50%", transform:"translateX(-50%)", width:0, height:0, borderLeft:"6px solid transparent", borderRight:"6px solid transparent", borderTop:"8px solid #fff" }}/>
           </div>
         </div>
       )}
