@@ -282,6 +282,9 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [timerSegundos, setTimerSegundos] = useState(15);
   const timerRef = useRef(null);
   const rivalFueAlMazoRef = useRef(false);
+  const pendingJugarRivalRef = useRef(null);
+  const [envidoCantadoPor, setEnvidoCantadoPor] = useState(null);
+  const [envidoMonto, setEnvidoMonto] = useState({ quiero: 0, noquiero: 0 });
 
   function guardarAvatar(av) {
     localStorage.setItem(`truco_avatar_${user.id}`, av);
@@ -322,6 +325,8 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     setTrucoCantadoPor(null); setPtsTrucoApostados(0); setRondaActual(1); setGanadoresRondas([]);
     setFasePartida("jugando"); setGanadorPartida(null);
     setCartaSeleccionada(null);
+    setEnvidoCantadoPor(null); setEnvidoMonto({ quiero: 0, noquiero: 0 });
+    pendingJugarRivalRef.current = null; rivalFueAlMazoRef.current = false;
     reproducirSonidoRepartir();
   }
 
@@ -358,6 +363,50 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   }
 
   function jugarRival(jugadasJ, mesaJ, jugadasR = jugadasRival) {
+    // Feature 2: IA canta envido por iniciativa propia (ronda 1, antes de su primera carta)
+    if (rondaActual === 1 && jugadasR.length === 0 && !estadoEnvido && !estadoTruco) {
+      const envRival = calcularEnvido(manoRival);
+      if (envRival > 25 && Math.random() < 0.65) {
+        const tipo = envRival > 28 ? "realenvido" : "envido";
+        pendingJugarRivalRef.current = { jugadasJ, mesaJ, jugadasR };
+        reproducirVoz(tipo === "realenvido" ? 'real_envido' : 'envido');
+        mostrarRivalMsg(`🃏 ¡${tipo === "realenvido" ? "REAL ENVIDO" : "ENVIDO"}!`);
+        setEstadoEnvido(tipo);
+        setEnvidoCantadoPor("rival");
+        setEnvidoMonto({ quiero: tipo === "realenvido" ? 3 : 2, noquiero: 1 });
+        addLog(`Rival: ¡${tipo === "realenvido" ? "REAL ENVIDO" : "ENVIDO"}!`);
+        return;
+      }
+    }
+
+    // Feature 1: IA canta truco por iniciativa propia
+    if (!estadoTruco && !(puntosJugador >= 29 || puntosRival >= 29)) {
+      const disponibles = manoRival.filter((_, i) => !jugadasR.includes(i));
+      const tieneCartaFuerte = disponibles.some(c => valorTruco(c) >= 10);
+      if (tieneCartaFuerte && Math.random() < 0.7) {
+        pendingJugarRivalRef.current = { jugadasJ, mesaJ, jugadasR };
+        reproducirVoz('truco');
+        mostrarRivalMsg("🗣 ¡TRUCO!");
+        setEstadoTruco("truco");
+        setTrucoCantadoPor("rival");
+        addLog("Rival: ¡TRUCO!");
+        return;
+      }
+    }
+
+    // Feature 4: IA se va al mazo (perdió ronda 1 y sus cartas son débiles)
+    if (ganadoresRondas.length >= 1 && ganadoresRondas[0] === "jugador") {
+      const disponibles = manoRival.filter((_, i) => !jugadasR.includes(i));
+      if (disponibles.every(c => valorTruco(c) < 5) && Math.random() < 0.4) {
+        mostrarRivalMsg("🏳️ El rival se fue al mazo");
+        addLog("Rival: Me voy al mazo.");
+        rivalFueAlMazoRef.current = true;
+        setTimeout(() => resolverMano("jugador"), 500);
+        return;
+      }
+    }
+
+    // Jugar carta normalmente
     const idxRival = iaJugarCarta(manoRival, jugadasR);
     if (idxRival === -1) return;
     const carta = manoRival[idxRival];
@@ -366,7 +415,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     setJugadasRival(nuevasJugadasR); setMesaRival(nuevaMesaR);
     reproducirSonidoCarta();
     addLog(`Rival jugó: ${carta.num} de ${carta.palo}`);
-    // Jugador fue el primero en la ronda (él inició con jugarCarta)
     setTimeout(() => evaluarRonda(mesaJ, nuevaMesaR, jugadasJ, nuevasJugadasR, "jugador"), 500);
   }
 
@@ -463,6 +511,8 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         setTurno("jugador"); setEstadoTruco(null); setEstadoEnvido(null);
         setTrucoCantadoPor(null); setPtsTrucoApostados(0); setRondaActual(1); setGanadoresRondas([]);
         setCartaSeleccionada(null); setRivalMsg(""); addLog("🃏 Nueva mano repartida");
+        setEnvidoCantadoPor(null); setEnvidoMonto({ quiero: 0, noquiero: 0 });
+        pendingJugarRivalRef.current = null; rivalFueAlMazoRef.current = false;
         reproducirSonidoRepartir();
       }
     }, 1500);
@@ -530,6 +580,23 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     const ptsR = puntosRival;
     setTimeout(() => {
       const envidoRival = calcularEnvido(manoRival);
+
+      // Feature 3: IA escala el envido del jugador
+      if (tipo === "envido") {
+        const debeEscalar = envidoRival > 28 || (envidoRival >= 25 && Math.random() < 0.5);
+        if (debeEscalar) {
+          const escTipo = envidoRival > 30 ? "realenvido" : "envido";
+          reproducirVoz(escTipo === "realenvido" ? 'real_envido' : 'envido');
+          mostrarRivalMsg(`🃏 ¡${escTipo === "realenvido" ? "REAL ENVIDO" : "ENVIDO"}!`);
+          const ptsQ = escTipo === "realenvido" ? 5 : 4;
+          setEstadoEnvido("escalado");
+          setEnvidoCantadoPor("rival");
+          setEnvidoMonto({ quiero: ptsQ, noquiero: 2 });
+          addLog(`Rival: ¡${escTipo === "realenvido" ? "REAL ENVIDO" : "ENVIDO"}! (${ptsQ} pts si querés)`);
+          return;
+        }
+      }
+
       const r = envidoRival >= 25 || Math.random() > 0.5 ? "quiero" : "noquiero";
       reproducirVoz(r === 'quiero' ? 'quiero' : 'no_quiero');
       setEstadoEnvido(r); addLog(`Rival: ${r === "quiero" ? "¡Quiero!" : "No quiero"}`);
@@ -545,20 +612,82 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
           if (jugadorGana) { addLog("✅ Ganaste Envido Envido (+4)"); setPuntosJugador(p => p + 4); reproducirSonidoPunto(); }
           else { addLog("❌ Rival ganó Envido Envido (+4)"); setPuntosRival(p => p + 4); reproducirSonidoPunto(); }
         } else {
-          if (jugadorGana) { addLog("✅ Ganaste envido (+2)"); setPuntosJugador(p => p + 2); reproducirSonidoPunto(); }
-          else { addLog("❌ Rival ganó envido (+2)"); setPuntosRival(p => p + 2); reproducirSonidoPunto(); }
+          const ptsEnv = tipo === "realenvido" ? 3 : 2;
+          if (jugadorGana) { addLog(`✅ Ganaste envido (+${ptsEnv})`); setPuntosJugador(p => p + ptsEnv); reproducirSonidoPunto(); }
+          else { addLog(`❌ Rival ganó envido (+${ptsEnv})`); setPuntosRival(p => p + ptsEnv); reproducirSonidoPunto(); }
         }
       } else {
-        const ptsNoQ = tipo === "envido-envido" ? 2 : 1;
+        const ptsNoQ = tipo === "envido-envido" ? 2 : tipo === "faltaenvido" ? 2 : 1;
         addLog(`✅ Ganaste ${ptsNoQ} punto${ptsNoQ > 1 ? "s" : ""} por envido`);
         setPuntosJugador(p => p + ptsNoQ); reproducirSonidoPunto();
       }
     }, 1000);
   }
 
+  function responderTruco(respuesta) {
+    const pending = pendingJugarRivalRef.current || { jugadasJ: jugadasJugador, mesaJ: mesaJugador, jugadasR: jugadasRival };
+    pendingJugarRivalRef.current = null;
+    if (respuesta === "quiero") {
+      reproducirVoz('quiero');
+      setEstadoTruco("quiero"); setPtsTrucoApostados(2);
+      addLog("Vos: ¡Quiero! (2 pts en juego)");
+      setTimeout(() => jugarRival(pending.jugadasJ, pending.mesaJ, pending.jugadasR), 700);
+    } else if (respuesta === "noquiero") {
+      reproducirVoz('no_quiero');
+      setEstadoTruco("noquiero");
+      addLog("Vos: No quiero");
+      addLog("❌ El rival gana 1 punto"); setPuntosRival(p => p + 1); reproducirSonidoPunto();
+      setTimeout(() => jugarRival(pending.jugadasJ, pending.mesaJ, pending.jugadasR), 700);
+    } else { // retruco
+      reproducirVoz('retruco');
+      setEstadoTruco("retruco"); setTrucoCantadoPor("jugador");
+      addLog("Vos: ¡RETRUCO!");
+      setTimeout(() => {
+        if (Math.random() > 0.35) {
+          reproducirVoz('quiero');
+          setEstadoTruco("quiero"); setPtsTrucoApostados(3);
+          addLog("Rival: ¡Quiero! (3 pts en juego)");
+          setTimeout(() => jugarRival(pending.jugadasJ, pending.mesaJ, pending.jugadasR), 700);
+        } else {
+          reproducirVoz('no_quiero');
+          mostrarRivalMsg("🙅 El rival se fue al mazo");
+          rivalFueAlMazoRef.current = true;
+          setEstadoTruco("noquiero");
+          addLog("Rival: No quiero"); addLog("✅ Ganaste 2 puntos");
+          setPuntosJugador(p => p + 2); reproducirSonidoPunto();
+          setTimeout(() => jugarRival(pending.jugadasJ, pending.mesaJ, pending.jugadasR), 700);
+        }
+      }, 1000);
+    }
+  }
+
+  function responderEnvido(respuesta) {
+    const envidoRival = calcularEnvido(manoRival);
+    const envJ = calcularEnvido(manoJugador);
+    const monto = envidoMonto;
+    const pending = pendingJugarRivalRef.current;
+    pendingJugarRivalRef.current = null;
+    setEnvidoCantadoPor(null);
+    if (respuesta === "quiero") {
+      reproducirVoz('quiero');
+      addLog(`Vos: ¡Quiero! Vos: ${envJ} — Rival: ${envidoRival}`);
+      const jugadorGana = envJ >= envidoRival;
+      if (jugadorGana) { addLog(`✅ Ganaste envido (+${monto.quiero})`); setPuntosJugador(p => p + monto.quiero); }
+      else { addLog(`❌ Rival ganó envido (+${monto.quiero})`); setPuntosRival(p => p + monto.quiero); }
+      reproducirSonidoPunto();
+      setEstadoEnvido("quiero");
+    } else {
+      reproducirVoz('no_quiero');
+      addLog(`Vos: No quiero. Rival suma ${monto.noquiero} punto${monto.noquiero > 1 ? "s" : ""}`);
+      setPuntosRival(p => p + monto.noquiero); reproducirSonidoPunto();
+      setEstadoEnvido("noquiero");
+    }
+    if (pending) setTimeout(() => jugarRival(pending.jugadasJ, pending.mesaJ, pending.jugadasR), 700);
+  }
+
   function irseAlMazo() {
     reproducirVoz('me_voy_al_mazo');
-    addLog("Te fuiste al mazo."); setPuntosRival(p=>p+1); reproducirSonidoPunto();
+    addLog("Te fuiste al mazo.");
     setTimeout(()=>resolverMano("rival"),500);
   }
 
@@ -566,7 +695,9 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const envidoDisponible = !estadoEnvido && rondaActual === 1 && jugadasJugador.length === 0;
   const trucoDisponible = !estadoTruco && turno === "jugador" && fasePartida === "jugando" && !esManoDeLasAceites;
   const esperandoRespuestaRetruco = estadoTruco === "retruco" && trucoCantadoPor === "rival";
-  const puedeJugar = turno === "jugador" && fasePartida === "jugando" && !esperandoRespuestaRetruco && !(estadoTruco && !["quiero","noquiero"].includes(estadoTruco) && trucoCantadoPor === "rival");
+  const esperandoRespuestaTruco = estadoTruco === "truco" && trucoCantadoPor === "rival";
+  const esperandoRespuestaEnvido = envidoCantadoPor === "rival" && !!estadoEnvido && !["quiero","noquiero"].includes(estadoEnvido);
+  const puedeJugar = turno === "jugador" && fasePartida === "jugando" && !esperandoRespuestaRetruco && !esperandoRespuestaTruco && !esperandoRespuestaEnvido && !(estadoTruco && !["quiero","noquiero"].includes(estadoTruco) && trucoCantadoPor === "rival");
   const winRate = perfil && perfil.partidas_jugadas > 0 ? Math.round((perfil.partidas_ganadas/perfil.partidas_jugadas)*100) : 0;
   const nombreJugador = perfil?.nombre || user.email?.split("@")[0] || "Vos";
 
@@ -665,6 +796,15 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
           <button onClick={()=>responderRetruco("quiero")} style={btnStyle("#065f46","#4ade80")}>✅ Quiero (3 pts)</button>
           <button onClick={()=>responderRetruco("noquiero")} style={btnStyle("#7f1d1d","#f87171")}>❌ No quiero</button>
           {!esManoDeLasAceites && <button onClick={()=>responderRetruco("valecuatro")} style={btnStyle("#92400e","#fbbf24")}>🗣 Vale Cuatro</button>}
+        </>}
+        {esperandoRespuestaTruco && <>
+          <button onClick={()=>responderTruco("quiero")} style={btnStyle("#065f46","#4ade80")}>✅ Quiero (2 pts)</button>
+          <button onClick={()=>responderTruco("noquiero")} style={btnStyle("#7f1d1d","#f87171")}>❌ No quiero</button>
+          {!esManoDeLasAceites && <button onClick={()=>responderTruco("retruco")} style={btnStyle("#92400e","#fbbf24")}>🗣 Retruco</button>}
+        </>}
+        {esperandoRespuestaEnvido && <>
+          <button onClick={()=>responderEnvido("quiero")} style={btnStyle("#065f46","#4ade80")}>✅ Quiero ({envidoMonto.quiero} pts)</button>
+          <button onClick={()=>responderEnvido("noquiero")} style={btnStyle("#7f1d1d","#f87171")}>❌ No quiero</button>
         </>}
         {envidoDisponible && <>
           <button onClick={()=>cantarEnvido("envido")} style={btnStyle("#1d4ed8","#60a5fa")}>Envido</button>
