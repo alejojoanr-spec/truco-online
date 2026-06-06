@@ -693,6 +693,38 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     if (pending) setTimeout(() => jugarRival(pending.jugadasJ, pending.mesaJ, pending.jugadasR), 700);
   }
 
+  function escalarEnvidoJugador(subtipo) {
+    const envidoRival = calcularEnvido(manoRival);
+    const siNo = envidoMonto.quiero;
+    const falta = Math.max(1, limitePuntos - Math.max(puntosJugador, puntosRival));
+    const siQuiero = subtipo === "faltaenvido" ? falta : envidoMonto.quiero + (subtipo === "realenvido" ? 3 : 2);
+    const pending = pendingJugarRivalRef.current;
+    pendingJugarRivalRef.current = null;
+    const vozMap = { envido: 'envido', realenvido: 'real_envido', faltaenvido: 'falta_envido' };
+    const labels = { envido: "ENVIDO", realenvido: "REAL ENVIDO", faltaenvido: "FALTA ENVIDO" };
+    reproducirVoz(vozMap[subtipo]);
+    addLog(`Vos: ¡${labels[subtipo]}! (${siQuiero} pts si quiero)`);
+    setEnvidoCantadoPor(null);
+    setTimeout(() => {
+      const r = envidoRival >= 25 || Math.random() > 0.5 ? "quiero" : "noquiero";
+      reproducirVoz(r === "quiero" ? 'quiero' : 'no_quiero');
+      addLog(`Rival: ${r === "quiero" ? "¡Quiero!" : "No quiero"}`);
+      if (r === "quiero") {
+        const envJ = calcularEnvido(manoJugador);
+        addLog(`Vos: ${envJ} — Rival: ${envidoRival}`);
+        const jugadorGana = envJ >= envidoRival;
+        if (jugadorGana) { addLog(`✅ Ganaste (+${siQuiero})`); setPuntosJugador(p => p + siQuiero); }
+        else { addLog(`❌ Rival ganó (+${siQuiero})`); setPuntosRival(p => p + siQuiero); }
+      } else {
+        addLog(`Ganás ${siNo} punto${siNo > 1 ? "s" : ""}`);
+        setPuntosJugador(p => p + siNo);
+      }
+      reproducirSonidoPunto();
+      setEstadoEnvido("quiero");
+      if (pending) setTimeout(() => jugarRival(pending.jugadasJ, pending.mesaJ, pending.jugadasR), 700);
+    }, 1000);
+  }
+
   function irseAlMazo() {
     reproducirVoz('me_voy_al_mazo');
     addLog("Te fuiste al mazo.");
@@ -845,6 +877,14 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         {esperandoRespuestaEnvido && <>
           <button onClick={()=>responderEnvido("quiero")} style={btnStyle("#065f46","#4ade80")}>✅ Quiero ({envidoMonto.quiero} pts)</button>
           <button onClick={()=>responderEnvido("noquiero")} style={btnStyle("#7f1d1d","#f87171")}>❌ No quiero</button>
+          {estadoEnvido === "envido" && <>
+            <button onClick={()=>escalarEnvidoJugador("envido")} style={btnStyle("#1d4ed8","#60a5fa")}>Envido</button>
+            <button onClick={()=>escalarEnvidoJugador("realenvido")} style={btnStyle("#5b21b6","#a78bfa")}>Real Envido</button>
+            <button onClick={()=>escalarEnvidoJugador("faltaenvido")} style={btnStyle("#065f46","#34d399")}>Falta Envido</button>
+          </>}
+          {estadoEnvido === "realenvido" && (
+            <button onClick={()=>escalarEnvidoJugador("faltaenvido")} style={btnStyle("#065f46","#34d399")}>Falta Envido</button>
+          )}
         </>}
         {envidoDisponible && <>
           <button onClick={()=>cantarEnvido("envido")} style={btnStyle("#1d4ed8","#60a5fa")}>Envido</button>
