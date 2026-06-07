@@ -112,18 +112,21 @@ export default function VerificarCuenta({ perfil, onVerificado, onCerrar }) {
     setCargando(true);
     const updatePayload = {
       is_verified: true,
-      provincia: form.provincia || null,
+      nombre_completo: form.nombre_completo.trim() || null,
       fecha_nacimiento: form.fecha_nacimiento || null,
+      provincia: form.provincia || null,
+      telefono: form.telefono.trim() || null,
       genero: form.genero || null,
       dni: form.dni.replace(/\D/g, "") || null,
+      recibe_novedades: recibeNovedades,
     };
-    updatePayload.recibe_novedades = recibeNovedades;
     const { error: dbError } = await supabase
       .from("perfiles")
       .update(updatePayload)
       .eq("usuario_id", perfil.usuario_id);
     if (dbError) {
-      setError("No se pudo completar la verificación. Intentá de nuevo.");
+      console.error("VerificarCuenta — Supabase error:", dbError);
+      setError(`No se pudo completar la verificación: ${dbError.message}`);
       setCargando(false);
       return;
     }
