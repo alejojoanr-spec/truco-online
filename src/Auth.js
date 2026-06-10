@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
-import fondoLogin from "./Gemini_Generated_Image_wq28o3wq28o3wq28.png";
 
 const CINZEL = "'Cinzel', serif";
 const LATO   = "'Lato', sans-serif";
@@ -211,7 +210,7 @@ export default function Auth() {
   return (
     <div style={{
       height: "100dvh",
-      backgroundImage: `url(${fondoLogin})`,
+      backgroundImage: "url('/fondo_login.png')",
       backgroundSize: "cover",
       backgroundPosition: "center",
       display: "flex", alignItems: "center", justifyContent: "center",
