@@ -42,6 +42,23 @@ function verificarRl(email) {
   return { bloqueado: false };
 }
 
+function traducirError(msg = "") {
+  const m = msg.toLowerCase();
+  if (m.includes("already registered") || m.includes("already been registered"))
+    return "Ya existe una cuenta con ese email. ¿Querés iniciar sesión?";
+  if (m.includes("password should be at least") || m.includes("password must be at least") || m.includes("password is too short"))
+    return "La contraseña debe tener al menos 6 caracteres";
+  if (m.includes("unable to validate email") || m.includes("invalid email"))
+    return "El email ingresado no es válido";
+  if (m.includes("email not confirmed"))
+    return "Todavía no confirmaste tu email. Revisá tu bandeja de entrada (y la carpeta de spam).";
+  if (m.includes("too many requests") || m.includes("email rate limit"))
+    return "Demasiados intentos. Esperá unos minutos antes de volver a intentar.";
+  if (m.includes("user not found"))
+    return "No encontramos una cuenta con ese email";
+  return msg;
+}
+
 const inputStyle = {
   width:"100%", padding:"12px 14px 12px 34px", borderRadius:10,
   border:"1px solid #2d6a4f", background:"rgba(0,0,0,0.5)",
@@ -85,23 +102,34 @@ export default function Auth() {
     setMensaje("");
 
     if (modo === "login") {
+      if (!email.trim()) { setMensaje("❌ Ingresá tu email"); return; }
+      if (!password) { setMensaje("❌ Ingresá tu contraseña"); return; }
       const rl = verificarRl(email);
       if (rl.bloqueado) {
         setMensaje(`🔒 Demasiados intentos fallidos. Esperá ${rl.minutos} minuto${rl.minutos !== 1 ? "s" : ""} antes de volver a intentar.`);
         return;
       }
+    } else {
+      if (!email.trim()) { setMensaje("❌ Ingresá tu email"); return; }
+      if (!/\S+@\S+\.\S+/.test(email)) { setMensaje("❌ El email ingresado no es válido"); return; }
+      if (!password) { setMensaje("❌ Ingresá una contraseña"); return; }
+      if (password.length < 6) { setMensaje("❌ La contraseña debe tener al menos 6 caracteres"); return; }
     }
 
     setCargando(true);
     if (modo === "login") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        const rl = incrementarRl(email);
-        const restantes = MAX_INTENTOS - rl.intentos;
-        if (rl.intentos >= MAX_INTENTOS) {
-          setMensaje("🔒 Demasiados intentos fallidos. Esperá 15 minutos antes de volver a intentar.");
+        if (error.message?.toLowerCase().includes("email not confirmed")) {
+          setMensaje("❌ Todavía no confirmaste tu email. Revisá tu bandeja de entrada (y la carpeta de spam).");
         } else {
-          setMensaje(`❌ Email o contraseña incorrectos. ${restantes} intento${restantes !== 1 ? "s" : ""} restante${restantes !== 1 ? "s" : ""}.`);
+          const rl = incrementarRl(email);
+          const restantes = MAX_INTENTOS - rl.intentos;
+          if (rl.intentos >= MAX_INTENTOS) {
+            setMensaje("🔒 Demasiados intentos fallidos. Esperá 15 minutos antes de volver a intentar.");
+          } else {
+            setMensaje(`❌ Email o contraseña incorrectos. ${restantes} intento${restantes !== 1 ? "s" : ""} restante${restantes !== 1 ? "s" : ""}.`);
+          }
         }
       } else {
         resetearRl(email);
@@ -109,8 +137,8 @@ export default function Auth() {
     } else {
       localStorage.setItem("truco_mkt_pending", recibeNovedades ? "1" : "0");
       const { error } = await supabase.auth.signUp({ email, password });
-      if (error) setMensaje("❌ " + error.message);
-      else setMensaje("✅ Revisá tu email para confirmar el registro");
+      if (error) setMensaje("❌ " + traducirError(error.message));
+      else setMensaje("✅ ¡Cuenta creada! Revisá tu email para confirmarla. Una vez confirmada, ya podés ingresar.");
     }
     setCargando(false);
   }
@@ -241,15 +269,24 @@ export default function Auth() {
             />
           </div>
 
-          <div style={{ position:"relative" }}>
-            <div style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"#4ade80" }}>🔒</div>
-            <input
-              type={mostrarPassword ? "text" : "password"} autoComplete="current-password" placeholder="Contraseña" value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-              className="auth-input" style={inputConOjoStyle}
-            />
-            <OjoBoton visible={mostrarPassword} onToggle={() => setMostrarPassword(v => !v)} />
+          <div>
+            <div style={{ position:"relative" }}>
+              <div style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"#4ade80" }}>🔒</div>
+              <input
+                type={mostrarPassword ? "text" : "password"}
+                autoComplete={modo === "registro" ? "new-password" : "current-password"}
+                placeholder="Contraseña" value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                className="auth-input" style={inputConOjoStyle}
+              />
+              <OjoBoton visible={mostrarPassword} onToggle={() => setMostrarPassword(v => !v)} />
+            </div>
+            {modo === "registro" && (
+              <div style={{ fontSize:11, color:"#6b7280", marginTop:5, paddingLeft:2 }}>
+                Mínimo 6 caracteres
+              </div>
+            )}
           </div>
 
           {modo === "login" && (
