@@ -754,7 +754,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     await supabase.from("partidas").update({
       accion_pendiente: {
         tipo: 'envido', subtipo, cadena: [subtipo],
-        cantado_por: user.id, si_quiero: VALS[subtipo], si_no: 1,
+        cantado_por: user.id, si_quiero: VALS[subtipo], si_no: subtipo === 'falta_envido' ? 2 : 1,
       },
       envido_jugado: true,
     }).eq("codigo", codigo);
@@ -800,10 +800,16 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const v1 = valorEnvido(mano1), v2 = valorEnvido(mano2);
     const ganadorEnv = v1 > v2 ? partida.jugador1_id : v2 > v1 ? partida.jugador2_id : partida.jugador1_id;
     const miVal = soyJugador1 ? v1 : v2, rivalVal = soyJugador1 ? v2 : v1;
-    addLog(`Quiero. Vos: ${miVal} | Rival: ${rivalVal}. +${acc.si_quiero} para ${ganadorEnv === user.id ? 'vos' : 'rival'}`);
 
-    const np1 = (partida.puntos1 || 0) + (ganadorEnv === partida.jugador1_id ? acc.si_quiero : 0);
-    const np2 = (partida.puntos2 || 0) + (ganadorEnv === partida.jugador2_id ? acc.si_quiero : 0);
+    // Falta envido: el ganador recibe exactamente los puntos que le faltan para llegar al límite
+    const ptosEnvido = acc.subtipo === 'falta_envido'
+      ? Math.max(1, puntosObj - (ganadorEnv === partida.jugador1_id ? (partida.puntos1 || 0) : (partida.puntos2 || 0)))
+      : acc.si_quiero;
+
+    addLog(`Quiero. Vos: ${miVal} | Rival: ${rivalVal}. +${ptosEnvido} para ${ganadorEnv === user.id ? 'vos' : 'rival'}`);
+
+    const np1 = (partida.puntos1 || 0) + (ganadorEnv === partida.jugador1_id ? ptosEnvido : 0);
+    const np2 = (partida.puntos2 || 0) + (ganadorEnv === partida.jugador2_id ? ptosEnvido : 0);
     if (np1 >= puntosObj || np2 >= puntosObj) {
       const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
       await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
