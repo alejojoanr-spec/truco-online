@@ -824,7 +824,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         {[0,1,2].map(ri => {
           const mc = mesaJugador[ri] || null;
           const rc = mesaRival[ri] || null;
-          const MESA_E = 0.85;
+          const MESA_E = 0.91;
           const MW = 70*MESA_E, MH = 110*MESA_E;
           const Slot = () => (
             <div style={{ width:MW,height:MH,borderRadius:8*MESA_E,border:"1px dashed rgba(107,114,128,0.22)",background:"rgba(0,0,0,0.12)",flexShrink:0 }} />
