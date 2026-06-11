@@ -468,7 +468,8 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     const r = ganadores.filter(g=>g==="rival").length;
     if (j>=2) return "jugador";
     if (r>=2) return "rival";
-    if (ganadores.length===3) return ganadores[0]==="jugador"?"jugador":ganadores[0]==="rival"?"rival":"empate";
+    // Después de 3 rondas: quien ganó más rondas; empate total → jugador (es siempre el mano)
+    if (ganadores.length===3) return j > r ? "jugador" : r > j ? "rival" : "jugador";
     return null;
   }
 
@@ -606,7 +607,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         addLog(`Vos: ${envJ} - Rival: ${envidoRival}`);
         const jugadorGana = envJ >= envidoRival;
         if (tipo === "faltaenvido") {
-          const pts = jugadorGana ? limitePuntos - ptsR : limitePuntos - ptsJ;
+          const pts = jugadorGana ? limitePuntos - ptsJ : limitePuntos - ptsR;
           if (jugadorGana) { addLog(`✅ Ganaste Falta Envido (+${pts})`); setPuntosJugador(p => p + pts); reproducirSonidoPunto(); }
           else { addLog(`❌ Rival ganó Falta Envido (+${pts})`); setPuntosRival(p => p + pts); reproducirSonidoPunto(); }
         } else if (tipo === "envido-envido") {
