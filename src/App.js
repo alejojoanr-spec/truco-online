@@ -269,6 +269,8 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const timerRef = useRef(null);
   const rivalFueAlMazoRef = useRef(false);
   const pendingJugarRivalRef = useRef(null);
+  const puntosJugadorRef = useRef(0);
+  const puntosRivalRef = useRef(0);
   const [envidoCantadoPor, setEnvidoCantadoPor] = useState(null);
   const [envidoMonto, setEnvidoMonto] = useState({ quiero: 0, noquiero: 0 });
   const [envidoGlobos, setEnvidoGlobos] = useState(null);
@@ -475,15 +477,20 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
   function resolverMano(ganador) {
     const ptsTruco = estadoTruco === "quiero" ? ptsTrucoApostados : 1;
+    // Usar refs para leer los puntos actuales: evita que un closure stale
+    // (por ej. responderEnvido → pending jugarRival) produzca un puntosJugador viejo
+    // y omita la detección del fin de partida.
+    const ptsJ = puntosJugadorRef.current;
+    const ptsR = puntosRivalRef.current;
     let juegoTerminado = false;
     if (ganador === "jugador") {
-      const nuevos = puntosJugador + ptsTruco;
+      const nuevos = ptsJ + ptsTruco;
       addLog(`🏆 Ganaste la mano (+${ptsTruco} pts)`);
       if (nuevos >= limitePuntos) {
         juegoTerminado = true;
         setFasePartida("fin"); setGanadorPartida("jugador");
         actualizarEstadisticas(true);
-        sumarPuntosRanking(user, perfil, puntosRival, rivalFueAlMazoRef.current).catch(() => {});
+        sumarPuntosRanking(user, perfil, ptsR, rivalFueAlMazoRef.current).catch(() => {});
         addLog("🏆 ¡GANASTE LA PARTIDA!");
         reproducirSonidoVictoria();
       } else {
@@ -491,7 +498,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       }
       setPuntosJugador(nuevos);
     } else if (ganador === "rival") {
-      const nuevos = puntosRival + ptsTruco;
+      const nuevos = ptsR + ptsTruco;
       addLog(`💀 El rival ganó la mano (+${ptsTruco} pts)`);
       if (nuevos >= limitePuntos) {
         juegoTerminado = true;
@@ -730,6 +737,9 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     addLog("Te fuiste al mazo.");
     setTimeout(()=>resolverMano("rival"),500);
   }
+
+  puntosJugadorRef.current = puntosJugador;
+  puntosRivalRef.current = puntosRival;
 
   const esManoDeLasAceites = puntosJugador >= limitePuntos - 1 || puntosRival >= limitePuntos - 1;
   const envidoDisponible = !estadoEnvido && rondaActual === 1 && jugadasJugador.length === 0;
