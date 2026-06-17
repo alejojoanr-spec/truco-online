@@ -827,7 +827,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
           const MESA_E = 0.91;
           const MW = 70*MESA_E, MH = 110*MESA_E;
           const Slot = () => (
-            <div style={{ width:MW,height:MH,borderRadius:8*MESA_E,border:"1px dashed rgba(107,114,128,0.22)",background:"rgba(0,0,0,0.12)",flexShrink:0 }} />
+            <div style={{ width:MW,height:MH,borderRadius:8*MESA_E,border:"1px solid rgba(107,114,128,0.22)",background:"rgba(0,0,0,0.12)",flexShrink:0 }} />
           );
           return (
             <div key={ri} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:8 }}>

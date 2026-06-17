@@ -207,7 +207,7 @@ function SlotMesaVacio() {
   return (
     <div style={{
       width:60, height:90, borderRadius:8, flexShrink:0,
-      border:"1px dashed rgba(107,114,128,0.25)",
+      border:"1px solid rgba(107,114,128,0.25)",
       background:"rgba(0,0,0,0.12)",
       display:"flex", alignItems:"center", justifyContent:"center",
       fontSize:14, color:"rgba(107,114,128,0.25)",
