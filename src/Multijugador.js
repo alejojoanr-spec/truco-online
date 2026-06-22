@@ -467,6 +467,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       mano_jugador1: JSON.stringify(mano1),
       mano_jugador2: JSON.stringify(mano2),
       turno: user.id,
+      mano_id: user.id,
       mesa: JSON.stringify([]),
       puntos1: 0,
       puntos2: 0,
@@ -600,8 +601,10 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       if (g1 >= 2) ganadorMano = partida.jugador1_id;
       else if (g2 >= 2) ganadorMano = partida.jugador2_id;
       else if (nRondas === 3) {
-        // After 3 rounds: most wins, empate total goes to jugador1 (mano)
-        ganadorMano = g2 > g1 ? partida.jugador2_id : partida.jugador1_id;
+        // After 3 rounds: most wins; tie goes to current mano player
+        const manoId = partida.mano_id || partida.jugador1_id;
+        const rivalManoId = manoId === partida.jugador1_id ? partida.jugador2_id : partida.jugador1_id;
+        ganadorMano = g[rivalManoId] > g[manoId] ? rivalManoId : manoId;
       }
 
       if (ganadorMano) {
@@ -633,11 +636,14 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           await new Promise(resolve => setTimeout(resolve, 1500));
           const nuevoMazo = mezclar(MAZO);
           reproducirSonidoRepartir();
+          const manoActual = partida.mano_id || partida.jugador1_id;
+          const siguienteMano = manoActual === partida.jugador1_id ? partida.jugador2_id : partida.jugador1_id;
           await supabase.from("partidas").update({
             mesa: JSON.stringify([]),
             mano_jugador1: JSON.stringify(nuevoMazo.slice(0, 3)),
             mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
-            turno: partida.jugador1_id,
+            turno: siguienteMano,
+            mano_id: siguienteMano,
           }).eq("codigo", codigo);
           setResolviendoMano(false);
           return;
@@ -785,13 +791,16 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
     } else {
       const nuevoMazo = mezclar(MAZO);
+      const manoActualNQ = partida.mano_id || partida.jugador1_id;
+      const siguienteManoNQ = manoActualNQ === partida.jugador1_id ? partida.jugador2_id : partida.jugador1_id;
       await supabase.from("partidas").update({
         accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1,
         envido_jugado: false, truco_jugado: false,
         mesa: JSON.stringify([]),
         mano_jugador1: JSON.stringify(nuevoMazo.slice(0, 3)),
         mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
-        turno: partida.jugador1_id,
+        turno: siguienteManoNQ,
+        mano_id: siguienteManoNQ,
       }).eq("codigo", codigo);
     }
   }
@@ -861,7 +870,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       jugador2_avatar: rivalAvatar || "👤",
       mano_jugador1: JSON.stringify(mano1),
       mano_jugador2: JSON.stringify(mano2),
-      turno: user.id, mesa: JSON.stringify([]),
+      turno: user.id, mano_id: user.id, mesa: JSON.stringify([]),
       puntos1: 0, puntos2: 0,
       apuesta: apuestaR,
       puntos: p?.puntos || 15,
