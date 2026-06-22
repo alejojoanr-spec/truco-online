@@ -69,7 +69,8 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
   const [mostrarSalaPrivada, setMostrarSalaPrivada] = useState(false);
   const [salaCrearApuesta, setSalaCrearApuesta] = useState("");
   const [salaUnirseCodigo, setSalaUnirseCodigo] = useState("");
-  const [salaUnirseApuesta, setSalaUnirseApuesta] = useState("");
+  const [salaUnirseInfo, setSalaUnirseInfo] = useState(null);
+  const [buscandoSala, setBuscandoSala] = useState(false);
   const [salaError, setSalaError] = useState("");
   const [cuentaActiva, setCuentaActiva] = useState(null);
   const [mostrarMovimientos, setMostrarMovimientos] = useState(false);
@@ -81,6 +82,21 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
     supabase.from("cuentas_cobro").select("*").eq("activa", true).maybeSingle()
       .then(({ data }) => { if (data) setCuentaActiva(data); });
   }, []);
+
+  async function buscarSala(codigo) {
+    setBuscandoSala(true);
+    setSalaError("");
+    setSalaUnirseInfo(null);
+    const { data, error } = await supabase
+      .from("partidas")
+      .select("apuesta, puntos, jugador1_nombre, estado")
+      .eq("codigo", codigo)
+      .single();
+    setBuscandoSala(false);
+    if (error || !data) { setSalaError("No existe ninguna sala con ese código."); return; }
+    if (data.estado !== "esperando") { setSalaError("Esta sala ya no está disponible."); return; }
+    setSalaUnirseInfo(data);
+  }
 
   useEffect(() => {
     if (!mostrarRanking) return;
@@ -370,7 +386,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
           </div>
         </button>
 
-        <button onClick={() => { reproducirSonidoClick(); setSalaCrearApuesta(""); setSalaUnirseCodigo(""); setSalaUnirseApuesta(""); setSalaError(""); setMostrarSalaPrivada(true); }} style={{
+        <button onClick={() => { reproducirSonidoClick(); setSalaCrearApuesta(""); setSalaUnirseCodigo(""); setSalaUnirseInfo(null); setSalaError(""); setMostrarSalaPrivada(true); }} style={{
           background: "rgba(0,0,0,0.4)",
           border: "1px solid #a78bfa", borderRadius: 16, padding: "20px 24px",
           cursor: "pointer", textAlign: "left", width: "100%",
@@ -913,7 +929,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                 <div style={{ fontSize: 9, color: "#a78bfa", letterSpacing: 3, textTransform: "uppercase" }}>Truco Argentino</div>
                 <div style={{ fontSize: 20, color: "#fbbf24", fontWeight: 900 }}>¿Cómo querés jugar?</div>
               </div>
-              <button onClick={() => { reproducirSonidoClick(); setMostrarSalaPrivada(false); }} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+              <button onClick={() => { reproducirSonidoClick(); setMostrarSalaPrivada(false); setSalaUnirseCodigo(""); setSalaUnirseInfo(null); setSalaError(""); }} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
             </div>
 
             {/* SECCIÓN 1 — Crear partida */}
@@ -967,25 +983,45 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                   type="text"
                   placeholder="ej: XKCD42"
                   value={salaUnirseCodigo}
-                  onChange={e => { setSalaUnirseCodigo(e.target.value.toUpperCase()); setSalaError(""); }}
+                  onChange={e => {
+                    const val = e.target.value.toUpperCase();
+                    setSalaUnirseCodigo(val);
+                    setSalaError("");
+                    setSalaUnirseInfo(null);
+                    if (val.trim().length >= 6) buscarSala(val.trim());
+                  }}
                   style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid #2d6a4f", background: "rgba(0,0,0,0.5)", color: "#ffffff", fontFamily: "'Lato',sans-serif", fontSize: 15, outline: "none", boxSizing: "border-box", letterSpacing: 2 }}
                 />
               </div>
 
-              <div>
-                <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Monto</div>
-                <div style={{ position: "relative" }}>
-                  <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "#9ca3af", fontSize: 15, fontWeight: 700 }}>$</span>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={salaUnirseApuesta}
-                    min="0"
-                    onChange={e => setSalaUnirseApuesta(e.target.value < 0 ? "0" : e.target.value)}
-                    style={{ width: "100%", padding: "11px 14px 11px 28px", borderRadius: 10, border: "1px solid #2d6a4f", background: "rgba(0,0,0,0.5)", color: "#ffffff", fontFamily: "'Lato',sans-serif", fontSize: 15, outline: "none", boxSizing: "border-box" }}
-                  />
+              {/* Estado de búsqueda / info de sala */}
+              {buscandoSala && (
+                <div style={{ fontSize: 13, color: "#60a5fa", padding: "8px 12px", borderRadius: 8, background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.2)" }}>
+                  Buscando sala...
                 </div>
-              </div>
+              )}
+
+              {salaUnirseInfo && !buscandoSala && (
+                <div style={{ background: "rgba(167,139,250,0.07)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 11, color: "#a78bfa", letterSpacing: 2, textTransform: "uppercase", fontWeight: 700 }}>Sala encontrada</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 13, color: "#9ca3af" }}>Creada por</span>
+                    <span style={{ fontSize: 13, color: "#e2f5e9", fontWeight: 700 }}>{salaUnirseInfo.jugador1_nombre || "—"}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 13, color: "#9ca3af" }}>Apuesta</span>
+                    <span style={{ fontSize: 16, color: "#4ade80", fontWeight: 900 }}>
+                      {(salaUnirseInfo.apuesta || 0) === 0
+                        ? "Sin apuesta"
+                        : `$${(salaUnirseInfo.apuesta).toLocaleString("es-AR", { minimumFractionDigits: 2 })}`}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 13, color: "#9ca3af" }}>Puntos</span>
+                    <span style={{ fontSize: 13, color: "#e2f5e9", fontWeight: 700 }}>{salaUnirseInfo.puntos || 15}</span>
+                  </div>
+                </div>
+              )}
 
               {salaError && (
                 <div style={{ fontSize: 12, color: "#f87171", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 8, padding: "8px 12px" }}>{salaError}</div>
@@ -995,10 +1031,12 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                 onClick={() => {
                   reproducirSonidoClick();
                   if (!salaUnirseCodigo.trim()) { setSalaError("Ingresá el código de la partida."); return; }
-                  onUnirsePrivado(salaUnirseCodigo.trim(), parseFloat(salaUnirseApuesta) || 0);
+                  if (!salaUnirseInfo) { setSalaError("Ingresá un código válido para buscar la sala."); return; }
+                  onUnirsePrivado(salaUnirseCodigo.trim(), salaUnirseInfo.apuesta || 0);
                   setMostrarSalaPrivada(false);
                 }}
-                style={{ width: "100%", padding: "13px", borderRadius: 10, cursor: "pointer", background: "rgba(167,139,250,0.08)", border: "1px solid #a78bfa", color: "#a78bfa", fontFamily: "'Lato',sans-serif", fontSize: 15, fontWeight: 700 }}
+                disabled={!salaUnirseInfo || buscandoSala}
+                style={{ width: "100%", padding: "13px", borderRadius: 10, cursor: salaUnirseInfo && !buscandoSala ? "pointer" : "not-allowed", background: salaUnirseInfo ? "rgba(167,139,250,0.15)" : "rgba(167,139,250,0.04)", border: "1px solid #a78bfa", color: salaUnirseInfo ? "#a78bfa" : "rgba(167,139,250,0.4)", fontFamily: "'Lato',sans-serif", fontSize: 15, fontWeight: 700, opacity: salaUnirseInfo && !buscandoSala ? 1 : 0.55, transition: "opacity 0.15s, background 0.15s" }}
               >
                 Entrar a la partida
               </button>
