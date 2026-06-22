@@ -181,6 +181,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const channelRef = useRef(null);
   const partidaRef = useRef(null);
   const revanchaTimerRef = useRef(null);
+  const [turnoTimer, setTurnoTimer] = useState(15);
+  const turnoTimerRef = useRef(null);
 
   useEffect(() => { partidaRef.current = partida; }, [partida]);
 
@@ -442,6 +444,22 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     return () => { supabase.removeChannel(channel); channelRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codigo, soyJugador1]);
+
+  useEffect(() => {
+    if (turnoTimerRef.current) clearInterval(turnoTimerRef.current);
+    const activo = partida?.turno === user.id && !partida?.accion_pendiente && !resolviendoMano;
+    if (activo) {
+      setTurnoTimer(15);
+      turnoTimerRef.current = setInterval(() => {
+        setTurnoTimer(s => {
+          if (s <= 1) { clearInterval(turnoTimerRef.current); return 0; }
+          return s - 1;
+        });
+      }, 1000);
+    }
+    return () => { if (turnoTimerRef.current) clearInterval(turnoTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partida?.turno, !!partida?.accion_pendiente, resolviendoMano]);
 
   async function crearSala() {
     let saldoAntesCrea = 0;
@@ -1089,10 +1107,10 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         jugadasJugador={[]}
         cartaSeleccionada={cartaSeleccionada}
         onClickCarta={(i) => jugarCarta(i)}
-        timerSegundos={null}
+        timerSegundos={miTurno && !partida?.accion_pendiente ? turnoTimer : null}
         instruccion={partida?.accion_pendiente ? "⏳ Canto pendiente..." : miTurno ? "👆 Tu turno — tocá una carta" : "⏳ Turno del rival..."}
         onSalir={salirDePartida}
-        log={log}
+        log={null}
         botonesSlot={<>
           {!partida?.accion_pendiente && (
             <>
