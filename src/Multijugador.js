@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import { leerConfig } from "./Configuracion";
 import { sumarPuntosRanking } from "./ranking";
+import { btnStyle } from "./GameComponents";
+import { MesaJuego } from "./MesaJuego";
 
 const _vozQueue = [];
 let _vozPlaying = false;
@@ -152,68 +154,6 @@ function valorEnvido(mano) {
 }
 
 
-function CartaMulti({ carta, oculta, onClick, jugada, seleccionada }) {
-  if (oculta) return (
-    <div style={{ width:65,height:100,borderRadius:10,background:"linear-gradient(135deg,#1a472a,#0d2e1a)",border:"2px solid #2d6a4f",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,userSelect:"none",flexShrink:0,boxShadow:"0 0 0 1px rgba(0,0,0,0.8), 0 5px 14px rgba(0,0,0,0.45)" }}>🂠</div>
-  );
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        width: 65, height: 100, borderRadius: 10, flexShrink: 0,
-        overflow: "hidden", userSelect: "none", position: "relative",
-        background: "white",
-        cursor: onClick && !jugada ? "pointer" : "default",
-        opacity: jugada ? 0.5 : 1,
-        transform: seleccionada ? "translateY(-10px) scale(1.05)" : jugada ? "scale(0.95)" : "none",
-        transition: "all 0.2s",
-        border: seleccionada ? "2px solid #f59e0b" : "2px solid transparent",
-        boxShadow: seleccionada
-          ? "0 0 0 1.5px rgba(0,0,0,0.85), 0 8px 20px rgba(0,0,0,0.55), 0 0 12px rgba(245,158,11,0.45)"
-          : jugada
-          ? "0 2px 6px rgba(0,0,0,0.3)"
-          : "0 0 0 1.5px rgba(0,0,0,0.85), 0 6px 18px rgba(0,0,0,0.45), 0 0 8px rgba(255,215,0,0.1)",
-      }}
-    >
-      <img
-        src={`/cartas/${carta.palo}_${carta.num}.png`}
-        alt={`${carta.num} de ${carta.palo}`}
-        style={{ width: "100%", height: "100%", display: "block", objectFit: "cover" }}
-        draggable={false}
-      />
-    </div>
-  );
-}
-
-function CartaMesaSmall({ carta }) {
-  return (
-    <div style={{
-      width: 60, height: 90, borderRadius: 8, flexShrink: 0,
-      overflow: "hidden", userSelect: "none", position: "relative",
-      background: "white",
-      boxShadow: "0 0 0 1px rgba(0,0,0,0.6), 0 3px 8px rgba(0,0,0,0.35)",
-    }}>
-      <img
-        src={`/cartas/${carta.palo}_${carta.num}.png`}
-        alt={`${carta.num} de ${carta.palo}`}
-        style={{ width: "100%", height: "100%", display: "block", objectFit: "cover" }}
-        draggable={false}
-      />
-    </div>
-  );
-}
-
-function SlotMesaVacio() {
-  return (
-    <div style={{
-      width:60, height:90, borderRadius:8, flexShrink:0,
-      border:"1px solid rgba(107,114,128,0.25)",
-      background:"rgba(0,0,0,0.12)",
-      display:"flex", alignItems:"center", justifyContent:"center",
-      fontSize:14, color:"rgba(107,114,128,0.25)",
-    }}>⏳</div>
-  );
-}
 
 export default function Multijugador({ user, perfil, onVolver, codigoInicial, autoCrear, apuesta, puntos, esTorneo, codigoYaCreado, codigoRejoin }) {
   const [pantalla, setPantalla] = useState("menu");
@@ -1118,114 +1058,54 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   );
 
   return (
-    <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",fontFamily:"Georgia,serif",display:"flex",flexDirection:"column",alignItems:"center",padding:"16px 8px" }}>
-      <div style={{ display:"flex",justifyContent:"space-between",width:"100%",maxWidth:500,marginBottom:12 }}>
-        <div>
-          <div style={{ fontSize:10,color:"#4ade80",letterSpacing:2 }}>TRUCO 2 JUGADORES</div>
-          <div style={{ fontSize:12,color:"#fbbf24" }}>Sala: {codigo}</div>
-        </div>
-        <div style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #2d6a4f",borderRadius:10,padding:"8px 16px",textAlign:"center" }}>
-          <div style={{ display:"flex",gap:12 }}>
-            <div><div style={{ fontSize:10,color:"#9ca" }}>Vos</div><div style={{ fontSize:24,color:"#4ade80",fontWeight:900 }}>{soyJugador1?partida?.puntos1:partida?.puntos2||0}</div></div>
-            <div style={{ color:"#2d6a4f" }}>–</div>
-            <div><div style={{ fontSize:10,color:"#9ca" }}>Rival</div><div style={{ fontSize:24,color:"#f87171",fontWeight:900 }}>{soyJugador1?partida?.puntos2:partida?.puntos1||0}</div></div>
-          </div>
-          <div style={{ fontSize:9,color:"#4b5563",marginTop:3,lineHeight:1 }}>/ {partida?.puntos || 15}</div>
-        </div>
-        <button onClick={salirDePartida} style={{ background:"rgba(0,0,0,0.4)",border:"1px solid #7f1d1d",borderRadius:8,padding:"6px 12px",color:"#f87171",fontSize:11,cursor:"pointer" }}>Salir</button>
-      </div>
-
-      <div style={{ marginBottom:16,textAlign:"center" }}>
-        <div style={{ fontSize:10,color:"#f87171",letterSpacing:2,textTransform:"uppercase",marginBottom:8 }}>Rival</div>
-        <div style={{ display:"flex",gap:8,justifyContent:"center" }}>
-          {manoRival.map((_,i)=><CartaMulti key={i} carta={manoRival[i]} oculta={true} />)}
-        </div>
-      </div>
-
-      {/* Mesa: rondas acumuladas */}
-      <div style={{ background:"rgba(0,0,0,0.25)",border:"1px solid rgba(45,106,79,0.4)",borderRadius:16,padding:"14px 20px",marginBottom:16,minHeight:220,display:"flex",alignItems:"center",justifyContent:"center",gap:16,width:"100%",maxWidth:400 }}>
-        {mesaActual.length === 0 ? (
-          <div style={{ color:"rgba(255,255,255,0.1)", fontSize:13 }}>Mesa vacía</div>
-        ) : (() => {
-          // Agrupar en rondas de 2 cartas
-          const rondas = [];
-          for (let i = 0; i < mesaActual.length; i += 2) {
-            const par       = mesaActual.slice(i, i + 2);
-            const miCarta    = par.find(c => c.jugador === user.id) || null;
-            const rivalCarta = par.find(c => c.jugador !== user.id) || null;
-            const completa   = par.length === 2;
-            let ganador = null;
-            if (completa && miCarta && rivalCarta) {
-              const vm = valorTruco(miCarta.carta), vr = valorTruco(rivalCarta.carta);
-              ganador = vm > vr ? 'yo' : vr > vm ? 'rival' : 'empate';
-            }
-            rondas.push({ miCarta, rivalCarta, completa, ganador, n: rondas.length + 1 });
-          }
-          const total = rondas.length;
-          return rondas.map((r, ri) => {
-            const esUltima = ri === total - 1;
-            return (
-              <div key={ri} style={{
-                display:"flex", flexDirection:"column", alignItems:"center", gap:5,
-                opacity: esUltima ? 1 : 0.65,
-                transform: esUltima ? "none" : `translateY(${(total - 1 - ri) * 4}px)`,
-                transition:"all 0.25s",
-              }}>
-                {/* Carta del rival */}
-                {r.rivalCarta ? <CartaMesaSmall carta={r.rivalCarta.carta} /> : <SlotMesaVacio />}
-
-                {/* Separador de ronda */}
-                <div style={{ height:5 }} />
-
-                {/* Mi carta */}
-                {r.miCarta ? <CartaMesaSmall carta={r.miCarta.carta} /> : <SlotMesaVacio />}
-              </div>
-            );
-          });
-        })()}
-      </div>
-
-      <div style={{ background:"rgba(0,0,0,0.35)",border:"1px solid rgba(45,106,79,0.3)",borderRadius:10,padding:"8px 12px",width:"100%",maxWidth:500,marginBottom:10,maxHeight:70,overflowY:"auto" }}>
-        {log.slice(-3).map((msg,i)=><div key={i} style={{ fontSize:11,color:i===log.slice(-3).length-1?"#e2f5e9":"rgba(180,220,190,0.5)",lineHeight:1.6 }}>{msg}</div>)}
-      </div>
-
-      {/* Botones de canto */}
-      {!partida?.accion_pendiente && (
-        <div style={{ display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center",marginBottom:10,width:"100%",maxWidth:500 }}>
-          {mesaActual.length === 0 && !partida?.envido_jugado && (
+    <>
+      <MesaJuego
+        avatarJugador={perfil?.avatar || "👤"}
+        nombreJugador={perfil?.nombre || user.email?.split("@")[0] || "Vos"}
+        puntosJugador={soyJugador1 ? (partida?.puntos1||0) : (partida?.puntos2||0)}
+        avatarRival={(soyJugador1 ? partida?.jugador2_avatar : partida?.jugador1_avatar)||"👤"}
+        nombreRival={(soyJugador1 ? partida?.jugador2_nombre : partida?.jugador1_nombre)||"Rival"}
+        puntosRival={soyJugador1 ? (partida?.puntos2||0) : (partida?.puntos1||0)}
+        limitePuntos={partida?.puntos || 15}
+        rivalHand={manoRival.length}
+        rondas={[0,1,2].map(ri => {
+          const par = mesaActual.slice(ri*2, ri*2+2);
+          return {
+            jugador: par.find(c => c.jugador === user.id)?.carta || null,
+            rival: par.find(c => c.jugador !== user.id)?.carta || null,
+          };
+        })}
+        manoJugador={miMano}
+        jugadasJugador={[]}
+        cartaSeleccionada={cartaSeleccionada}
+        onClickCarta={(i) => jugarCarta(i)}
+        timerSegundos={null}
+        instruccion={partida?.accion_pendiente ? "⏳ Canto pendiente..." : miTurno ? "👆 Tu turno — tocá una carta" : "⏳ Turno del rival..."}
+        onSalir={salirDePartida}
+        log={log}
+        botonesSlot={<>
+          {!partida?.accion_pendiente && (
             <>
-              {[{l:"Envido",s:"envido"},{l:"Real Envido",s:"real_envido"},{l:"Falta Envido",s:"falta_envido"}].map(({l,s})=>(
-                <button key={s} onClick={()=>cantarEnvido(s)} style={{ padding:"6px 12px",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Lato',sans-serif",background:"rgba(167,139,250,0.12)",border:"1px solid rgba(167,139,250,0.45)",color:"#a78bfa" }}>{l}</button>
-              ))}
+              {mesaActual.length === 0 && !partida?.envido_jugado && (
+                <>
+                  <button onClick={()=>cantarEnvido("envido")} style={btnStyle("#1d4ed8","#60a5fa")}>Envido</button>
+                  <button onClick={()=>cantarEnvido("real_envido")} style={btnStyle("#5b21b6","#a78bfa")}>Real Envido</button>
+                  <button onClick={()=>cantarEnvido("falta_envido")} style={btnStyle("#065f46","#34d399")}>Falta Envido</button>
+                </>
+              )}
+              {!partida?.truco_jugado && (
+                <button onClick={cantarTruco} style={btnStyle("#b45309","#fbbf24")}>Truco</button>
+              )}
             </>
           )}
-          {!partida?.truco_jugado && (
-            <button onClick={cantarTruco} style={{ padding:"6px 12px",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Lato',sans-serif",background:"rgba(251,191,36,0.12)",border:"1px solid rgba(251,191,36,0.45)",color:"#fbbf24" }}>Truco</button>
+          {partida?.accion_pendiente?.cantado_por === user.id && (
+            <div style={{ padding:"6px 14px",borderRadius:8,background:"rgba(251,191,36,0.15)",border:"1px solid rgba(251,191,36,0.5)",color:"#fbbf24",fontSize:12,fontWeight:700,fontFamily:"'Lato',sans-serif" }}>
+              {getCantoLabel(partida.accion_pendiente)} — Esperando respuesta...
+            </div>
           )}
-        </div>
-      )}
+        </>}
+      />
 
-      {/* Indicador: esperando respuesta */}
-      {partida?.accion_pendiente?.cantado_por === user.id && (
-        <div style={{ padding:"8px 16px",borderRadius:10,background:"rgba(251,191,36,0.08)",border:"1px solid rgba(251,191,36,0.3)",color:"#fbbf24",fontSize:12,fontWeight:700,textAlign:"center",marginBottom:10,width:"100%",maxWidth:500 }}>
-          {getCantoLabel(partida.accion_pendiente)} — Esperando respuesta...
-        </div>
-      )}
-
-      <div style={{ marginBottom:14,textAlign:"center" }}>
-        <div style={{ fontSize:10,color:"#4ade80",letterSpacing:2,textTransform:"uppercase",marginBottom:8 }}>
-          {partida?.accion_pendiente?"⏳ Canto pendiente...":miTurno?"👆 Tu turno — tocá una carta":"⏳ Turno del rival..."}
-        </div>
-        <div style={{ display:"flex",gap:10,justifyContent:"center" }}>
-          {miMano.map((c,i)=>(
-            <CartaMulti key={`${c.num}-${c.palo}`} carta={c} seleccionada={cartaSeleccionada===i}
-              onClick={()=>miTurno&&!partida?.accion_pendiente&&jugarCarta(i)} />
-          ))}
-        </div>
-        {cartaSeleccionada!==null&&<div style={{ marginTop:6,fontSize:11,color:"#fbbf24" }}>Tocá de nuevo para confirmar</div>}
-      </div>
-
-      {/* Overlay: el rival cantó algo, tengo que responder */}
       {partida?.accion_pendiente && partida.accion_pendiente.cantado_por !== user.id && (
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.82)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50,padding:16 }}>
           {(() => {
@@ -1254,8 +1134,6 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
                   <button onClick={quiero} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
                     ✅ Quiero
                   </button>
-
-                  {/* Escalación Truco */}
                   {esTruco && acc.nivel === 1 && (
                     <button onClick={subirTruco} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(251,191,36,0.08)",border:"1px solid #fbbf24",color:"#fbbf24",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
                       🔥 Quiero Retruco
@@ -1266,8 +1144,6 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
                       🔥 Quiero Vale Cuatro
                     </button>
                   )}
-
-                  {/* Escalación Envido desde Envido */}
                   {!esTruco && acc.subtipo === 'envido' && (
                     <>
                       <button onClick={()=>escalarEnvido('envido')} style={BTN_ESCALAR}>
@@ -1281,13 +1157,11 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
                       </button>
                     </>
                   )}
-                  {/* Escalación Envido desde Real Envido */}
                   {!esTruco && acc.subtipo === 'real_envido' && (
                     <button onClick={()=>escalarEnvido('falta_envido')} style={BTN_ESCALAR}>
                       ↗ Falta Envido ({faltaVal} pts)
                     </button>
                   )}
-
                   <button onClick={noQuiero} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(248,113,113,0.08)",border:"1px solid #f87171",color:"#f87171",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
                     ❌ No quiero
                   </button>
@@ -1297,6 +1171,6 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           })()}
         </div>
       )}
-    </div>
+    </>
   );
 }

@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { btnStyle } from "./GameComponents";
+import { MesaJuego } from "./MesaJuego";
 import { supabase } from "./supabase";
 import { sumarPuntosRanking } from "./ranking";
 import Auth from "./Auth";
@@ -81,94 +83,10 @@ function repartir() {
 }
 
 
-function Carta({ carta, oculta, onClick, jugada, seleccionada, escala = 1 }) {
-  const W = 70 * escala, H = 110 * escala;
-  if (oculta) return (
-    <svg width={W} height={H} viewBox="0 0 70 110" style={{ cursor:"default", userSelect:"none", flexShrink:0, opacity: jugada ? 0.5 : 1, filter:"drop-shadow(0 5px 14px rgba(0,0,0,0.45)) drop-shadow(0 2px 5px rgba(0,0,0,0.3))" }}>
-      <defs>
-        <pattern id="dorso-rombos" x="0" y="0" width="10" height="8" patternUnits="userSpaceOnUse">
-          <polygon points="5,0 10,4 5,8 0,4" fill="#0e2617" stroke="#3a7a55" strokeWidth="0.9"/>
-        </pattern>
-      </defs>
-      <rect width="70" height="110" rx="8" fill="#0f3d20"/>
-      <rect x="3" y="3" width="64" height="104" rx="6" fill="none" stroke="#2d6a4f" strokeWidth="2"/>
-      <rect x="6" y="6" width="58" height="98" rx="4" fill="#1a472a"/>
-      <rect x="10" y="15" width="50" height="80" rx="2" fill="url(#dorso-rombos)"/>
-      <rect x="10" y="15" width="50" height="80" rx="2" fill="none" stroke="#2d6a4f" strokeWidth="0.8"/>
-      <rect width="70" height="110" rx="8" fill="none" stroke="rgba(0,0,0,0.7)" strokeWidth="1"/>
-    </svg>
-  );
-
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        width: W, height: H, borderRadius: 8 * escala, flexShrink: 0,
-        overflow: "hidden", userSelect: "none", position: "relative",
-        background: "white",
-        cursor: onClick && !jugada ? "pointer" : "default",
-        opacity: jugada ? 0.5 : 1,
-        transform: seleccionada ? `translateY(${-12*escala}px) scale(1.05)` : jugada ? "scale(0.95)" : "none",
-        transition: "all 0.2s",
-        border: seleccionada ? `${2.5*escala}px solid #f59e0b` : "none",
-        boxShadow: seleccionada
-          ? "0 6px 16px rgba(0,0,0,0.6), 0 0 10px rgba(245,158,11,0.75)"
-          : jugada
-          ? "0 2px 5px rgba(0,0,0,0.3)"
-          : "0 0 0 1px rgba(0,0,0,0.78), 0 6px 16px rgba(0,0,0,0.45)",
-      }}
-    >
-      <img
-        src={`/cartas/${carta.palo}_${carta.num}.png`}
-        alt={`${carta.num} de ${carta.palo}`}
-        style={{ width:"100%", height:"100%", display:"block", objectFit:"cover" }}
-        draggable={false}
-      />
-    </div>
-  );
-}
-
 function iaJugarCarta(mano, jugadas) {
   let minIdx = -1, minVal = 99;
   mano.forEach((c, i) => { if (!jugadas.includes(i) && valorTruco(c) < minVal) { minVal = valorTruco(c); minIdx = i; } });
   return minIdx;
-}
-
-function btnStyle(bg, border) {
-  return { background:`${bg}88`,border:`1px solid ${border}`,borderRadius:8,padding:"7px 14px",color:border,fontSize:12,cursor:"pointer",fontFamily:"'Lato',sans-serif",letterSpacing:0.5 };
-}
-
-function GrupoCinco({ activos }) {
-  const a = "#fbbf24";
-  const i = "rgba(255,140,160,0.35)";
-  const c = (n) => activos >= n ? a : i;
-  return (
-    <svg width="28" height="20" style={{ flexShrink:0 }}>
-      <line x1="4"  y1="1" x2="4"  y2="19" stroke={c(1)} strokeWidth="2" strokeLinecap="round"/>
-      <line x1="11" y1="1" x2="11" y2="19" stroke={c(2)} strokeWidth="2" strokeLinecap="round"/>
-      <line x1="18" y1="1" x2="18" y2="19" stroke={c(3)} strokeWidth="2" strokeLinecap="round"/>
-      <line x1="25" y1="1" x2="25" y2="19" stroke={c(4)} strokeWidth="2" strokeLinecap="round"/>
-      <line x1="27" y1="1" x2="1"  y2="19" stroke={c(5)} strokeWidth="2" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-function PalitosPuntaje({ puntos, total=15 }) {
-  const POR_GRUPO = 5;
-  const GRUPOS_POR_FILA = 3;
-  // Siempre 15 palitos; en partidas a 30 cada palito vale 2 pts
-  const puntosEscalados = Math.round(puntos / (total / 15));
-  return (
-    <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
-      <div style={{ display:"flex", gap:8 }}>
-        {Array.from({ length:GRUPOS_POR_FILA }, (_,grupo) => {
-          const base = grupo * POR_GRUPO;
-          return <GrupoCinco key={grupo} activos={Math.min(POR_GRUPO, Math.max(0, puntosEscalados-base))} />;
-        })}
-      </div>
-      <div style={{ fontSize:8, color:"#4b5563", textAlign:"right", lineHeight:1 }}>/ {total}</div>
-    </div>
-  );
 }
 
 const _audioCartaCache = { obj: null };
@@ -274,6 +192,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [envidoCantadoPor, setEnvidoCantadoPor] = useState(null);
   const [envidoMonto, setEnvidoMonto] = useState({ quiero: 0, noquiero: 0 });
   const [envidoGlobos, setEnvidoGlobos] = useState(null);
+  const [log, setLog] = useState([]);
 
   function guardarAvatar(av) {
     localStorage.setItem(`truco_avatar_${user.id}`, av);
@@ -286,8 +205,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     setTimeout(() => setEnvidoGlobos(g => g ? { ...g, visible: false } : null), 2000);
     setTimeout(() => setEnvidoGlobos(null), 2500);
   }
-  // eslint-disable-next-line no-unused-vars
-  const addLog = useCallback((_msg) => {}, []);
+  const addLog = useCallback((msg) => setLog(prev => [...prev.slice(-6), msg]), []);
 
 
   function confirmarLimite(n) {
@@ -784,139 +702,74 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   }
 
   return (
-    <div style={{ height:"100dvh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",fontFamily:"'Lato',sans-serif",display:"flex",flexDirection:"column",alignItems:"center",padding:"8px 8px 4px",overflow:"hidden",boxSizing:"border-box",gap:4 }}>
-
-
-
-      <div style={{ background:"rgba(0,0,0,0.5)",border:"1px solid #2d6a4f",borderRadius:12,padding:"8px 14px",display:"flex",gap:12,alignItems:"flex-start",flexShrink:0 }}>
-        <div>
-          <div style={{ display:"flex",alignItems:"center",gap:4,marginBottom:5,maxWidth:128,overflow:"hidden" }}>
-            <span style={{ fontSize:13,flexShrink:0 }}>{perfil?.avatar || "👤"}</span>
-            <span style={{ fontSize:12,color:"#4ade80",letterSpacing:0.5,fontFamily:"'Lato',sans-serif",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{nombreJugador}</span>
-          </div>
-          <PalitosPuntaje puntos={puntosJugador} total={limitePuntos} />
-        </div>
-        <div style={{ width:1,alignSelf:"stretch",background:"#2d6a4f",margin:"0 2px" }}/>
-        <div>
-          <div style={{ display:"flex",alignItems:"center",gap:4,marginBottom:5,maxWidth:128,overflow:"hidden" }}>
-            <span style={{ fontSize:13,flexShrink:0 }}>{rivalAvatar}</span>
-            <span style={{ fontSize:12,color:"#f87171",letterSpacing:0.5,fontFamily:"'Lato',sans-serif",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{rivalNombre}</span>
-          </div>
-          <PalitosPuntaje puntos={puntosRival} total={limitePuntos} />
-        </div>
-      </div>
-
-      {/* Botón X para abandonar */}
-      <button
-        onClick={()=>setMostrarConfirmSalir(true)}
-        style={{ position:"fixed",top:14,right:14,zIndex:30,width:36,height:36,borderRadius:10,border:"1px solid #374151",background:"rgba(0,0,0,0.6)",color:"#9ca3af",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1 }}
-      >✕</button>
-
-      {/* Mano del rival */}
-      <div style={{ display:"flex",gap:8,justifyContent:"center",flexShrink:0 }}>
-        {manoRival.map((c,i)=>(
-          <Carta key={i} carta={c} escala={0.82} oculta={!jugadasRival.includes(i)} jugada={jugadasRival.includes(i)} />
-        ))}
-      </div>
-
-      {/* Mesa — 3 slots fijos (1 por ronda) */}
-      <div style={{ background:"rgba(0,0,0,0.25)",border:"1px solid rgba(45,106,79,0.4)",borderRadius:16,padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"center",gap:14,width:"100%",maxWidth:420,height:225,flexShrink:0 }}>
-        {[0,1,2].map(ri => {
-          const mc = mesaJugador[ri] || null;
-          const rc = mesaRival[ri] || null;
-          const MESA_E = 0.91;
-          const MW = 70*MESA_E, MH = 110*MESA_E;
-          const Slot = () => (
-            <div style={{ width:MW,height:MH,borderRadius:8*MESA_E,border:"1px solid rgba(107,114,128,0.22)",background:"rgba(0,0,0,0.12)",flexShrink:0 }} />
-          );
-          return (
-            <div key={ri} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:8 }}>
-              {rc ? <Carta carta={rc} escala={MESA_E} /> : <Slot />}
-              {mc ? <Carta carta={mc} escala={MESA_E} /> : <Slot />}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Mano del jugador */}
-      <div style={{ display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0 }}>
-        <div style={{ fontSize:10,color:"#4ade80",letterSpacing:2,textTransform:"uppercase",marginBottom:8 }}>
-          {puedeJugar?"👆 Tocá una carta para jugar":turno==="rival"?"Esperando rival...":"Tu mano"}
-        </div>
-        <div style={{ display:"inline-flex",gap:10 }}>
-          {manoJugador.map((c,i)=>(
-            i===0 ? (
-              <div key={i} style={{ position:"relative" }}>
-                <Carta carta={c} escala={1.1} jugada={jugadasJugador.includes(i)} seleccionada={cartaSeleccionada===i}
-                  onClick={()=>{ if(!puedeJugar||jugadasJugador.includes(i))return; if(cartaSeleccionada===i)jugarCarta(i); else setCartaSeleccionada(i); }} />
-                {turno==="jugador"&&fasePartida==="jugando"&&timerSegundos>0&&(
-                  <svg width="44" height="44" style={{ position:"absolute",left:-10,bottom:-10,zIndex:10,filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
-                    <circle cx="22" cy="22" r="17" fill="rgba(0,0,0,0.75)" stroke="rgba(255,255,255,0.06)" strokeWidth="3"/>
-                    <circle cx="22" cy="22" r="17" fill="none"
-                      stroke="#4ade80" strokeWidth="3"
-                      strokeDasharray={2*Math.PI*17} strokeDashoffset={2*Math.PI*17*(1-timerSegundos/15)}
-                      strokeLinecap="round" style={{transform:"rotate(-90deg)",transformOrigin:"22px 22px"}}/>
-                    <text x="22" y="22" textAnchor="middle" dominantBaseline="middle"
-                      fill="#4ade80" fontSize="13" fontWeight="700">
-                      {timerSegundos}
-                    </text>
-                  </svg>
-                )}
-              </div>
-            ) : (
-              <Carta key={i} carta={c} escala={1.1} jugada={jugadasJugador.includes(i)} seleccionada={cartaSeleccionada===i}
-                onClick={()=>{ if(!puedeJugar||jugadasJugador.includes(i))return; if(cartaSeleccionada===i)jugarCarta(i); else setCartaSeleccionada(i); }} />
-            )
-          ))}
-        </div>
-        {cartaSeleccionada!==null&&!jugadasJugador.includes(cartaSeleccionada)&&<div style={{ marginTop:6,fontSize:11,color:"#fbbf24" }}>Tocá de nuevo para confirmar</div>}
-      </div>
-
-      <div style={{ display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",maxWidth:500,flexShrink:0,paddingBottom:4 }}>
-        {trucoDisponible && <button onClick={cantarTruco} style={btnStyle("#b45309","#fbbf24")}>🗣 Truco</button>}
-        {esperandoRespuestaRetruco && <>
-          <button onClick={()=>responderRetruco("quiero")} style={btnStyle("#065f46","#4ade80")}>✅ Quiero (3 pts)</button>
-          <button onClick={()=>responderRetruco("noquiero")} style={btnStyle("#7f1d1d","#f87171")}>❌ No quiero</button>
-          {!esManoDeLasAceites && <button onClick={()=>responderRetruco("valecuatro")} style={btnStyle("#92400e","#fbbf24")}>🗣 Vale Cuatro</button>}
-        </>}
-        {esperandoRespuestaTruco && <>
-          <button onClick={()=>responderTruco("quiero")} style={btnStyle("#065f46","#4ade80")}>✅ Quiero (2 pts)</button>
-          <button onClick={()=>responderTruco("noquiero")} style={btnStyle("#7f1d1d","#f87171")}>❌ No quiero</button>
-          {!esManoDeLasAceites && <button onClick={()=>responderTruco("retruco")} style={btnStyle("#92400e","#fbbf24")}>🗣 Retruco</button>}
-        </>}
-        {esperandoRespuestaEnvido && <>
-          <button onClick={()=>responderEnvido("quiero")} style={btnStyle("#065f46","#4ade80")}>✅ Quiero ({envidoMonto.quiero} pts)</button>
-          <button onClick={()=>responderEnvido("noquiero")} style={btnStyle("#7f1d1d","#f87171")}>❌ No quiero</button>
-          {estadoEnvido === "envido" && <>
-            <button onClick={()=>escalarEnvidoJugador("envido")} style={btnStyle("#1d4ed8","#60a5fa")}>Envido</button>
-            <button onClick={()=>escalarEnvidoJugador("realenvido")} style={btnStyle("#5b21b6","#a78bfa")}>Real Envido</button>
-            <button onClick={()=>escalarEnvidoJugador("faltaenvido")} style={btnStyle("#065f46","#34d399")}>Falta Envido</button>
+    <>
+      <MesaJuego
+        avatarJugador={perfil?.avatar || "👤"}
+        nombreJugador={nombreJugador}
+        puntosJugador={puntosJugador}
+        avatarRival={rivalAvatar}
+        nombreRival={rivalNombre}
+        puntosRival={puntosRival}
+        limitePuntos={limitePuntos}
+        rivalHand={manoRival.map((c,i) => ({ carta:c, oculta:!jugadasRival.includes(i), jugada:jugadasRival.includes(i) }))}
+        rondas={[0,1,2].map(ri => ({ jugador: mesaJugador[ri]||null, rival: mesaRival[ri]||null }))}
+        manoJugador={manoJugador}
+        jugadasJugador={jugadasJugador}
+        cartaSeleccionada={cartaSeleccionada}
+        onClickCarta={(i) => {
+          if (!puedeJugar || jugadasJugador.includes(i)) return;
+          if (cartaSeleccionada === i) jugarCarta(i);
+          else setCartaSeleccionada(i);
+        }}
+        timerSegundos={turno === "jugador" && fasePartida === "jugando" ? timerSegundos : null}
+        instruccion={puedeJugar ? "👆 Tocá una carta para jugar" : turno === "rival" ? "Esperando rival..." : "Tu mano"}
+        onSalir={() => setMostrarConfirmSalir(true)}
+        log={log}
+        botonesSlot={<>
+          {trucoDisponible && <button onClick={cantarTruco} style={btnStyle("#b45309","#fbbf24")}>🗣 Truco</button>}
+          {esperandoRespuestaRetruco && <>
+            <button onClick={()=>responderRetruco("quiero")} style={btnStyle("#065f46","#4ade80")}>✅ Quiero (3 pts)</button>
+            <button onClick={()=>responderRetruco("noquiero")} style={btnStyle("#7f1d1d","#f87171")}>❌ No quiero</button>
+            {!esManoDeLasAceites && <button onClick={()=>responderRetruco("valecuatro")} style={btnStyle("#92400e","#fbbf24")}>🗣 Vale Cuatro</button>}
           </>}
-          {estadoEnvido === "realenvido" && (
-            <button onClick={()=>escalarEnvidoJugador("faltaenvido")} style={btnStyle("#065f46","#34d399")}>Falta Envido</button>
-          )}
+          {esperandoRespuestaTruco && <>
+            <button onClick={()=>responderTruco("quiero")} style={btnStyle("#065f46","#4ade80")}>✅ Quiero (2 pts)</button>
+            <button onClick={()=>responderTruco("noquiero")} style={btnStyle("#7f1d1d","#f87171")}>❌ No quiero</button>
+            {!esManoDeLasAceites && <button onClick={()=>responderTruco("retruco")} style={btnStyle("#92400e","#fbbf24")}>🗣 Retruco</button>}
+          </>}
+          {esperandoRespuestaEnvido && <>
+            <button onClick={()=>responderEnvido("quiero")} style={btnStyle("#065f46","#4ade80")}>✅ Quiero ({envidoMonto.quiero} pts)</button>
+            <button onClick={()=>responderEnvido("noquiero")} style={btnStyle("#7f1d1d","#f87171")}>❌ No quiero</button>
+            {estadoEnvido === "envido" && <>
+              <button onClick={()=>escalarEnvidoJugador("envido")} style={btnStyle("#1d4ed8","#60a5fa")}>Envido</button>
+              <button onClick={()=>escalarEnvidoJugador("realenvido")} style={btnStyle("#5b21b6","#a78bfa")}>Real Envido</button>
+              <button onClick={()=>escalarEnvidoJugador("faltaenvido")} style={btnStyle("#065f46","#34d399")}>Falta Envido</button>
+            </>}
+            {estadoEnvido === "realenvido" && (
+              <button onClick={()=>escalarEnvidoJugador("faltaenvido")} style={btnStyle("#065f46","#34d399")}>Falta Envido</button>
+            )}
+          </>}
+          {envidoDisponible && <>
+            <button onClick={()=>cantarEnvido("envido")} style={btnStyle("#1d4ed8","#60a5fa")}>Envido</button>
+            <button onClick={()=>cantarEnvido("realenvido")} style={btnStyle("#5b21b6","#a78bfa")}>Real Envido</button>
+            <button onClick={()=>cantarEnvido("faltaenvido")} style={btnStyle("#065f46","#34d399")}>Falta Envido</button>
+          </>}
+          {rivalMsg
+            ? <div style={{ padding:"6px 14px",borderRadius:8,background:"rgba(248,113,113,0.15)",border:"1px solid rgba(248,113,113,0.5)",color:"#f87171",fontSize:12,fontWeight:700,fontFamily:"'Lato',sans-serif" }}>{rivalMsg}</div>
+            : <button onClick={irseAlMazo} style={btnStyle("#7f1d1d","#f87171")}>Ir al mazo</button>
+          }
         </>}
-        {envidoDisponible && <>
-          <button onClick={()=>cantarEnvido("envido")} style={btnStyle("#1d4ed8","#60a5fa")}>Envido</button>
-          <button onClick={()=>cantarEnvido("realenvido")} style={btnStyle("#5b21b6","#a78bfa")}>Real Envido</button>
-          <button onClick={()=>cantarEnvido("faltaenvido")} style={btnStyle("#065f46","#34d399")}>Falta Envido</button>
-        </>}
-        {rivalMsg
-          ? <div style={{ padding:"6px 14px",borderRadius:8,background:"rgba(248,113,113,0.15)",border:"1px solid rgba(248,113,113,0.5)",color:"#f87171",fontSize:12,fontWeight:700,fontFamily:"'Lato',sans-serif" }}>{rivalMsg}</div>
-          : <button onClick={irseAlMazo} style={btnStyle("#7f1d1d","#f87171")}>Ir al mazo</button>
-        }
-      </div>
-
+      />
 
       {envidoGlobos && (
-        <div style={{ position:"fixed", inset:0, zIndex:15, pointerEvents:"none", display:"flex", flexDirection:"column", justifyContent:"space-between", padding:"70px 24px 90px" }}>
-          <div style={{ opacity: envidoGlobos.visible ? 1 : 0, transition:"opacity 0.5s", alignSelf:"center", position:"relative", background:"#fff", borderRadius:10, padding:"7px 14px", fontWeight:900, fontSize:15, color:"#111", boxShadow:"2px 2px 0 #111", whiteSpace:"nowrap" }}>
+        <div style={{ position:"fixed",inset:0,zIndex:15,pointerEvents:"none",display:"flex",flexDirection:"column",justifyContent:"space-between",padding:"70px 24px 90px" }}>
+          <div style={{ opacity:envidoGlobos.visible?1:0,transition:"opacity 0.5s",alignSelf:"center",position:"relative",background:"#fff",borderRadius:10,padding:"7px 14px",fontWeight:900,fontSize:15,color:"#111",boxShadow:"2px 2px 0 #111",whiteSpace:"nowrap" }}>
             {envidoGlobos.rival}
-            <div style={{ position:"absolute", top:-8, left:"50%", transform:"translateX(-50%)", width:0, height:0, borderLeft:"6px solid transparent", borderRight:"6px solid transparent", borderBottom:"8px solid #fff" }}/>
+            <div style={{ position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",borderBottom:"8px solid #fff" }}/>
           </div>
-          <div style={{ opacity: envidoGlobos.visible ? 1 : 0, transition:"opacity 0.5s", alignSelf:"center", position:"relative", background:"#fff", borderRadius:10, padding:"7px 14px", fontWeight:900, fontSize:15, color:"#111", boxShadow:"2px 2px 0 #111", whiteSpace:"nowrap" }}>
+          <div style={{ opacity:envidoGlobos.visible?1:0,transition:"opacity 0.5s",alignSelf:"center",position:"relative",background:"#fff",borderRadius:10,padding:"7px 14px",fontWeight:900,fontSize:15,color:"#111",boxShadow:"2px 2px 0 #111",whiteSpace:"nowrap" }}>
             {envidoGlobos.jugador}
-            <div style={{ position:"absolute", bottom:-8, left:"50%", transform:"translateX(-50%)", width:0, height:0, borderLeft:"6px solid transparent", borderRight:"6px solid transparent", borderTop:"8px solid #fff" }}/>
+            <div style={{ position:"absolute",bottom:-8,left:"50%",transform:"translateX(-50%)",width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",borderTop:"8px solid #fff" }}/>
           </div>
         </div>
       )}
@@ -1022,7 +875,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
           )}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
