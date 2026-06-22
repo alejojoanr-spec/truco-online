@@ -900,6 +900,28 @@ export default function App() {
   const [splashSaliendo, setSplashSaliendo] = useState(false);
   const [splashOculto, setSplashOculto] = useState(false);
   const [codigoRejoin, setCodigoRejoin] = useState(null);
+  const [mostrarBannerHorario, setMostrarBannerHorario] = useState(false);
+  const [bannerHorarioCerrado, setBannerHorarioCerrado] = useState(false);
+
+  function esFueraDePico() {
+    const h = parseInt(new Intl.DateTimeFormat("es-AR", {
+      timeZone: "America/Argentina/Buenos_Aires",
+      hour: "numeric", hour12: false,
+    }).format(new Date()), 10);
+    return h < 20 || h >= 23;
+  }
+
+  function irAlLobby() {
+    setMostrarBannerHorario(false);
+    setBannerHorarioCerrado(true);
+    setModoJuego("lobby");
+  }
+
+  function irAIA() {
+    setMostrarBannerHorario(false);
+    setBannerHorarioCerrado(true);
+    setModoJuego("single");
+  }
 
   useEffect(() => {
     if (!cargando && !splashOculto) {
@@ -1111,7 +1133,7 @@ export default function App() {
     <>
       <Home
         perfil={perfil}
-        onJugar={() => setModoJuego("lobby")}
+        onJugar={() => { if (esFueraDePico() && !bannerHorarioCerrado) setMostrarBannerHorario(true); else setModoJuego("lobby"); }}
         onCrearSalaPrivada={(apuesta) => { setCodigoUnirse(null); setApuestaInicial(apuesta); setAutoCrearSala(true); setOrigenMulti("home"); setModoJuego("multi"); }}
         onUnirsePrivado={(codigo, apuesta) => { setCodigoUnirse(codigo); setApuestaInicial(apuesta); setAutoCrearSala(false); setOrigenMulti("home"); setModoJuego("multi"); }}
         onLogout={handleLogout}
@@ -1125,6 +1147,34 @@ export default function App() {
       />
       {mostrarConfigHome && <Configuracion onCerrar={()=>setMostrarConfigHome(false)} />}
       <BotonSoporte perfil={perfil} />
+      {mostrarBannerHorario && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.78)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:300,padding:16 }}>
+          <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)",border:"1px solid #2d6a4f",borderRadius:20,padding:"28px 24px",maxWidth:340,width:"100%",fontFamily:"'Lato',sans-serif",boxShadow:"0 24px 60px rgba(0,0,0,0.7)",position:"relative" }}>
+            <button
+              onClick={irAlLobby}
+              style={{ position:"absolute",top:14,right:14,background:"none",border:"none",color:"#6b7280",fontSize:18,cursor:"pointer",lineHeight:1,padding:"2px 6px",borderRadius:6 }}
+            >✕</button>
+            <div style={{ fontSize:28,marginBottom:10,textAlign:"center" }}>🎴</div>
+            <div style={{ fontSize:17,color:"#fbbf24",fontWeight:900,marginBottom:10,lineHeight:1.3 }}>¡Horario pico de jugadores!</div>
+            <div style={{ fontSize:13,color:"#d1fae5",lineHeight:1.65,marginBottom:8 }}>
+              Para que encuentres rival más rápido en 1vs1, te recomendamos jugar entre las <strong style={{ color:"#4ade80" }}>20:00 y 23:00 hs</strong>.
+            </div>
+            <div style={{ fontSize:13,color:"#9ca3af",lineHeight:1.55,marginBottom:22 }}>
+              Podés jugar contra la IA mientras tanto, o intentar el 1vs1 ahora mismo.
+            </div>
+            <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+              <button
+                onClick={irAIA}
+                style={{ width:"100%",padding:"12px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}
+              >Jugar contra la IA</button>
+              <button
+                onClick={irAlLobby}
+                style={{ width:"100%",padding:"12px",borderRadius:12,cursor:"pointer",background:"rgba(255,255,255,0.04)",border:"1px solid #374151",color:"#9ca3af",fontFamily:"'Lato',sans-serif",fontSize:14 }}
+              >Entendido, ir al 1vs1</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
