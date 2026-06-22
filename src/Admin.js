@@ -591,6 +591,7 @@ function TabPartidas() {
   const [sospechosos, setSospechosos] = useState([]);
   const [rakeMap, setRakeMap]       = useState({});
   const [cargando, setCargando]     = useState(true);
+  const [queryError, setQueryError] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState("todas");
   const [partidaSel, setPartidaSel] = useState(null);
 
@@ -598,18 +599,24 @@ function TabPartidas() {
 
   async function cargar() {
     setCargando(true);
+    setQueryError(null);
     const [{ data: p, error: errP }, { data: perfiles }, { data: rakeTxs }] = await Promise.all([
       supabase.from("partidas").select("*").order("created_at", { ascending: false }).limit(200),
       supabase.from("perfiles").select("usuario_id,nombre,avatar,partidas_jugadas,partidas_ganadas,is_banned"),
       supabase.from("transacciones").select("monto,nota").eq("tipo", "rake"),
     ]);
-    if (errP) console.error("[Admin] partidas error:", errP.message, errP.code);
+    if (errP) {
+      console.error("[Admin] partidas error:", errP.message, errP.code);
+      setQueryError(errP.message);
+    }
     setPartidas(p || []);
 
     const rm = {};
     (rakeTxs || []).forEach(t => {
-      if (t.nota?.startsWith("Partida ")) {
-        const cod = t.nota.replace("Partida ", "").trim();
+      const nota = t.nota || "";
+      const prefix = "Comisión partida ";
+      if (nota.startsWith(prefix)) {
+        const cod = nota.slice(prefix.length).trim();
         if (cod) rm[cod] = (rm[cod] || 0) + parseFloat(t.monto);
       }
     });
@@ -799,9 +806,19 @@ function TabPartidas() {
             ))}
           </div>
 
+          {queryError && (
+            <div style={{ background:"rgba(248,113,113,0.08)", border:"1px solid rgba(248,113,113,0.4)", borderRadius:10, padding:"12px 14px", marginBottom:12, fontSize:12, color:"#f87171" }}>
+              ⚠️ Error al leer partidas: <strong>{queryError}</strong>
+              <div style={{ marginTop:6, color:"#9ca3af", lineHeight:1.5 }}>
+                Probable causa: la política RLS de Supabase no permite que el admin vea todas las filas de la tabla <code>partidas</code>. Ejecutá en el SQL Editor de Supabase:
+                <pre style={{ marginTop:6, background:"rgba(0,0,0,0.4)", borderRadius:6, padding:"8px 10px", fontSize:11, overflowX:"auto", color:"#d1fae5" }}>{`CREATE POLICY "admin_read_all_partidas" ON partidas\nFOR SELECT USING (\n  EXISTS (\n    SELECT 1 FROM perfiles\n    WHERE perfiles.usuario_id = auth.uid()\n    AND perfiles.rol = 'admin'\n  )\n);`}</pre>
+              </div>
+            </div>
+          )}
           {filtradas.length === 0 ? (
             <div style={{ textAlign:"center", color:"#6b7280", padding:30, fontSize:13 }}>
-              {filtroEstado === "jugando" ? "No hay partidas en curso" :
+              {queryError ? "No se pudieron cargar las partidas (ver error arriba)" :
+               filtroEstado === "jugando" ? "No hay partidas en curso" :
                filtroEstado === "finalizada" ? "No hay partidas finalizadas" :
                "No hay partidas registradas"}
             </div>
