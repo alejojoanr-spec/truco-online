@@ -257,6 +257,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       premio: ganoPartida ? premio : 0,
       apuesta: apuestaPartida,
       rake: ganoPartida ? rakeAmount : 0,
+      rakePct,
     });
   }
 
@@ -920,7 +921,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
               </div>
               {resultadoPartida.rake > 0 && (
                 <div style={{ fontSize:12,color:"#6b7280",marginBottom:8 }}>
-                  Comisión de la casa: −{fmtARS(resultadoPartida.rake)}
+                  Comisión de la casa: {resultadoPartida.rakePct}%
                 </div>
               )}
             </>
