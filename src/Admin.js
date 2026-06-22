@@ -601,7 +601,7 @@ function TabPartidas() {
     setCargando(true);
     setQueryError(null);
     const [{ data: p, error: errP }, { data: perfiles }, { data: rakeTxs }] = await Promise.all([
-      supabase.from("partidas").select("*").order("created_at", { ascending: false }).limit(200),
+      supabase.from("partidas").select("*").order("id", { ascending: false }).limit(200),
       supabase.from("perfiles").select("usuario_id,nombre,avatar,partidas_jugadas,partidas_ganadas,is_banned"),
       supabase.from("transacciones").select("monto,nota").eq("tipo", "rake"),
     ]);
@@ -711,7 +711,7 @@ function TabPartidas() {
             </div>
             <div style={{ background:"rgba(0,0,0,0.3)", borderRadius:8, padding:"10px 12px" }}>
               <div style={{ fontSize:11, color:"#6b7280" }}>Fecha</div>
-              <div style={{ fontSize:12, fontWeight:700, color:"#9ca3af", marginTop:4 }}>{fechaHora(partidaSel.created_at)}</div>
+              <div style={{ fontSize:12, fontWeight:700, color:"#9ca3af", marginTop:4 }}>{partidaSel.created_at ? fechaHora(partidaSel.created_at) : "—"}</div>
             </div>
           </div>
 
@@ -849,7 +849,7 @@ function TabPartidas() {
                           {ganadorSosp && <span style={{ fontSize:11 }}>⚠️</span>}
                         </div>
                         <div style={{ display:"flex", gap:10, marginTop:5, flexWrap:"wrap" }}>
-                          <span style={{ fontSize:11, color:"#6b7280" }}>{fechaHora(p.created_at)}</span>
+                          <span style={{ fontSize:11, color:"#6b7280" }}>{p.created_at ? fechaHora(p.created_at) : ""}</span>
                           {(p.apuesta || 0) > 0 && (
                             <span style={{ fontSize:11, color:"#fbbf24" }}>Apuesta: {formatARS(p.apuesta)}</span>
                           )}
