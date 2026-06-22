@@ -164,12 +164,11 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const [miMano, setMiMano] = useState([]);
   const [manoRival, setManoRival] = useState([]);
   const [cartaSeleccionada, setCartaSeleccionada] = useState(null);
-  const [log, setLog] = useState([]);
   const [error, setError] = useState("");
   const [copiado, setCopiado] = useState(false);
   const [resolviendoMano, setResolviendoMano] = useState(false);
 
-  const addLog = (msg) => setLog(prev => [...prev.slice(-6), msg]);
+  const addLog = () => {};
   const [resultadoPartida, setResultadoPartida] = useState(null);
   const pagoProcesadoRef = useRef(false);
   const accionLogueadaRef = useRef(null);
@@ -430,7 +429,6 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         setResultadoPartida(null);
         setRevanchaEstado(null);
         setCartaSeleccionada(null);
-        setLog(["🔄 ¡Revancha! ¡A jugar!"]);
         setPartida(nuevaPartida);
         setSoyJugador1(false);
         setMiMano(JSON.parse(nuevaPartida.mano_jugador2));
@@ -908,7 +906,6 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     setResultadoPartida(null);
     setRevanchaEstado(null);
     setCartaSeleccionada(null);
-    setLog(["🔄 ¡Revancha! ¡A jugar!"]);
     setSoyJugador1(true);
     setMiMano(mano1);
     setManoRival(mano2);
