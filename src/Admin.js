@@ -601,7 +601,7 @@ function TabPartidas() {
     setCargando(true);
     setQueryError(null);
     const [{ data: p, error: errP }, { data: perfiles }, { data: rakeTxs }] = await Promise.all([
-      supabase.from("partidas").select("*").order("id", { ascending: false }).limit(200),
+      supabase.from("partidas").select("*").order("created_at", { ascending: false }).limit(200),
       supabase.from("perfiles").select("usuario_id,nombre,avatar,partidas_jugadas,partidas_ganadas,is_banned"),
       supabase.from("transacciones").select("monto,nota").eq("tipo", "rake"),
     ]);
