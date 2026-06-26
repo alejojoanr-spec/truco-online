@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { supabase } from "./supabase";
-
-const AVATARES = ["👨","👩","👴","👵","🧔","👱","🧑","👮","🧑‍🍳","🥷","🧙","🤠","👸","🤴","🧛","🧜","🧝","🧞","🤖","👾"];
+import { AVATARES, avatarSrc } from "./avatares";
 
 export default function ElegirAvatar({ perfil, onAvatarGuardado }) {
   const [seleccionado, setSeleccionado] = useState(AVATARES[0]);
@@ -45,11 +44,11 @@ export default function ElegirAvatar({ perfil, onAvatarGuardado }) {
           background: "radial-gradient(circle,#1a472a,#050f08)",
           border: "2px solid #4ade80",
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 56,
+          overflow: "hidden",
           boxShadow: "0 0 24px rgba(74,222,128,0.25)",
           transition: "all 0.2s",
         }}>
-          {seleccionado}
+          <img src={avatarSrc(seleccionado)} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
 
         {/* Grilla de avatares */}
@@ -62,14 +61,15 @@ export default function ElegirAvatar({ perfil, onAvatarGuardado }) {
               key={av}
               onClick={() => setSeleccionado(av)}
               style={{
-                fontSize: 28, padding: "8px 0", borderRadius: 12, cursor: "pointer",
+                padding: "6px", borderRadius: 12, cursor: "pointer",
                 background: seleccionado === av ? "rgba(74,222,128,0.15)" : "rgba(0,0,0,0.3)",
                 border: seleccionado === av ? "2px solid #4ade80" : "2px solid rgba(45,106,79,0.3)",
                 transition: "all 0.15s",
                 transform: seleccionado === av ? "scale(1.1)" : "scale(1)",
+                display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
-              {av}
+              <img src={avatarSrc(av)} alt="avatar" style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover", display: "block" }} />
             </button>
           ))}
         </div>

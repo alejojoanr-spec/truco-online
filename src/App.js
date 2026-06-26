@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { AVATARES, avatarSrc } from "./avatares";
 import { btnStyle } from "./GameComponents";
 import { MesaJuego } from "./MesaJuego";
 import { supabase } from "./supabase";
@@ -179,7 +180,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [mostrarConfirmSalir, setMostrarConfirmSalir] = useState(false);
   const [cambiarAvatar, setCambiarAvatar] = useState(false);
 
-  const AVATARES = ["👨","👩","👴","👵","🧔","👱","🧑","👮","🧑‍🍳","🥷","🧙","🤠","👸","🤴","🧛","🧜","🧝","🧞","🤖","👾"];
 
   const [limitePuntos, setLimitePuntos] = useState(() => parseInt(localStorage.getItem('truco_limite')) || 30);
   const [eligiendo, setEligiendo] = useState(true);
@@ -704,7 +704,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   return (
     <>
       <MesaJuego
-        avatarJugador={perfil?.avatar || "👤"}
+        avatarJugador={avatarSrc(perfil?.avatar)}
         nombreJugador={nombreJugador}
         puntosJugador={puntosJugador}
         avatarRival={rivalAvatar}
@@ -780,7 +780,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
             {/* Avatar + botón cambiar */}
             <div style={{ position:"relative",display:"inline-block",marginBottom:8 }}>
-              <div style={{ fontSize:72,lineHeight:1 }}>{perfil?.avatar || "👤"}</div>
+              <img src={avatarSrc(perfil?.avatar)} alt="avatar" style={{ width:72, height:72, borderRadius:"50%", objectFit:"cover" }} />
               <button
                 onClick={()=>setCambiarAvatar(v=>!v)}
                 style={{ position:"absolute",bottom:-4,right:-8,background:"#1a472a",border:"1px solid #4ade80",borderRadius:"50%",width:24,height:24,fontSize:12,cursor:"pointer",color:"#4ade80",display:"flex",alignItems:"center",justifyContent:"center" }}
@@ -796,13 +796,16 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
                     <button
                       key={av}
                       onClick={()=>guardarAvatar(av)}
-                      style={{ fontSize:24,padding:"6px 0",borderRadius:10,cursor:"pointer",
+                      style={{ padding:"4px",borderRadius:10,cursor:"pointer",
                         background: perfil?.avatar===av?"rgba(74,222,128,0.15)":"rgba(0,0,0,0.3)",
                         border: perfil?.avatar===av?"2px solid #4ade80":"2px solid rgba(45,106,79,0.3)",
                         transform: perfil?.avatar===av?"scale(1.1)":"scale(1)",
                         transition:"all 0.15s",
+                        display:"flex", alignItems:"center", justifyContent:"center",
                       }}
-                    >{av}</button>
+                    >
+                      <img src={avatarSrc(av)} alt="" style={{ width:32, height:32, borderRadius:6, objectFit:"cover", display:"block" }} />
+                    </button>
                   ))}
                 </div>
               </div>
@@ -961,7 +964,7 @@ export default function App() {
         try {
           const p = JSON.parse(cached);
           if (p && p.nombre) {
-            const avatar = localStorage.getItem(`truco_avatar_${u.id}`) || p.avatar || "👤";
+            const avatar = avatarSrc(localStorage.getItem(`truco_avatar_${u.id}`) || p.avatar);
             setPerfil({ ...p, avatar });
             setCargando(false);
             return;
@@ -978,7 +981,7 @@ export default function App() {
       return;
     }
     if (data.nombre) {
-      const avatar = data.avatar || localStorage.getItem(`truco_avatar_${u.id}`) || "👤";
+      const avatar = avatarSrc(data.avatar || localStorage.getItem(`truco_avatar_${u.id}`));
       const perfilCompleto = { ...data, avatar };
       localStorage.setItem(cacheKey, JSON.stringify(perfilCompleto));
       setPerfil(perfilCompleto);

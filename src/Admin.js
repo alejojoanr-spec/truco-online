@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
+import { avatarSrc } from "./avatares";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -27,6 +28,21 @@ const INPUT_STYLE = {
   color: "#ffffff", fontFamily: "'Lato',sans-serif", fontSize: 14,
   outline: "none", boxSizing: "border-box",
 };
+
+// iOS Safari hace zoom automático en inputs con font-size < 16px y no lo revierte al cerrar el modal.
+// Blur + viewport trick fuerza el reset del zoom sin deshabilitar pinch-to-zoom globalmente.
+function resetZoom() {
+  if (document.activeElement && document.activeElement !== document.body) {
+    document.activeElement.blur();
+  }
+  const meta = document.querySelector('meta[name=viewport]');
+  if (meta) {
+    meta.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1');
+    requestAnimationFrame(() => {
+      meta.setAttribute('content', 'width=device-width, initial-scale=1');
+    });
+  }
+}
 
 function StatCard({ label, valor, color = "#4ade80", onClick, activo }) {
   return (
@@ -153,7 +169,7 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
       return;
     }
     setUsuarios(prev => prev.map(u => u.usuario_id === modalSaldo.usuario_id ? { ...u, saldo: nuevoSaldo } : u));
-    setModalSaldo(null); setSaldoValor(""); setSaldoNota(""); setMostrarBtnTicket(false);
+    resetZoom(); setModalSaldo(null); setSaldoValor(""); setSaldoNota(""); setMostrarBtnTicket(false);
     setProcesandoSaldo(false);
   }
 
@@ -217,8 +233,8 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
   function exportarEmailsMarketing() {
     const suscriptores = usuarios.filter(u => u.recibe_novedades && u.email);
     if (!suscriptores.length) { alert("No hay usuarios suscritos a novedades."); return; }
-    const filas = suscriptores.map(u => `"${(u.nombre || "").replace(/"/g, '""')}","${u.email.replace(/"/g, '""')}"`);
-    const csv = "Nombre,Email\n" + filas.join("\n");
+    const filas = suscriptores.map(u => `"${(u.nombre || "").replace(/"/g, '""')}","${u.email.replace(/"/g, '""')}","${(u.telefono || "").replace(/"/g, '""')}"`);
+    const csv = "Nombre,Email,Teléfono\n" + filas.join("\n");
     const blob = new Blob(["﻿" + csv, ""], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -287,7 +303,7 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
               border: `1px solid ${u.is_banned ? "rgba(248,113,113,0.3)" : "#2d6a4f"}`,
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ fontSize: 26, flexShrink: 0 }}>{u.avatar || "👤"}</div>
+                <img src={avatarSrc(u.avatar)} alt="" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                     <span
@@ -366,11 +382,12 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
               <div>
                 <div style={{ fontSize: 9, color: "#a78bfa", letterSpacing: 3, textTransform: "uppercase" }}>Historial</div>
-                <div style={{ fontSize: 17, color: "#fbbf24", fontWeight: 900 }}>
-                  {modalMovimientos.avatar || "👤"} {modalMovimientos.nombre}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 17, color: "#fbbf24", fontWeight: 900 }}>
+                  <img src={avatarSrc(modalMovimientos.avatar)} alt="" style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }} />
+                  {modalMovimientos.nombre}
                 </div>
               </div>
-              <button onClick={() => setModalMovimientos(null)} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+              <button onClick={() => { resetZoom(); setModalMovimientos(null); }} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
             </div>
 
             {cargandoMov ? (
@@ -469,7 +486,7 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
               </div>
             )}
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => { setModalSaldo(null); setMostrarBtnTicket(false); }} style={{ flex: 1, padding: 11, borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "'Lato',sans-serif", fontSize: 14 }}>Cancelar</button>
+              <button onClick={() => { resetZoom(); setModalSaldo(null); setMostrarBtnTicket(false); }} style={{ flex: 1, padding: 11, borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#9ca3af", fontFamily: "'Lato',sans-serif", fontSize: 14 }}>Cancelar</button>
               <button onClick={ajustarSaldo} disabled={procesandoSaldo} style={{ flex: 1, padding: 11, borderRadius: 10, cursor: procesandoSaldo ? "not-allowed" : "pointer", background: "linear-gradient(135deg,#1a3a6a,#1e4d8c)", border: "1px solid #60a5fa", color: "#60a5fa", fontFamily: "'Lato',sans-serif", fontSize: 14, fontWeight: 700, opacity: procesandoSaldo ? 0.7 : 1 }}>
                 {procesandoSaldo ? "..." : "Confirmar"}
               </button>
@@ -669,7 +686,7 @@ function TabPartidas() {
           {/* Jugadores */}
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:16 }}>
             <div style={{ flex:1, textAlign:"center" }}>
-              <div style={{ fontSize:28 }}>{partidaSel.jugador1_avatar || "👤"}</div>
+              <img src={avatarSrc(partidaSel.jugador1_avatar)} alt="" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }} />
               <div style={{ fontSize:13, fontWeight:900, marginTop:4, color: partidaSel.ganador_id === partidaSel.jugador1_id ? "#fbbf24" : "#e2f5e9" }}>
                 {partidaSel.jugador1_nombre || "—"}
               </div>
@@ -679,7 +696,7 @@ function TabPartidas() {
             </div>
             <div style={{ fontSize:13, fontWeight:900, color:"#4b5563" }}>VS</div>
             <div style={{ flex:1, textAlign:"center" }}>
-              <div style={{ fontSize:28 }}>{partidaSel.jugador2_avatar || "👤"}</div>
+              <img src={avatarSrc(partidaSel.jugador2_avatar)} alt="" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }} />
               <div style={{ fontSize:13, fontWeight:900, marginTop:4, color: partidaSel.ganador_id === partidaSel.jugador2_id ? "#fbbf24" : "#e2f5e9" }}>
                 {partidaSel.jugador2_nombre || "—"}
               </div>
@@ -772,7 +789,7 @@ function TabPartidas() {
           {sospechosos.map(u => (
             <div key={u.usuario_id} style={{ ...CARD, border:"1px solid rgba(248,113,113,0.35)", background:"rgba(248,113,113,0.04)" }}>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <div style={{ fontSize:24 }}>{u.avatar || "👤"}</div>
+                <img src={avatarSrc(u.avatar)} alt="" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:14, fontWeight:900, color:"#fbbf24" }}>{u.nombre}</div>
                   <div style={{ fontSize:12, color:"#9ca3af", marginTop:2 }}>
@@ -1135,7 +1152,7 @@ function TabFinanzas({ rol = 'admin' }) {
           {filtradas.map(t => (
             <div key={t.id} style={{ ...CARD }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ fontSize: 22 }}>{t.perfiles?.avatar || "👤"}</div>
+                <img src={avatarSrc(t.perfiles?.avatar)} alt="" style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span
@@ -1237,9 +1254,12 @@ function TabFinanzas({ rol = 'admin' }) {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
               <div>
                 <div style={{ fontSize: 9, color: "#a78bfa", letterSpacing: 3, textTransform: "uppercase" }}>Historial</div>
-                <div style={{ fontSize: 17, color: "#fbbf24", fontWeight: 900 }}>{modalMov.avatar || "👤"} {modalMov.nombre}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 17, color: "#fbbf24", fontWeight: 900 }}>
+                  <img src={avatarSrc(modalMov.avatar)} alt="" style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }} />
+                  {modalMov.nombre}
+                </div>
               </div>
-              <button onClick={() => setModalMov(null)} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+              <button onClick={() => { resetZoom(); setModalMov(null); }} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #374151", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#9ca3af", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
             </div>
             {cargandoMov ? (
               <div style={{ textAlign: "center", color: "#a78bfa", padding: 40 }}>Cargando movimientos...</div>
@@ -2358,6 +2378,7 @@ function TabCuentas() {
     }
 
     setGuardando(false);
+    resetZoom();
     setModal(null);
     cargar();
   }
@@ -2504,7 +2525,7 @@ function TabCuentas() {
               </div>
             )}
             <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-              <button onClick={() => setModal(null)} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#ffffff", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>
+              <button onClick={() => { resetZoom(); setModal(null); }} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: "pointer", background: "rgba(255,255,255,0.05)", border: "1px solid #374151", color: "#ffffff", fontFamily: "'Lato', sans-serif", fontSize: 14 }}>
                 Cancelar
               </button>
               <button onClick={guardar} disabled={guardando} style={{ flex: 1, padding: "11px", borderRadius: 10, cursor: guardando ? "not-allowed" : "pointer", background: "linear-gradient(135deg,#1a472a,#2d6a4f)", border: "1px solid #4ade80", color: "#4ade80", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700, opacity: guardando ? 0.7 : 1 }}>

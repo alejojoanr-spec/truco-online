@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
+import { avatarSrc } from "./avatares";
 
 function formatPesos(n) {
   if (n === 0) return "Gratis";
@@ -161,7 +162,7 @@ function CardEsperando({ sala, onUnirse, uniendose, perfil }) {
       borderRadius: 14, padding: "14px 18px",
       display: "flex", alignItems: "center", gap: 14,
     }}>
-      <div style={{ fontSize: 32, flexShrink: 0, lineHeight: 1 }}>{sala.jugador1_avatar || "👤"}</div>
+      <img src={sala.jugador1_avatar && sala.jugador1_avatar.startsWith("/avatars/") ? sala.jugador1_avatar : "/avatars/avatar_01.png"} alt="" style={{ width:40, height:40, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 900, color: "#fbbf24", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {sala.jugador1_nombre || "Jugador"}
@@ -210,9 +211,9 @@ function CardJugando({ sala }) {
       display: "flex", alignItems: "center", gap: 10,
       opacity: 0.75,
     }}>
-      <div style={{ fontSize: 26, flexShrink: 0, lineHeight: 1 }}>{sala.jugador1_avatar || "👤"}</div>
+      <img src={sala.jugador1_avatar && sala.jugador1_avatar.startsWith("/avatars/") ? sala.jugador1_avatar : "/avatars/avatar_01.png"} alt="" style={{ width:32, height:32, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
       <div style={{ fontSize: 11, color: "#374151", fontWeight: 900, flexShrink: 0 }}>VS</div>
-      <div style={{ fontSize: 26, flexShrink: 0, lineHeight: 1 }}>{sala.jugador2_avatar || "👤"}</div>
+      <img src={sala.jugador2_avatar && sala.jugador2_avatar.startsWith("/avatars/") ? sala.jugador2_avatar : "/avatars/avatar_01.png"} alt="" style={{ width:32, height:32, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
       <div style={{ flex: 1, minWidth: 0, paddingLeft: 4 }}>
         <div style={{ fontSize: 12, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {sala.jugador1_nombre || "Jugador 1"} vs {sala.jugador2_nombre || "Jugador 2"}
@@ -252,7 +253,7 @@ function CardMiSala({ sala, onEliminar, eliminando }) {
       borderRadius: 14, padding: "13px 18px",
       display: "flex", alignItems: "center", gap: 12,
     }}>
-      <div style={{ fontSize: 28, flexShrink: 0, lineHeight: 1 }}>{sala.jugador1_avatar || "👤"}</div>
+      <img src={sala.jugador1_avatar && sala.jugador1_avatar.startsWith("/avatars/") ? sala.jugador1_avatar : "/avatars/avatar_01.png"} alt="" style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 900, color: "#fbbf24" }}>Tu sala abierta</div>
         <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
@@ -483,9 +484,9 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
         const enriquecidas = salas.map(s => ({
           ...s,
           jugador1_nombre: mapa[s.jugador1_id]?.nombre || s.jugador1_nombre || "Jugador",
-          jugador1_avatar: mapa[s.jugador1_id]?.avatar || s.jugador1_avatar || "👤",
+          jugador1_avatar: avatarSrc(mapa[s.jugador1_id]?.avatar || s.jugador1_avatar),
           jugador2_nombre: s.jugador2_id ? (mapa[s.jugador2_id]?.nombre || s.jugador2_nombre || "Jugador") : null,
-          jugador2_avatar: s.jugador2_id ? (mapa[s.jugador2_id]?.avatar || s.jugador2_avatar || "👤") : null,
+          jugador2_avatar: s.jugador2_id ? avatarSrc(mapa[s.jugador2_id]?.avatar || s.jugador2_avatar) : null,
         }));
         setSalas(enriquecidas);
         setCargando(false);
@@ -553,7 +554,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
       estado: "esperando",
       jugador1_id: user.id,
       jugador1_nombre: perfil?.nombre || "",
-      jugador1_avatar: perfil?.avatar || "👤",
+      jugador1_avatar: avatarSrc(perfil?.avatar),
       mano_jugador1: JSON.stringify(mano1),
       mano_jugador2: JSON.stringify(mano2),
       turno: user.id,

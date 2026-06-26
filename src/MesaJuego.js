@@ -37,7 +37,7 @@ export function MesaJuego({
       <div style={{ background:"rgba(0,0,0,0.5)", border:"1px solid #2d6a4f", borderRadius:12, padding:"8px 14px", display:"flex", gap:12, alignItems:"flex-start", flexShrink:0 }}>
         <div>
           <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:5, maxWidth:128, overflow:"hidden" }}>
-            <span style={{ fontSize:13, flexShrink:0 }}>{avatarJugador || "👤"}</span>
+            <img src={avatarJugador && avatarJugador.startsWith("/avatars/") ? avatarJugador : "/avatars/avatar_01.png"} alt="" style={{ width:20, height:20, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
             <span style={{ fontSize:12, color:"#4ade80", letterSpacing:0.5, fontFamily:"'Lato',sans-serif", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{nombreJugador}</span>
           </div>
           <PalitosPuntaje puntos={puntosJugador} total={limitePuntos} />
@@ -45,7 +45,7 @@ export function MesaJuego({
         <div style={{ width:1, alignSelf:"stretch", background:"#2d6a4f", margin:"0 2px" }}/>
         <div>
           <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:5, maxWidth:128, overflow:"hidden" }}>
-            <span style={{ fontSize:13, flexShrink:0 }}>{avatarRival || "👤"}</span>
+            <img src={avatarRival && avatarRival.startsWith("/avatars/") ? avatarRival : "/avatars/avatar_01.png"} alt="" style={{ width:20, height:20, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
             <span style={{ fontSize:12, color:"#f87171", letterSpacing:0.5, fontFamily:"'Lato',sans-serif", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{nombreRival}</span>
           </div>
           <PalitosPuntaje puntos={puntosRival} total={limitePuntos} />

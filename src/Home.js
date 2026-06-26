@@ -3,6 +3,7 @@ import { supabase } from "./supabase";
 import { leerConfig } from "./Configuracion";
 import { getLunesActual } from "./ranking";
 import VerificarCuenta from "./VerificarCuenta";
+import { AVATARES, avatarSrc } from "./avatares";
 
 const _audioClickCache = { obj: null };
 function reproducirSonidoClick() {
@@ -39,7 +40,6 @@ function MenuItem({ icono, label, onClick, peligro }) {
   );
 }
 
-const AVATARES = ["👨","👩","👴","👵","🧔","👱","🧑","👮","🧑‍🍳","🥷","🧙","🤠","👸","🤴","🧛","🧜","🧝","🧞","🤖","👾"];
 const REGEX_NOMBRE = /^[a-zA-Z0-9.]{4,13}$/;
 
 export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePrivado, onLogout, onVerTerminos, onVerPrivacidad, onConfig, onPerfilActualizado, esAdmin, esAsesor, onAdmin }) {
@@ -286,12 +286,11 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 18 }}>
           <div style={{
             width: 64, height: 64, borderRadius: "50%", flexShrink: 0,
-            background: "radial-gradient(circle,#1a472a,#050f08)",
             border: "2px solid #4ade80",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 36, boxShadow: "0 0 16px rgba(74,222,128,0.2)",
+            boxShadow: "0 0 16px rgba(74,222,128,0.2)",
+            overflow: "hidden",
           }}>
-            {perfil.avatar || "👤"}
+            <img src={avatarSrc(perfil.avatar)} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           </div>
           <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>{perfil.nombre}</div>
         </div>
@@ -502,7 +501,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
               {ranking.map((p, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: p.user_id === perfil?.usuario_id ? "rgba(74,222,128,0.08)" : "rgba(0,0,0,0.3)", border: `1px solid ${p.user_id === perfil?.usuario_id ? "rgba(74,222,128,0.3)" : "transparent"}`, borderRadius: 10, padding: "10px 14px" }}>
                   <div style={{ fontSize: 18, width: 28, textAlign: "center", flexShrink: 0 }}>{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`}</div>
-                  <div style={{ fontSize: 22, width: 28, flexShrink: 0 }}>{p.avatar || "👤"}</div>
+                  <img src={avatarSrc(p.avatar)} alt="" style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
                   <div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
                     <div style={{ color: p.user_id === perfil?.usuario_id ? "#4ade80" : "#e2f5e9", fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.username}</div>
                   </div>
@@ -570,12 +569,14 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
 
             {/* Avatar seleccionado grande */}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 80, height: 80, borderRadius: "50%", background: "radial-gradient(circle,#1a472a,#050f08)", border: "2px solid #4ade80", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44, boxShadow: "0 0 20px rgba(74,222,128,0.2)" }}>
-                {avatarEdit}
+              <div style={{ width: 80, height: 80, borderRadius: "50%", border: "2px solid #4ade80", boxShadow: "0 0 20px rgba(74,222,128,0.2)", overflow: "hidden" }}>
+                <img src={avatarSrc(avatarEdit)} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6, width: "100%" }}>
                 {AVATARES.map(av => (
-                  <button key={av} onClick={() => { reproducirSonidoClick(); setAvatarEdit(av); }} style={{ fontSize: 24, padding: "6px 0", borderRadius: 10, cursor: "pointer", background: avatarEdit === av ? "rgba(74,222,128,0.15)" : "rgba(0,0,0,0.3)", border: avatarEdit === av ? "2px solid #4ade80" : "2px solid rgba(45,106,79,0.3)", transform: avatarEdit === av ? "scale(1.1)" : "scale(1)", transition: "all 0.15s" }}>{av}</button>
+                  <button key={av} onClick={() => { reproducirSonidoClick(); setAvatarEdit(av); }} style={{ padding: "4px", borderRadius: 10, cursor: "pointer", background: avatarEdit === av ? "rgba(74,222,128,0.15)" : "rgba(0,0,0,0.3)", border: avatarEdit === av ? "2px solid #4ade80" : "2px solid rgba(45,106,79,0.3)", transform: avatarEdit === av ? "scale(1.1)" : "scale(1)", transition: "all 0.15s", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <img src={avatarSrc(av)} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover", display: "block" }} />
+                  </button>
                 ))}
               </div>
             </div>

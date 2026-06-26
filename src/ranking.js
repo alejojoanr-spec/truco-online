@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { avatarSrc } from "./avatares";
 
 export function getLunesActual() {
   const d = new Date();
@@ -34,7 +35,7 @@ export async function sumarPuntosRanking(user, perfil, puntosRival, rivalFueAlMa
     {
       user_id: user.id,
       username: perfil.nombre || "",
-      avatar: perfil.avatar || "👤",
+      avatar: avatarSrc(perfil.avatar),
       puntos: nuevosPuntos,
       semana,
       updated_at: new Date().toISOString(),

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
+import { avatarSrc } from "./avatares";
 import { leerConfig } from "./Configuracion";
 import { sumarPuntosRanking } from "./ranking";
 import { btnStyle } from "./GameComponents";
@@ -285,7 +286,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         await supabase.from("partidas").update({
           jugador2_id: user.id,
           jugador2_nombre: perfil?.nombre || "",
-          jugador2_avatar: perfil?.avatar || "👤",
+          jugador2_avatar: avatarSrc(perfil?.avatar),
           estado: "jugando",
         }).eq("codigo", cod);
         if (montoSalaLobby > 0) {
@@ -480,7 +481,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       estado: "esperando",
       jugador1_id: user.id,
       jugador1_nombre: perfil?.nombre || "",
-      jugador1_avatar: perfil?.avatar || "👤",
+      jugador1_avatar: avatarSrc(perfil?.avatar),
       mano_jugador1: JSON.stringify(mano1),
       mano_jugador2: JSON.stringify(mano2),
       turno: user.id,
@@ -540,7 +541,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     await supabase.from("partidas").update({
       jugador2_id: user.id,
       jugador2_nombre: perfil?.nombre || "",
-      jugador2_avatar: perfil?.avatar || "👤",
+      jugador2_avatar: avatarSrc(perfil?.avatar),
       estado: "jugando",
     }).eq("codigo", cod);
     if (montoSala > 0) {
@@ -881,10 +882,10 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       codigo: nuevoCod, estado: "jugando",
       jugador1_id: user.id,
       jugador1_nombre: perfil?.nombre || "",
-      jugador1_avatar: perfil?.avatar || "👤",
+      jugador1_avatar: avatarSrc(perfil?.avatar),
       jugador2_id: rivalId,
       jugador2_nombre: rivalNombre || "",
-      jugador2_avatar: rivalAvatar || "👤",
+      jugador2_avatar: avatarSrc(rivalAvatar),
       mano_jugador1: JSON.stringify(mano1),
       mano_jugador2: JSON.stringify(mano2),
       turno: user.id, mano_id: user.id, mesa: JSON.stringify([]),
@@ -1085,10 +1086,10 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   return (
     <>
       <MesaJuego
-        avatarJugador={perfil?.avatar || "👤"}
+        avatarJugador={avatarSrc(perfil?.avatar)}
         nombreJugador={perfil?.nombre || user.email?.split("@")[0] || "Vos"}
         puntosJugador={soyJugador1 ? (partida?.puntos1||0) : (partida?.puntos2||0)}
-        avatarRival={(soyJugador1 ? partida?.jugador2_avatar : partida?.jugador1_avatar)||"👤"}
+        avatarRival={avatarSrc(soyJugador1 ? partida?.jugador2_avatar : partida?.jugador1_avatar)}
         nombreRival={(soyJugador1 ? partida?.jugador2_nombre : partida?.jugador1_nombre)||"Rival"}
         puntosRival={soyJugador1 ? (partida?.puntos2||0) : (partida?.puntos1||0)}
         limitePuntos={partida?.puntos || 15}
