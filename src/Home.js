@@ -282,12 +282,12 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
           color: "#4ade80", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center",
         }}>✏️</button>
 
-        {/* Fila avatar + nombre */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 18 }}>
+        {/* Avatar + nombre */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginBottom: 18 }}>
           <div style={{
-            width: 64, height: 64, borderRadius: "50%", flexShrink: 0,
-            border: "2px solid #4ade80",
-            boxShadow: "0 0 16px rgba(74,222,128,0.2)",
+            width: 120, height: 120, borderRadius: "50%",
+            border: "3px solid #4ade80",
+            boxShadow: "0 0 28px rgba(74,222,128,0.3)",
             overflow: "hidden",
           }}>
             <img src={avatarSrc(perfil.avatar)} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
