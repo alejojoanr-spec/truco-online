@@ -11,6 +11,9 @@ export const AVATARES = [
   "/avatars/avatar_10.png",
 ];
 
+export const AVATARES_MASC = AVATARES.slice(0, 5);  // avatar_01 – avatar_05
+export const AVATARES_FEM  = AVATARES.slice(5);      // avatar_06 – avatar_10
+
 export const DEFAULT_AVATAR = "/avatars/avatar_01.png";
 
 // Devuelve la URL del PNG. Emojis legacy y valores nulos caen al default.

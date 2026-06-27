@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
-import { avatarSrc } from "./avatares";
+import { AVATARES_MASC, AVATARES_FEM, avatarSrc } from "./avatares";
 
 function formatPesos(n) {
   if (n === 0) return "Gratis";
@@ -70,7 +70,6 @@ const NOMBRES_F_SIM = [
   "susana","elena","lorena","karina","andrea","miriam","rosa","gladys",
   "norma","analia","sabrina","micaela","yanina","gisela","noelia",
 ];
-const AVATARES_SIM = ["👨","👩","👴","👵","🧔","👱","🧑","👮","🧑‍🍳","🥷","🧙","🤠","👸","🤴","🧛","🧜","🧝","🧞","🤖","👾"];
 const APUESTAS_SIM = [0, 0, 100, 200, 500, 1000, 1500, 2000];
 
 function mkRand(seed) {
@@ -92,18 +91,33 @@ function generarPartidasSimuladas() {
   }
 
   const cantidad = 5 + Math.floor(r() * 2);
-  return Array.from({ length: cantidad }, (_, i) => ({
-    id: `sim-${ventana}-${i}`,
-    estado: "jugando",
-    simulada: true,
-    jugador1_nombre: username(r() > 0.5),
-    jugador1_avatar: AVATARES_SIM[Math.floor(r() * AVATARES_SIM.length)],
-    jugador2_nombre: username(r() > 0.5),
-    jugador2_avatar: AVATARES_SIM[Math.floor(r() * AVATARES_SIM.length)],
-    apuesta: APUESTAS_SIM[Math.floor(r() * APUESTAS_SIM.length)],
-    puntos: r() > 0.5 ? 30 : 15,
-    es_torneo: false,
-  }));
+  return Array.from({ length: cantidad }, (_, i) => {
+    const esM1 = r() > 0.5;
+    const pool1 = esM1 ? AVATARES_MASC : AVATARES_FEM;
+    const nombre1 = username(esM1);
+    const av1idx = Math.floor(r() * pool1.length);
+
+    const esM2 = r() > 0.5;
+    const pool2 = esM2 ? AVATARES_MASC : AVATARES_FEM;
+    const nombre2 = username(esM2);
+    // Si ambos son del mismo género, garantizá que no repitan avatar
+    let av2idx = Math.floor(r() * pool2.length);
+    if (pool1 === pool2 && av2idx === av1idx) {
+      av2idx = (av2idx + 1) % pool2.length;
+    }
+    return {
+      id: `sim-${ventana}-${i}`,
+      estado: "jugando",
+      simulada: true,
+      jugador1_nombre: nombre1,
+      jugador1_avatar: pool1[av1idx],
+      jugador2_nombre: nombre2,
+      jugador2_avatar: pool2[av2idx],
+      apuesta: APUESTAS_SIM[Math.floor(r() * APUESTAS_SIM.length)],
+      puntos: r() > 0.5 ? 30 : 15,
+      es_torneo: false,
+    };
+  });
 }
 /* ────────────────────────────────────────────────────────────── */
 
