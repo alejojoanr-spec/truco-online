@@ -612,13 +612,95 @@ function TabPartidas() {
   const [filtroEstado, setFiltroEstado] = useState("todas");
   const [partidaSel, setPartidaSel] = useState(null);
 
-  useEffect(() => { cargar(); }, []);
+  // ── Filtro de período ──────────────────────────────────────────
+  const ahoraLocal = new Date();
+  const [filtroPeriodo, setFiltroPeriodo] = useState("dia");
+  const [fechaSel, setFechaSel] = useState(
+    `${ahoraLocal.getFullYear()}-${String(ahoraLocal.getMonth()+1).padStart(2,"0")}-${String(ahoraLocal.getDate()).padStart(2,"0")}`
+  );
 
-  async function cargar() {
+  function getBounds(periodo, fecha) {
+    if (periodo === "dia") {
+      const [y, m, d] = fecha.split("-").map(Number);
+      return {
+        inicio: new Date(y, m-1, d,  0,  0,  0,   0).toISOString(),
+        fin:    new Date(y, m-1, d, 23, 59, 59, 999).toISOString(),
+      };
+    }
+    if (periodo === "mes") {
+      const [y, m] = fecha.split("-").map(Number);
+      return {
+        inicio: new Date(y, m-1, 1,  0,  0,  0,   0).toISOString(),
+        fin:    new Date(y, m,   0, 23, 59, 59, 999).toISOString(), // día 0 del mes siguiente = último del actual
+      };
+    }
+    const y = Number(fecha);
+    return {
+      inicio: new Date(y,  0,  1,  0,  0,  0,   0).toISOString(),
+      fin:    new Date(y, 11, 31, 23, 59, 59, 999).toISOString(),
+    };
+  }
+
+  function labelPeriodo() {
+    if (filtroPeriodo === "dia") {
+      const [y, m, d] = fechaSel.split("-").map(Number);
+      const dt = new Date(y, m-1, d);
+      if (dt.toDateString() === ahoraLocal.toDateString()) return "Hoy";
+      const ayer = new Date(ahoraLocal); ayer.setDate(ayer.getDate()-1);
+      if (dt.toDateString() === ayer.toDateString()) return "Ayer";
+      return dt.toLocaleDateString("es-AR", { day:"numeric", month:"short", year:"numeric" });
+    }
+    if (filtroPeriodo === "mes") {
+      const [y, m] = fechaSel.split("-").map(Number);
+      return new Date(y, m-1, 1).toLocaleDateString("es-AR", { month:"long", year:"numeric" });
+    }
+    return `Año ${fechaSel}`;
+  }
+
+  function navegarPeriodo(dir) {
+    if (filtroPeriodo === "dia") {
+      const [y, m, d] = fechaSel.split("-").map(Number);
+      const dt = new Date(y, m-1, d);
+      dt.setDate(dt.getDate() + dir);
+      setFechaSel(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`);
+    } else if (filtroPeriodo === "mes") {
+      const [y, m] = fechaSel.split("-").map(Number);
+      const dt = new Date(y, m-1+dir, 1);
+      setFechaSel(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`);
+    } else {
+      setFechaSel(String(Number(fechaSel) + dir));
+    }
+  }
+
+  function cambiarPeriodo(nuevo) {
+    if (nuevo === filtroPeriodo) return;
+    setFiltroPeriodo(nuevo);
+    if (nuevo === "dia") {
+      if (filtroPeriodo === "mes")  setFechaSel(fechaSel + "-01");
+      if (filtroPeriodo === "anio") setFechaSel(fechaSel + "-01-01");
+    } else if (nuevo === "mes") {
+      if (filtroPeriodo === "dia")  setFechaSel(fechaSel.slice(0, 7));
+      if (filtroPeriodo === "anio") setFechaSel(fechaSel + "-01");
+    } else {
+      setFechaSel(fechaSel.slice(0, 4));
+    }
+  }
+  // ──────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const { inicio, fin } = getBounds(filtroPeriodo, fechaSel);
+    cargar(inicio, fin);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtroPeriodo, fechaSel]);
+
+  async function cargar(inicio, fin) {
     setCargando(true);
     setQueryError(null);
+    let q = supabase.from("partidas").select("*").order("created_at", { ascending: false });
+    if (inicio) q = q.gte("created_at", inicio);
+    if (fin)    q = q.lte("created_at", fin);
     const [{ data: p, error: errP }, { data: perfiles }, { data: rakeTxs }] = await Promise.all([
-      supabase.from("partidas").select("*").order("created_at", { ascending: false }).limit(200),
+      q.limit(500),
       supabase.from("perfiles").select("usuario_id,nombre,avatar,partidas_jugadas,partidas_ganadas,is_banned"),
       supabase.from("transacciones").select("monto,nota").eq("tipo", "rake"),
     ]);
@@ -650,10 +732,11 @@ function TabPartidas() {
   const esFinalizada = p => !!p.ganador_id;
   const winratePct  = u => Math.round((u.partidas_ganadas / u.partidas_jugadas) * 100);
 
+  // Stats calculados sobre el período seleccionado (partidas ya filtradas por fecha desde Supabase)
   const stats = {
     total:     partidas.length,
     enJuego:   partidas.filter(esEnJuego).length,
-    rakeTotal: Object.values(rakeMap).reduce((s, v) => s + v, 0),
+    rakeTotal: partidas.reduce((s, p) => s + (rakeMap[p.codigo] || 0), 0),
   };
 
   const filtradas = partidas.filter(p => {
@@ -749,6 +832,28 @@ function TabPartidas() {
   return (
     <>
       <MarketingConfig />
+
+      {/* ── Selector de período ── */}
+      <div style={{ marginBottom:14 }}>
+        {/* Tabs Día / Mes / Año */}
+        <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+          {[["dia","Día"], ["mes","Mes"], ["anio","Año"]].map(([v, label]) => (
+            <button key={v} onClick={() => cambiarPeriodo(v)} style={{
+              flex:1, padding:"7px 4px", borderRadius:8, cursor:"pointer", fontSize:11, fontWeight:700,
+              fontFamily:"'Lato',sans-serif",
+              border:`1px solid ${filtroPeriodo === v ? "#fbbf24" : "#2d6a4f"}`,
+              background: filtroPeriodo === v ? "rgba(251,191,36,0.1)" : "rgba(0,0,0,0.3)",
+              color: filtroPeriodo === v ? "#fbbf24" : "#6b7280",
+            }}>{label}</button>
+          ))}
+        </div>
+        {/* Navegación ← período → */}
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <button onClick={() => navegarPeriodo(-1)} style={{ background:"rgba(0,0,0,0.4)", border:"1px solid #2d6a4f", borderRadius:8, padding:"6px 12px", cursor:"pointer", color:"#9ca3af", fontFamily:"'Lato',sans-serif", fontSize:16, lineHeight:1 }}>‹</button>
+          <div style={{ flex:1, textAlign:"center", fontSize:14, fontWeight:900, color:"#fbbf24" }}>{labelPeriodo()}</div>
+          <button onClick={() => navegarPeriodo(+1)} style={{ background:"rgba(0,0,0,0.4)", border:"1px solid #2d6a4f", borderRadius:8, padding:"6px 12px", cursor:"pointer", color:"#9ca3af", fontFamily:"'Lato',sans-serif", fontSize:16, lineHeight:1 }}>›</button>
+        </div>
+      </div>
 
       {/* Stats clickeables */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:16 }}>
