@@ -169,6 +169,13 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const [copiado, setCopiado] = useState(false);
   const [resolviendoMano, setResolviendoMano] = useState(false);
   const [mostrarConfirmSalir, setMostrarConfirmSalir] = useState(false);
+  const [envidoGlobos, setEnvidoGlobos] = useState(null);
+
+  function mostrarGlobosEnvido(textoJugador, textoRival) {
+    setEnvidoGlobos({ jugador: textoJugador, rival: textoRival, visible: true });
+    setTimeout(() => setEnvidoGlobos(g => g ? { ...g, visible: false } : null), 2000);
+    setTimeout(() => setEnvidoGlobos(null), 2500);
+  }
 
   const addLog = () => {};
   const [resultadoPartida, setResultadoPartida] = useState(null);
@@ -387,6 +394,12 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         }
       } else if (!p.accion_pendiente) {
         accionLogueadaRef.current = null;
+      }
+      // Globos de envido: disparar en ambos clientes cuando aparece envido_resultado
+      if (p.envido_resultado && !partidaRef.current?.envido_resultado) {
+        const textoJugador = soyJugador1 ? p.envido_resultado.texto_j1 : p.envido_resultado.texto_j2;
+        const textoRival   = soyJugador1 ? p.envido_resultado.texto_j2 : p.envido_resultado.texto_j1;
+        mostrarGlobosEnvido(textoJugador, textoRival);
       }
     }
 
@@ -815,13 +828,27 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
     addLog(`Quiero. Vos: ${miVal} | Rival: ${rivalVal}. +${ptosEnvido} para ${ganadorEnv === user.id ? 'vos' : 'rival'}`);
 
+    // Textos para los globos: el ganador muestra sus puntos, el perdedor "Son buenas"
+    const j1GanaEnv = ganadorEnv === partida.jugador1_id;
+    const envidoRes = {
+      texto_j1: j1GanaEnv ? `¡Son ${v1}!` : "Son buenas",
+      texto_j2: j1GanaEnv ? "Son buenas" : `¡Son ${v2}!`,
+    };
+
     const np1 = (partida.puntos1 || 0) + (ganadorEnv === partida.jugador1_id ? ptosEnvido : 0);
     const np2 = (partida.puntos2 || 0) + (ganadorEnv === partida.jugador2_id ? ptosEnvido : 0);
     if (np1 >= puntosObj || np2 >= puntosObj) {
       const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
-      await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
+      const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", envido_resultado: envidoRes }).eq("codigo", codigo);
+      if (error) console.error("quiero envido gameOver:", error);
     } else {
-      await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString() }).eq("codigo", codigo);
+      const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString(), envido_resultado: envidoRes }).eq("codigo", codigo);
+      if (error) console.error("quiero envido:", error);
+      // Limpiar envido_resultado después de que ambos clientes alcancen a mostrarlo (2.5s display + margen de red)
+      setTimeout(async () => {
+        const { error: errClean } = await supabase.from("partidas").update({ envido_resultado: null }).eq("codigo", codigo);
+        if (errClean) console.error("quiero envido cleanup:", errClean);
+      }, 4000);
     }
   }
 
@@ -839,12 +866,24 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
 
     if (acc.tipo === 'envido') {
+      // El cantador muestra su puntaje; el que dice "no quiero" muestra "Son buenas"
+      const singerIsJ1 = callerEsJ1;
+      const singerMano = singerIsJ1 ? JSON.parse(partida.mano_jugador1) : JSON.parse(partida.mano_jugador2);
+      const singerScore = valorEnvido(singerMano);
+      const envidoRes = {
+        texto_j1: singerIsJ1 ? `¡Son ${singerScore}!` : "Son buenas",
+        texto_j2: singerIsJ1 ? "Son buenas" : `¡Son ${singerScore}!`,
+      };
       if (gameOver) {
-        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
+        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", envido_resultado: envidoRes }).eq("codigo", codigo);
         if (error) console.error("noQuiero envido gameOver:", error);
       } else {
-        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString() }).eq("codigo", codigo);
+        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString(), envido_resultado: envidoRes }).eq("codigo", codigo);
         if (error) console.error("noQuiero envido:", error);
+        setTimeout(async () => {
+          const { error: errClean } = await supabase.from("partidas").update({ envido_resultado: null }).eq("codigo", codigo);
+          if (errClean) console.error("noQuiero envido cleanup:", errClean);
+        }, 4000);
       }
       return;
     }
@@ -1299,6 +1338,19 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           })()}
         </div>
       )}
+      {envidoGlobos && (
+        <div style={{ position:"fixed",inset:0,zIndex:15,pointerEvents:"none",display:"flex",flexDirection:"column",justifyContent:"space-between",padding:"70px 24px 90px" }}>
+          <div style={{ opacity:envidoGlobos.visible?1:0,transition:"opacity 0.5s",alignSelf:"center",position:"relative",background:"#fff",borderRadius:10,padding:"7px 14px",fontWeight:900,fontSize:15,color:"#111",boxShadow:"2px 2px 0 #111",whiteSpace:"nowrap" }}>
+            {envidoGlobos.rival}
+            <div style={{ position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",borderBottom:"8px solid #fff" }}/>
+          </div>
+          <div style={{ opacity:envidoGlobos.visible?1:0,transition:"opacity 0.5s",alignSelf:"center",position:"relative",background:"#fff",borderRadius:10,padding:"7px 14px",fontWeight:900,fontSize:15,color:"#111",boxShadow:"2px 2px 0 #111",whiteSpace:"nowrap" }}>
+            {envidoGlobos.jugador}
+            <div style={{ position:"absolute",bottom:-8,left:"50%",transform:"translateX(-50%)",width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",borderTop:"8px solid #fff" }}/>
+          </div>
+        </div>
+      )}
+
       {mostrarConfirmSalir && (
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:30 }}>
           <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)",border:"1px solid #2d6a4f",borderRadius:20,padding:"32px 28px",textAlign:"center",maxWidth:320,width:"100%",fontFamily:"'Lato',sans-serif" }}>
