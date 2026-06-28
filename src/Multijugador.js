@@ -764,7 +764,17 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   async function salirDePartida() {
     sessionStorage.removeItem(`truco_partida_${user.id}`);
-    if (partida && partida.estado === "jugando") {
+    if (pantalla === "esperando" && codigo) {
+      // Sala sin rival: borrarla y devolver apuesta si la hay
+      salaEnEsperaRef.current = null; // evitar doble-delete en unmount
+      if ((apuesta || 0) > 0) {
+        const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+        const { error: refErr } = await supabase.from("perfiles").update({ saldo: (fresh?.saldo || 0) + apuesta }).eq("usuario_id", user.id);
+        if (refErr) console.error("salirDePartida esperando refund:", refErr);
+      }
+      const { error: delErr } = await supabase.from("partidas").delete().eq("codigo", codigo);
+      if (delErr) console.error("salirDePartida esperando delete:", delErr);
+    } else if (partida && partida.estado === "jugando") {
       const rivalId = soyJugador1 ? partida.jugador2_id : partida.jugador1_id;
       if (rivalId) {
         pagoProcesadoRef.current = true;
@@ -1234,23 +1244,30 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         )}
       </div>
       <button
-        onClick={async () => {
-          salaEnEsperaRef.current = null; // evitar doble-delete en unmount
-          if (codigo) {
-            if ((apuesta || 0) > 0) {
-              const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-              const { error: refErr } = await supabase.from("perfiles").update({ saldo: (fresh?.saldo || 0) + apuesta }).eq("usuario_id", user.id);
-              if (refErr) console.error("cancelar sala refund:", refErr);
-            }
-            const { error: delErr } = await supabase.from("partidas").delete().eq("codigo", codigo);
-            if (delErr) console.error("cancelar sala delete:", delErr);
-          }
-          onVolver();
-        }}
+        onClick={() => setMostrarConfirmSalir(true)}
         style={{ padding:"10px 20px",borderRadius:10,background:"transparent",border:"1px solid #374151",color:"#6b7280",fontSize:13,cursor:"pointer",fontFamily:"'Lato',sans-serif" }}
       >
         Cancelar
       </button>
+
+      {mostrarConfirmSalir && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:30 }}>
+          <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)",border:"1px solid #2d6a4f",borderRadius:20,padding:"32px 28px",textAlign:"center",maxWidth:320,width:"100%",fontFamily:"'Lato',sans-serif" }}>
+            <div style={{ fontSize:40,marginBottom:12 }}>🚪</div>
+            <div style={{ fontSize:18,color:"#fbbf24",fontWeight:900,marginBottom:24,lineHeight:1.4 }}>¿Querés abandonar la partida?</div>
+            <div style={{ display:"flex",gap:10 }}>
+              <button
+                onClick={() => setMostrarConfirmSalir(false)}
+                style={{ flex:1,padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(255,255,255,0.05)",border:"1px solid #374151",color:"#ffffff",fontFamily:"'Lato',sans-serif",fontSize:14 }}
+              >Cancelar</button>
+              <button
+                onClick={salirDePartida}
+                style={{ flex:1,padding:"11px",borderRadius:10,cursor:"pointer",background:"linear-gradient(135deg,#7f1d1d,#991b1b)",border:"1px solid #f87171",color:"#ffffff",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}
+              >Salir</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
