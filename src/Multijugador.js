@@ -710,7 +710,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   async function cantarEnvido(subtipo) {
     if (!partida || partida.accion_pendiente || partida.envido_jugado) return;
-    if (JSON.parse(partida.mesa || "[]").length > 0) return;
+    if (JSON.parse(partida.mesa || "[]").length >= 2) return;
     const puntosObj = partida.puntos || 15;
     const falta = Math.max(1, puntosObj - Math.max(partida.puntos1 || 0, partida.puntos2 || 0));
     const VALS = { envido: 2, real_envido: 3, falta_envido: falta };
@@ -1112,7 +1112,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         botonesSlot={<>
           {!partida?.accion_pendiente && (
             <>
-              {mesaActual.length === 0 && !partida?.envido_jugado && (
+              {mesaActual.length < 2 && !partida?.envido_jugado && (
                 <>
                   <button onClick={()=>cantarEnvido("envido")} style={btnStyle("#1d4ed8","#60a5fa")}>Envido</button>
                   <button onClick={()=>cantarEnvido("real_envido")} style={btnStyle("#5b21b6","#a78bfa")}>Real Envido</button>
