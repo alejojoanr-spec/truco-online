@@ -68,7 +68,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
   const [copiado, setCopiado] = useState("");
   const [mostrarSalaPrivada, setMostrarSalaPrivada] = useState(false);
   const [salaCrearApuesta, setSalaCrearApuesta] = useState("");
-  const [salaCrearPuntos, setSalaCrearPuntos] = useState(30);
+  const [salaCrearPuntos, setSalaCrearPuntos] = useState(15);
   const [salaUnirseCodigo, setSalaUnirseCodigo] = useState("");
   const [salaUnirseInfo, setSalaUnirseInfo] = useState(null);
   const [buscandoSala, setBuscandoSala] = useState(false);

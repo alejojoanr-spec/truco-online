@@ -168,6 +168,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const [error, setError] = useState("");
   const [copiado, setCopiado] = useState(false);
   const [resolviendoMano, setResolviendoMano] = useState(false);
+  const [mostrarConfirmSalir, setMostrarConfirmSalir] = useState(false);
 
   const addLog = () => {};
   const [resultadoPartida, setResultadoPartida] = useState(null);
@@ -1202,7 +1203,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         timerSegundos={miTurno && !partida?.accion_pendiente && !resolviendoMano ? displayTimer : null}
         rivalTimerSegundos={!miTurno && !partida?.accion_pendiente && !resolviendoMano ? displayTimer : null}
         instruccion={partida?.accion_pendiente ? "⏳ Canto pendiente..." : miTurno ? "👆 Tu turno — tocá una carta" : "⏳ Turno del rival..."}
-        onSalir={salirDePartida}
+        onSalir={() => setMostrarConfirmSalir(true)}
         log={null}
         botonesSlot={<>
           {!partida?.accion_pendiente && (
@@ -1296,6 +1297,24 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
               </div>
             );
           })()}
+        </div>
+      )}
+      {mostrarConfirmSalir && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:30 }}>
+          <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)",border:"1px solid #2d6a4f",borderRadius:20,padding:"32px 28px",textAlign:"center",maxWidth:320,width:"100%",fontFamily:"'Lato',sans-serif" }}>
+            <div style={{ fontSize:40,marginBottom:12 }}>🚪</div>
+            <div style={{ fontSize:18,color:"#fbbf24",fontWeight:900,marginBottom:24,lineHeight:1.4 }}>¿Querés abandonar la partida?</div>
+            <div style={{ display:"flex",gap:10 }}>
+              <button
+                onClick={() => setMostrarConfirmSalir(false)}
+                style={{ flex:1,padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(255,255,255,0.05)",border:"1px solid #374151",color:"#ffffff",fontFamily:"'Lato',sans-serif",fontSize:14 }}
+              >Cancelar</button>
+              <button
+                onClick={salirDePartida}
+                style={{ flex:1,padding:"11px",borderRadius:10,cursor:"pointer",background:"linear-gradient(135deg,#7f1d1d,#991b1b)",border:"1px solid #f87171",color:"#ffffff",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}
+              >Salir</button>
+            </div>
+          </div>
         </div>
       )}
     </>
