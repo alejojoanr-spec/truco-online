@@ -168,7 +168,6 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const [error, setError] = useState("");
   const [copiado, setCopiado] = useState(false);
   const [resolviendoMano, setResolviendoMano] = useState(false);
-  const [puntosCrear, setPuntosCrear] = useState(30);
 
   const addLog = () => {};
   const [resultadoPartida, setResultadoPartida] = useState(null);
@@ -491,7 +490,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       puntos1: 0,
       puntos2: 0,
       apuesta: apuesta || 0,
-      puntos: puntos || puntosCrear,
+      puntos: puntos || 30,
       es_torneo: esTorneo || false,
     });
     if (err) { setError("Error al crear sala"); return; }
@@ -1058,16 +1057,6 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       <div style={{ fontSize:10,color:"#4ade80",letterSpacing:3,textTransform:"uppercase" }}>Truco</div>
       <div style={{ fontSize:32,color:"#fbbf24",fontWeight:900 }}>2 Jugadores</div>
       <div style={{ display:"flex",flexDirection:"column",gap:12,width:"100%",maxWidth:320 }}>
-        <div style={{ background:"rgba(0,0,0,0.35)",border:"1px solid rgba(45,106,79,0.4)",borderRadius:10,padding:"12px 14px" }}>
-          <div style={{ fontSize:11,color:"#6b7280",letterSpacing:1,textTransform:"uppercase",marginBottom:8,fontFamily:"'Lato',sans-serif" }}>Puntos para ganar</div>
-          <div style={{ display:"flex",gap:8 }}>
-            {[15, 30].map(pts => (
-              <button key={pts} onClick={() => setPuntosCrear(pts)} style={{ flex:1,padding:"9px 0",borderRadius:8,cursor:"pointer",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:puntosCrear===pts?900:400,background:puntosCrear===pts?"rgba(74,222,128,0.12)":"rgba(0,0,0,0.3)",border:puntosCrear===pts?"1.5px solid #4ade80":"1px solid rgba(45,106,79,0.4)",color:puntosCrear===pts?"#4ade80":"#6b7280" }}>
-                {pts}{pts===15?" (½)":""}
-              </button>
-            ))}
-          </div>
-        </div>
         <button onClick={crearSala} style={{ padding:"14px",borderRadius:10,background:"#1a472a",border:"1px solid #4ade80",color:"#4ade80",fontSize:16,cursor:"pointer",fontFamily:"Georgia" }}>
           ➕ Crear sala
         </button>

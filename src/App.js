@@ -889,6 +889,7 @@ export default function App() {
   const [codigoUnirse, setCodigoUnirse] = useState(null);
   const [autoCrearSala, setAutoCrearSala] = useState(false);
   const [apuestaInicial, setApuestaInicial] = useState(0);
+  const [puntosInicialSala, setPuntosInicialSala] = useState(30);
   const [codigoYaCreadoInicial, setCodigoYaCreadoInicial] = useState(null);
   const [origenMulti, setOrigenMulti] = useState("home");
   const [verTerminos, setVerTerminos] = useState(false);
@@ -1115,6 +1116,7 @@ export default function App() {
       codigoInicial={codigoUnirse}
       autoCrear={autoCrearSala}
       apuesta={apuestaInicial}
+      puntos={puntosInicialSala}
       codigoYaCreado={codigoYaCreadoInicial}
       codigoRejoin={codigoRejoin}
       onVolver={() => {
@@ -1135,7 +1137,7 @@ export default function App() {
       <Home
         perfil={perfil}
         onJugar={() => { if (esFueraDePico() && !bannerHorarioCerrado) setMostrarBannerHorario(true); else setModoJuego("lobby"); }}
-        onCrearSalaPrivada={(apuesta) => { setCodigoUnirse(null); setApuestaInicial(apuesta); setAutoCrearSala(true); setOrigenMulti("home"); setModoJuego("multi"); }}
+        onCrearSalaPrivada={(apuesta, puntos) => { setCodigoUnirse(null); setApuestaInicial(apuesta); setPuntosInicialSala(puntos || 30); setAutoCrearSala(true); setOrigenMulti("home"); setModoJuego("multi"); }}
         onUnirsePrivado={(codigo, apuesta) => { setCodigoUnirse(codigo); setApuestaInicial(apuesta); setAutoCrearSala(false); setOrigenMulti("home"); setModoJuego("multi"); }}
         onLogout={handleLogout}
         onVerTerminos={()=>setVerTerminos(true)}

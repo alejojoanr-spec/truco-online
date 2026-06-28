@@ -68,6 +68,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
   const [copiado, setCopiado] = useState("");
   const [mostrarSalaPrivada, setMostrarSalaPrivada] = useState(false);
   const [salaCrearApuesta, setSalaCrearApuesta] = useState("");
+  const [salaCrearPuntos, setSalaCrearPuntos] = useState(30);
   const [salaUnirseCodigo, setSalaUnirseCodigo] = useState("");
   const [salaUnirseInfo, setSalaUnirseInfo] = useState(null);
   const [buscandoSala, setBuscandoSala] = useState(false);
@@ -957,8 +958,19 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                 ) : null}
               </div>
 
+              <div>
+                <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Puntos para ganar</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {[15, 30].map(pts => (
+                    <button key={pts} onClick={() => setSalaCrearPuntos(pts)} style={{ flex: 1, padding: "9px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'Lato',sans-serif", fontSize: 15, fontWeight: salaCrearPuntos === pts ? 900 : 400, background: salaCrearPuntos === pts ? "rgba(74,222,128,0.12)" : "rgba(0,0,0,0.3)", border: salaCrearPuntos === pts ? "1.5px solid #4ade80" : "1px solid rgba(45,106,79,0.4)", color: salaCrearPuntos === pts ? "#4ade80" : "#6b7280" }}>
+                      {pts}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <button
-                onClick={() => { reproducirSonidoClick(); onCrearSalaPrivada(parseFloat(salaCrearApuesta) || 0); setMostrarSalaPrivada(false); }}
+                onClick={() => { reproducirSonidoClick(); onCrearSalaPrivada(parseFloat(salaCrearApuesta) || 0, salaCrearPuntos); setMostrarSalaPrivada(false); }}
                 disabled={parseFloat(salaCrearApuesta) > (perfil.saldo || 0)}
                 style={{ width: "100%", padding: "13px", borderRadius: 10, cursor: parseFloat(salaCrearApuesta) > (perfil.saldo || 0) ? "not-allowed" : "pointer", background: "linear-gradient(135deg,#3b0764,#5b21b6)", border: "1px solid #a78bfa", color: "#a78bfa", fontFamily: "'Lato',sans-serif", fontSize: 15, fontWeight: 700, opacity: parseFloat(salaCrearApuesta) > (perfil.saldo || 0) ? 0.45 : 1, transition: "opacity 0.15s" }}
               >
