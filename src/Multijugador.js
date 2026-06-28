@@ -797,21 +797,24 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
     if (acc.tipo === 'envido') {
       if (gameOver) {
-        await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
+        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
+        if (error) console.error("noQuiero envido gameOver:", error);
       } else {
-        await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2 }).eq("codigo", codigo);
+        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2 }).eq("codigo", codigo);
+        if (error) console.error("noQuiero envido:", error);
       }
       return;
     }
 
     // Truco rechazado: termina la mano
     if (gameOver) {
-      await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
+      const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
+      if (error) console.error("noQuiero truco gameOver:", error);
     } else {
       const nuevoMazo = mezclar(MAZO);
       const manoActualNQ = partida.mano_id || partida.jugador1_id;
       const siguienteManoNQ = manoActualNQ === partida.jugador1_id ? partida.jugador2_id : partida.jugador1_id;
-      await supabase.from("partidas").update({
+      const { error } = await supabase.from("partidas").update({
         accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1,
         envido_jugado: false, truco_jugado: false,
         mesa: JSON.stringify([]),
@@ -820,6 +823,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         turno: siguienteManoNQ,
         mano_id: siguienteManoNQ,
       }).eq("codigo", codigo);
+      if (error) console.error("noQuiero truco:", error);
     }
   }
 
@@ -836,23 +840,34 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const gameOver = np1 >= puntosObj || np2 >= puntosObj;
     const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
     if (gameOver) {
-      await supabase.from("partidas").update({
+      const { error } = await supabase.from("partidas").update({
         accion_pendiente: null, puntos1: np1, puntos2: np2,
         puntos_mano: 1, ganador_id: ganadorId, estado: "terminada",
       }).eq("codigo", codigo);
+      if (error) console.error("irseAlMazo gameOver:", error);
     } else {
+      // Paso 1: publicar puntaje — la suscripción lo muestra en ambos clientes
+      setResolviendoMano(true);
+      const { error: err1 } = await supabase.from("partidas").update({
+        accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1,
+        envido_jugado: false, truco_jugado: false,
+        turno: user.id,
+      }).eq("codigo", codigo);
+      if (err1) { console.error("irseAlMazo paso1:", err1); setResolviendoMano(false); return; }
+      // Paso 2: tras la misma pausa que jugarCarta, repartir nueva mano
+      await new Promise(resolve => setTimeout(resolve, 1500));
       const nuevoMazo = mezclar(MAZO);
       const manoActual = partida.mano_id || partida.jugador1_id;
       const siguienteMano = manoActual === partida.jugador1_id ? partida.jugador2_id : partida.jugador1_id;
-      await supabase.from("partidas").update({
-        accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1,
-        envido_jugado: false, truco_jugado: false,
+      const { error: err2 } = await supabase.from("partidas").update({
         mesa: JSON.stringify([]),
         mano_jugador1: JSON.stringify(nuevoMazo.slice(0, 3)),
         mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
         turno: siguienteMano,
         mano_id: siguienteMano,
       }).eq("codigo", codigo);
+      if (err2) console.error("irseAlMazo paso2:", err2);
+      setResolviendoMano(false);
     }
   }
 
