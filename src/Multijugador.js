@@ -189,6 +189,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const channelRef = useRef(null);
   const partidaRef = useRef(null);
   const revanchaTimerRef = useRef(null);
+  const salaEnEsperaRef = useRef(null); // codigo de sala propia en "esperando"; se limpia al entrar a jugando o al cancelar
   const [displayTimer, setDisplayTimer] = useState(null);
   const displayTimerIntervalRef = useRef(null);
   const timerAutoFiredRef = useRef(null);
@@ -202,6 +203,18 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (codigo) sessionStorage.setItem(`truco_partida_${user.id}`, codigo);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codigo]);
+  // Cleanup de sala fantasma: si el componente se desmonta mientras hay sala en espera (cierre de pestaña, back del browser), la borra
+  useEffect(() => {
+    return () => {
+      const cod = salaEnEsperaRef.current;
+      if (cod) {
+        supabase.from("partidas").delete().eq("codigo", cod).then(({ error }) => {
+          if (error) console.error("cleanup sala en espera:", error);
+        });
+      }
+    };
+  }, []);
+
   useEffect(() => {
     return () => { if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current); };
   }, []);
@@ -363,7 +376,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     function procesarCambio(p) {
       if (!p) return;
       if (p.ganador_id) { procesarFinPartida(p); return; }
-      if (p.estado === "jugando") setPantalla("jugando");
+      if (p.estado === "jugando") { setPantalla("jugando"); salaEnEsperaRef.current = null; }
       // Detect a card added by the rival (only plays sound for cards the rival adds, not our own)
       const prevMesa = JSON.parse(partidaRef.current?.mesa || "[]");
       const newMesa = JSON.parse(p.mesa || "[]");
@@ -514,6 +527,26 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }, [codigo, user.id]);
 
   async function crearSala() {
+    // Eliminar salas propias previas en espera (evita acumulación y reemplaza la anterior)
+    const { data: salasPrevias, error: errPrevias } = await supabase
+      .from("partidas")
+      .select("codigo, apuesta")
+      .eq("jugador1_id", user.id)
+      .eq("estado", "esperando");
+    if (!errPrevias && salasPrevias?.length) {
+      for (const sala of salasPrevias) {
+        if ((sala.apuesta || 0) > 0) {
+          const { data: freshPrev } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+          const { error: refundErr } = await supabase.from("perfiles")
+            .update({ saldo: (freshPrev?.saldo || 0) + sala.apuesta })
+            .eq("usuario_id", user.id);
+          if (refundErr) console.error("refund sala previa:", refundErr);
+        }
+        const { error: delErr } = await supabase.from("partidas").delete().eq("codigo", sala.codigo);
+        if (delErr) console.error("eliminar sala previa:", delErr);
+      }
+    }
+
     let saldoAntesCrea = 0;
     if ((apuesta || 0) > 0) {
       const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
@@ -560,6 +593,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       });
     }
     setCodigo(cod);
+    salaEnEsperaRef.current = cod;
     setSoyJugador1(true);
     setMiMano(mano1);
     setManoRival(mano2);
@@ -1201,12 +1235,15 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       </div>
       <button
         onClick={async () => {
+          salaEnEsperaRef.current = null; // evitar doble-delete en unmount
           if (codigo) {
             if ((apuesta || 0) > 0) {
               const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-              await supabase.from("perfiles").update({ saldo: (fresh?.saldo || 0) + apuesta }).eq("usuario_id", user.id);
+              const { error: refErr } = await supabase.from("perfiles").update({ saldo: (fresh?.saldo || 0) + apuesta }).eq("usuario_id", user.id);
+              if (refErr) console.error("cancelar sala refund:", refErr);
             }
-            await supabase.from("partidas").delete().eq("codigo", codigo);
+            const { error: delErr } = await supabase.from("partidas").delete().eq("codigo", codigo);
+            if (delErr) console.error("cancelar sala delete:", delErr);
           }
           onVolver();
         }}
