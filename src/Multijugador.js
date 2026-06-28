@@ -823,6 +823,39 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     }
   }
 
+  async function irseAlMazo() {
+    if (!partida || resolviendoMano) return;
+    const puntosObj = partida.puntos || 15;
+    const rivalId = user.id === partida.jugador1_id ? partida.jugador2_id : partida.jugador1_id;
+    const rivalEsJ1 = rivalId === partida.jugador1_id;
+    const ptsParaRival = partida.puntos_mano || 1;
+    const np1 = (partida.puntos1 || 0) + (rivalEsJ1 ? ptsParaRival : 0);
+    const np2 = (partida.puntos2 || 0) + (!rivalEsJ1 ? ptsParaRival : 0);
+    addLog(`Te fuiste al mazo. Rival suma ${ptsParaRival} pt${ptsParaRival > 1 ? 's' : ''}.`);
+    reproducirVoz('me_voy_al_mazo');
+    const gameOver = np1 >= puntosObj || np2 >= puntosObj;
+    const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
+    if (gameOver) {
+      await supabase.from("partidas").update({
+        accion_pendiente: null, puntos1: np1, puntos2: np2,
+        puntos_mano: 1, ganador_id: ganadorId, estado: "terminada",
+      }).eq("codigo", codigo);
+    } else {
+      const nuevoMazo = mezclar(MAZO);
+      const manoActual = partida.mano_id || partida.jugador1_id;
+      const siguienteMano = manoActual === partida.jugador1_id ? partida.jugador2_id : partida.jugador1_id;
+      await supabase.from("partidas").update({
+        accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1,
+        envido_jugado: false, truco_jugado: false,
+        mesa: JSON.stringify([]),
+        mano_jugador1: JSON.stringify(nuevoMazo.slice(0, 3)),
+        mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
+        turno: siguienteMano,
+        mano_id: siguienteMano,
+      }).eq("codigo", codigo);
+    }
+  }
+
   /* ─── revancha ─── */
   function solicitarRevancha() {
     if (!channelRef.current) return;
@@ -1129,6 +1162,9 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
               {getCantoLabel(partida.accion_pendiente)} — Esperando respuesta...
             </div>
           )}
+          {!resolviendoMano && (
+            <button onClick={irseAlMazo} style={btnStyle("#7f1d1d","#f87171")}>Ir al mazo</button>
+          )}
         </>}
       />
 
@@ -1190,6 +1226,9 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
                   )}
                   <button onClick={noQuiero} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(248,113,113,0.08)",border:"1px solid #f87171",color:"#f87171",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
                     ❌ No quiero
+                  </button>
+                  <button onClick={irseAlMazo} style={{ padding:"9px",borderRadius:10,cursor:"pointer",background:"rgba(127,29,29,0.12)",border:"1px solid rgba(248,113,113,0.35)",color:"rgba(248,113,113,0.65)",fontFamily:"'Lato',sans-serif",fontSize:12,fontWeight:700 }}>
+                    🏳 Me voy al mazo
                   </button>
                 </div>
               </div>
