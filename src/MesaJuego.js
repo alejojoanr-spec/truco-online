@@ -21,6 +21,7 @@ export function MesaJuego({
   cartaSeleccionada,
   onClickCarta,
   timerSegundos,
+  rivalTimerSegundos,
   instruccion,
   botonesSlot,
   log,
@@ -54,11 +55,18 @@ export function MesaJuego({
 
       <button onClick={onSalir} style={{ position:"fixed", top:14, right:14, zIndex:30, width:36, height:36, borderRadius:10, border:"1px solid #374151", background:"rgba(0,0,0,0.6)", color:"#9ca3af", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>✕</button>
 
-      {/* Mano del rival */}
-      <div style={{ display:"flex", gap:8, justifyContent:"center", flexShrink:0 }}>
-        {rivalCards.map((c, i) => (
-          <Carta key={i} carta={c.carta} escala={0.82} oculta={c.oculta !== false} jugada={c.jugada} />
-        ))}
+      {/* Mano del rival + timer cuando es su turno */}
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, flexShrink:0 }}>
+        {rivalTimerSegundos !== null && rivalTimerSegundos !== undefined && (
+          <div style={{ fontSize:11, color: rivalTimerSegundos <= 5 ? "#f87171" : "#9ca3af", fontFamily:"'Lato',sans-serif", fontWeight:700, letterSpacing:1 }}>
+            ⏱ {rivalTimerSegundos}s
+          </div>
+        )}
+        <div style={{ display:"flex", gap:8, justifyContent:"center" }}>
+          {rivalCards.map((c, i) => (
+            <Carta key={i} carta={c.carta} escala={0.82} oculta={c.oculta !== false} jugada={c.jugada} />
+          ))}
+        </div>
       </div>
 
       {/* Mesa — 3 slots fijos */}

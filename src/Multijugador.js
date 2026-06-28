@@ -181,8 +181,11 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const channelRef = useRef(null);
   const partidaRef = useRef(null);
   const revanchaTimerRef = useRef(null);
-  const [turnoTimer, setTurnoTimer] = useState(15);
-  const turnoTimerRef = useRef(null);
+  const [displayTimer, setDisplayTimer] = useState(null);
+  const displayTimerIntervalRef = useRef(null);
+  const timerAutoFiredRef = useRef(null);
+  const irseAlMazoRef = useRef(null);
+  const resolviendoManoRef = useRef(false);
 
   useEffect(() => { partidaRef.current = partida; }, [partida]);
 
@@ -444,21 +447,57 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codigo, soyJugador1]);
 
+  useEffect(() => { resolviendoManoRef.current = resolviendoMano; }, [resolviendoMano]);
+
+  // Timer sincronizado: ambos clientes calculan el tiempo restante desde turno_inicio (Supabase)
   useEffect(() => {
-    if (turnoTimerRef.current) clearInterval(turnoTimerRef.current);
-    const activo = partida?.turno === user.id && !partida?.accion_pendiente && !resolviendoMano;
-    if (activo) {
-      setTurnoTimer(15);
-      turnoTimerRef.current = setInterval(() => {
-        setTurnoTimer(s => {
-          if (s <= 1) { clearInterval(turnoTimerRef.current); return 0; }
-          return s - 1;
-        });
-      }, 1000);
+    if (displayTimerIntervalRef.current) clearInterval(displayTimerIntervalRef.current);
+    const activo = !partida?.accion_pendiente && !resolviendoMano && partida?.turno_inicio;
+    if (!activo) { setDisplayTimer(null); return; }
+    function tick() {
+      const p = partidaRef.current;
+      if (!p?.turno_inicio) { setDisplayTimer(null); return; }
+      const elapsed = (Date.now() - new Date(p.turno_inicio).getTime()) / 1000;
+      const remaining = Math.max(0, 15 - Math.floor(elapsed));
+      setDisplayTimer(remaining);
+      if (remaining <= 0 && p.turno === user.id) {
+        if (timerAutoFiredRef.current !== p.turno_inicio) {
+          timerAutoFiredRef.current = p.turno_inicio;
+          clearInterval(displayTimerIntervalRef.current);
+          irseAlMazoRef.current?.();
+        }
+      }
     }
-    return () => { if (turnoTimerRef.current) clearInterval(turnoTimerRef.current); };
+    tick();
+    displayTimerIntervalRef.current = setInterval(tick, 1000);
+    return () => clearInterval(displayTimerIntervalRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partida?.turno, !!partida?.accion_pendiente, resolviendoMano]);
+  }, [partida?.turno, partida?.turno_inicio, !!partida?.accion_pendiente, resolviendoMano]);
+
+  // Anti-injusticia: al volver a primer plano, re-verificar contra Supabase antes de auto-actuar
+  useEffect(() => {
+    if (!codigo) return;
+    function onVisible() {
+      if (document.hidden) return;
+      const p = partidaRef.current;
+      if (!p || p.turno !== user.id || p.accion_pendiente || !p.turno_inicio || resolviendoManoRef.current) return;
+      const elapsed = (Date.now() - new Date(p.turno_inicio).getTime()) / 1000;
+      if (elapsed >= 15 && timerAutoFiredRef.current !== p.turno_inicio) {
+        supabase.from("partidas").select("turno, turno_inicio").eq("codigo", codigo).single()
+          .then(({ data }) => {
+            if (data && data.turno === user.id && data.turno_inicio === p.turno_inicio) {
+              if (timerAutoFiredRef.current !== data.turno_inicio) {
+                timerAutoFiredRef.current = data.turno_inicio;
+                irseAlMazoRef.current?.();
+              }
+            }
+          });
+      }
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [codigo, user.id]);
 
   async function crearSala() {
     let saldoAntesCrea = 0;
@@ -543,6 +582,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       jugador2_nombre: perfil?.nombre || "",
       jugador2_avatar: avatarSrc(perfil?.avatar),
       estado: "jugando",
+      turno_inicio: new Date().toISOString(),
     }).eq("codigo", cod);
     if (montoSala > 0) {
       await supabase.from("transacciones").insert({
@@ -589,6 +629,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       mesa: JSON.stringify(nuevaMesa),
       turno: rivalId,
       [manoField]: JSON.stringify(nuevaMiMano),
+      turno_inicio: new Date().toISOString(),
     };
 
     // When both players have played in this round, resolve it
@@ -662,6 +703,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
             turno: siguienteMano,
             mano_id: siguienteMano,
+            turno_inicio: new Date().toISOString(),
           }).eq("codigo", codigo);
           setResolviendoMano(false);
           return;
@@ -753,7 +795,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const puntosObj = partida.puntos || 15;
 
     if (acc.tipo === 'truco') {
-      await supabase.from("partidas").update({ accion_pendiente: null, puntos_mano: acc.si_quiero }).eq("codigo", codigo);
+      await supabase.from("partidas").update({ accion_pendiente: null, puntos_mano: acc.si_quiero, turno_inicio: new Date().toISOString() }).eq("codigo", codigo);
       addLog(`Quiero. Mano vale ${acc.si_quiero} pt${acc.si_quiero > 1 ? 's' : ''}.`);
       return;
     }
@@ -778,7 +820,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
       await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
     } else {
-      await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2 }).eq("codigo", codigo);
+      await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString() }).eq("codigo", codigo);
     }
   }
 
@@ -800,7 +842,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
         if (error) console.error("noQuiero envido gameOver:", error);
       } else {
-        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2 }).eq("codigo", codigo);
+        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString() }).eq("codigo", codigo);
         if (error) console.error("noQuiero envido:", error);
       }
       return;
@@ -822,6 +864,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
         turno: siguienteManoNQ,
         mano_id: siguienteManoNQ,
+        turno_inicio: new Date().toISOString(),
       }).eq("codigo", codigo);
       if (error) console.error("noQuiero truco:", error);
     }
@@ -865,11 +908,14 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
         turno: siguienteMano,
         mano_id: siguienteMano,
+        turno_inicio: new Date().toISOString(),
       }).eq("codigo", codigo);
       if (err2) console.error("irseAlMazo paso2:", err2);
       setResolviendoMano(false);
     }
   }
+
+  irseAlMazoRef.current = irseAlMazo;
 
   /* ─── revancha ─── */
   function solicitarRevancha() {
@@ -1153,7 +1199,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         jugadasJugador={[]}
         cartaSeleccionada={cartaSeleccionada}
         onClickCarta={(i) => jugarCarta(i)}
-        timerSegundos={miTurno && !partida?.accion_pendiente ? turnoTimer : null}
+        timerSegundos={miTurno && !partida?.accion_pendiente && !resolviendoMano ? displayTimer : null}
+        rivalTimerSegundos={!miTurno && !partida?.accion_pendiente && !resolviendoMano ? displayTimer : null}
         instruccion={partida?.accion_pendiente ? "⏳ Canto pendiente..." : miTurno ? "👆 Tu turno — tocá una carta" : "⏳ Turno del rival..."}
         onSalir={salirDePartida}
         log={null}
