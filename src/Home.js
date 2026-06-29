@@ -240,7 +240,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
 
   return (
     <div style={{
-      height: "100dvh", position: "relative", overflow: "hidden",
+      minHeight: "100dvh", position: "relative",
       background: "radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",
       display: "flex", flexDirection: "column", alignItems: "center",
       fontFamily: "'Lato', sans-serif",
