@@ -244,7 +244,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
       background: "radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",
       display: "flex", flexDirection: "column", alignItems: "center",
       fontFamily: "'Lato', sans-serif",
-      padding: "24px 16px 32px", boxSizing: "border-box",
+      padding: "clamp(12px, 3.1dvh, 24px) 16px clamp(16px, 4.1dvh, 32px)", boxSizing: "border-box",
     }}>
 
       {/* Botón hamburguesa */}
@@ -260,18 +260,18 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
       >☰</button>
 
       {/* Logo + Card agrupados */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, width: "100%" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "clamp(12px, 2.6dvh, 20px)", width: "100%" }}>
 
         {/* Logo */}
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 4, textTransform: "uppercase" }}>Bienvenido a</div>
-          <div style={{ fontSize: 44, color: "#fbbf24", fontWeight: 900, lineHeight: 1.1 }}>Truco Argentino</div>
+          <div style={{ fontSize: "clamp(32px, 5.6dvh, 44px)", color: "#fbbf24", fontWeight: 900, lineHeight: 1.1 }}>Truco Argentino</div>
         </div>
 
       {/* Card usuario */}
       <div style={{
         background: "rgba(0,0,0,0.5)", border: "1px solid #2d6a4f",
-        borderRadius: 20, padding: "24px 24px",
+        borderRadius: 20, padding: "clamp(14px, 3.1dvh, 24px) 24px",
         width: "100%", maxWidth: 340,
         display: "flex", flexDirection: "column",
         position: "relative",
@@ -284,21 +284,21 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
         }}>✏️</button>
 
         {/* Avatar + nombre */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginBottom: 18 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "clamp(6px, 1.3dvh, 10px)", marginBottom: "clamp(10px, 2.3dvh, 18px)" }}>
           <div style={{
-            width: 120, height: 120, borderRadius: "50%",
+            width: "clamp(84px, 15.4dvh, 120px)", height: "clamp(84px, 15.4dvh, 120px)", borderRadius: "50%",
             border: "3px solid #4ade80",
             boxShadow: "0 0 28px rgba(74,222,128,0.3)",
             overflow: "hidden",
           }}>
             <img src={avatarSrc(perfil.avatar)} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           </div>
-          <div style={{ fontSize: 18, color: "#fbbf24", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>{perfil.nombre}</div>
+          <div style={{ fontSize: "clamp(15px, 2.3dvh, 18px)", color: "#fbbf24", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>{perfil.nombre}</div>
         </div>
 
         {/* Saldo centrado */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 16 }}>
-          <span style={{ fontSize: 21, color: "#ffffff", fontWeight: 700, fontFamily: "'Lato', sans-serif", letterSpacing: 0.5 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: "clamp(8px, 2.1dvh, 16px)" }}>
+          <span style={{ fontSize: "clamp(17px, 2.7dvh, 21px)", color: "#ffffff", fontWeight: 700, fontFamily: "'Lato', sans-serif", letterSpacing: 0.5 }}>
             {saldoVisible
               ? `$ ${(perfil.saldo || 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}`
               : "$ ••••••"}
@@ -367,10 +367,10 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
       </div>{/* fin grupo logo+card */}
 
       {/* Opciones principales */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 340, marginTop: 24 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "clamp(8px, 1.5dvh, 12px)", width: "100%", maxWidth: 340, marginTop: "clamp(12px, 3.1dvh, 24px)" }}>
         <button onClick={() => { reproducirSonidoClick(); onJugar(); }} style={{
           background: "linear-gradient(135deg,#1a472a,#2d6a4f)",
-          border: "1px solid #4ade80", borderRadius: 16, padding: "20px 24px",
+          border: "1px solid #4ade80", borderRadius: 16, padding: "clamp(12px, 2.6dvh, 20px) 24px",
           cursor: "pointer", textAlign: "left", width: "100%",
           display: "flex", alignItems: "center", justifyContent: "space-between",
         }}
@@ -378,7 +378,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
           onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
         >
           <div>
-            <div style={{ fontSize: 21, color: "#4ade80", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>Jugar ahora</div>
+            <div style={{ fontSize: "clamp(17px, 2.7dvh, 21px)", color: "#4ade80", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>Jugar ahora</div>
             <div style={{ fontSize: 14, color: "#ffffff", marginTop: 2 }}>Con jugadores en línea.</div>
           </div>
           <div style={{ width: 36, height: 36, border: "2px solid #4ade80", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -388,7 +388,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
 
         <button onClick={() => { reproducirSonidoClick(); setSalaCrearApuesta(""); setSalaUnirseCodigo(""); setSalaUnirseInfo(null); setSalaError(""); setMostrarSalaPrivada(true); }} style={{
           background: "rgba(0,0,0,0.4)",
-          border: "1px solid #a78bfa", borderRadius: 16, padding: "20px 24px",
+          border: "1px solid #a78bfa", borderRadius: 16, padding: "clamp(12px, 2.6dvh, 20px) 24px",
           cursor: "pointer", textAlign: "left", width: "100%",
           display: "flex", alignItems: "center", justifyContent: "space-between",
         }}
@@ -396,7 +396,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
           onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
         >
           <div>
-            <div style={{ fontSize: 21, color: "#a78bfa", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>Sala privada</div>
+            <div style={{ fontSize: "clamp(17px, 2.7dvh, 21px)", color: "#a78bfa", fontWeight: 900, fontFamily: "'Lato', sans-serif" }}>Sala privada</div>
             <div style={{ fontSize: 14, color: "#ffffff", marginTop: 2 }}>Conectá con tus amigos.</div>
           </div>
           <div style={{ width: 36, height: 36, border: "2px solid #a78bfa", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
