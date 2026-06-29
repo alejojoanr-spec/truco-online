@@ -70,7 +70,7 @@ export function MesaJuego({
       </div>
 
       {/* Mesa — 3 slots fijos */}
-      <div style={{ background:"rgba(0,0,0,0.25)", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth:420, height:225, flexShrink:0 }}>
+      <div style={{ background:"rgba(0,0,0,0.25)", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth:420, flexGrow:1, minHeight:228, maxHeight:340 }}>
         {rondas.map((r, ri) => (
           <div key={ri} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
             {r.rival ? <Carta carta={r.rival} escala={MESA_E} /> : <Slot />}
