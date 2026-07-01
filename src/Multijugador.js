@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { resolverGanadorMano } from "./trucoReglas";
 import { supabase } from "./supabase";
 import { avatarSrc } from "./avatares";
 import { leerConfig } from "./Configuracion";
@@ -705,26 +706,19 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         : `Ronda ${nRondas}: empate`
       );
 
-      // Tally all rounds in this hand
-      const g = { [partida.jugador1_id]: 0, [partida.jugador2_id]: 0 };
+      // Build bazas array for resolverGanadorMano (A=jugador1, B=jugador2)
+      const j1 = partida.jugador1_id, j2 = partida.jugador2_id;
+      const bazas = [];
       for (let i = 0; i < nuevaMesa.length; i += 2) {
         const a = nuevaMesa[i], b = nuevaMesa[i + 1];
         const va = valorTruco(a.carta), vb = valorTruco(b.carta);
-        if (va > vb) g[a.jugador] = (g[a.jugador] || 0) + 1;
-        else if (vb > va) g[b.jugador] = (g[b.jugador] || 0) + 1;
+        if (va > vb) bazas.push(a.jugador === j1 ? "A" : "B");
+        else if (vb > va) bazas.push(b.jugador === j1 ? "A" : "B");
+        else bazas.push("parda");
       }
-      const g1 = g[partida.jugador1_id] || 0;
-      const g2 = g[partida.jugador2_id] || 0;
-
-      let ganadorMano = null;
-      if (g1 >= 2) ganadorMano = partida.jugador1_id;
-      else if (g2 >= 2) ganadorMano = partida.jugador2_id;
-      else if (nRondas === 3) {
-        // After 3 rounds: most wins; tie goes to current mano player
-        const manoId = partida.mano_id || partida.jugador1_id;
-        const rivalManoId = manoId === partida.jugador1_id ? partida.jugador2_id : partida.jugador1_id;
-        ganadorMano = g[rivalManoId] > g[manoId] ? rivalManoId : manoId;
-      }
+      const manoEs = (partida.mano_id || j1) === j1 ? "A" : "B";
+      const res = resolverGanadorMano(bazas, manoEs);
+      const ganadorMano = res === "A" ? j1 : res === "B" ? j2 : null;
 
       if (ganadorMano) {
         const puntosMano = partida.puntos_mano || 1;
