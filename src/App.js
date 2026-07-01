@@ -185,6 +185,8 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [eligiendo, setEligiendo] = useState(true);
   const [timerSegundos, setTimerSegundos] = useState(15);
   const timerRef = useRef(null);
+  const esperandoRespuestaEnvidoRef = useRef(false);
+  const responderEnvidoRef = useRef(null);
   const rivalFueAlMazoRef = useRef(false);
   const pendingJugarRivalRef = useRef(null);
   const puntosJugadorRef = useRef(0);
@@ -192,6 +194,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [envidoCantadoPor, setEnvidoCantadoPor] = useState(null);
   const [envidoMonto, setEnvidoMonto] = useState({ quiero: 0, noquiero: 0 });
   const [envidoGlobos, setEnvidoGlobos] = useState(null);
+  const esperandoRespuestaEnvido = envidoCantadoPor === "rival" && !!estadoEnvido && !["quiero","noquiero"].includes(estadoEnvido);
   const [log, setLog] = useState([]);
 
   function guardarAvatar(av) {
@@ -225,12 +228,16 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       }, 1000);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [turno, fasePartida]);
+  }, [turno, fasePartida, esperandoRespuestaEnvido]);
 
   useEffect(() => {
     if (timerSegundos <= 0 && turno === "jugador" && fasePartida === "jugando") {
       if (timerRef.current) clearInterval(timerRef.current);
-      irseAlMazo();
+      if (esperandoRespuestaEnvidoRef.current) {
+        responderEnvidoRef.current("noquiero");
+      } else {
+        irseAlMazo();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timerSegundos, turno, fasePartida]);
@@ -651,6 +658,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   }
 
   function irseAlMazo() {
+    if (esperandoRespuestaEnvido) return;
     reproducirVoz('me_voy_al_mazo');
     addLog("Te fuiste al mazo.");
     setTimeout(()=>resolverMano("rival"),500);
@@ -664,10 +672,12 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const trucoDisponible = !estadoTruco && turno === "jugador" && fasePartida === "jugando" && !esManoDeLasAceites;
   const esperandoRespuestaRetruco = estadoTruco === "retruco" && trucoCantadoPor === "rival";
   const esperandoRespuestaTruco = estadoTruco === "truco" && trucoCantadoPor === "rival";
-  const esperandoRespuestaEnvido = envidoCantadoPor === "rival" && !!estadoEnvido && !["quiero","noquiero"].includes(estadoEnvido);
   const puedeJugar = turno === "jugador" && fasePartida === "jugando" && !esperandoRespuestaRetruco && !esperandoRespuestaTruco && !esperandoRespuestaEnvido && !(estadoTruco && !["quiero","noquiero"].includes(estadoTruco) && trucoCantadoPor === "rival");
   const winRate = perfil && perfil.partidas_jugadas > 0 ? Math.round((perfil.partidas_ganadas/perfil.partidas_jugadas)*100) : 0;
   const nombreJugador = perfil?.nombre || user.email?.split("@")[0] || "Vos";
+
+  esperandoRespuestaEnvidoRef.current = esperandoRespuestaEnvido;
+  responderEnvidoRef.current = responderEnvido;
 
   if (eligiendo) {
     return (
@@ -755,7 +765,9 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
             <button onClick={()=>cantarEnvido("faltaenvido")} style={btnStyle("#065f46","#34d399")}>Falta Envido</button>
           </>}
           {rivalMsg && <div style={{ padding:"6px 14px",borderRadius:8,background:"rgba(248,113,113,0.15)",border:"1px solid rgba(248,113,113,0.5)",color:"#f87171",fontSize:12,fontWeight:700,fontFamily:"'Lato',sans-serif" }}>{rivalMsg}</div>}
-          <button onClick={irseAlMazo} style={btnStyle("#7f1d1d","#f87171")}>Ir al mazo</button>
+          {!esperandoRespuestaEnvido && (
+            <button onClick={irseAlMazo} style={btnStyle("#7f1d1d","#f87171")}>Ir al mazo</button>
+          )}
         </>}
       />
 
