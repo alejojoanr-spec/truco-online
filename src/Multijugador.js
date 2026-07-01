@@ -762,6 +762,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           setResolviendoMano(false);
           return;
         }
+      } else {
+        updateData.turno = ganadorRonda !== null ? ganadorRonda : cardA.jugador;
       }
     }
 
