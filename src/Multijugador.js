@@ -194,6 +194,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const displayTimerIntervalRef = useRef(null);
   const timerAutoFiredRef = useRef(null);
   const irseAlMazoRef = useRef(null);
+  const noQuieroRef = useRef(null);
   const resolviendoManoRef = useRef(false);
 
   useEffect(() => { partidaRef.current = partida; }, [partida]);
@@ -479,7 +480,9 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   // Timer sincronizado: ambos clientes calculan el tiempo restante desde turno_inicio (Supabase)
   useEffect(() => {
     if (displayTimerIntervalRef.current) clearInterval(displayTimerIntervalRef.current);
-    const activo = !partida?.accion_pendiente && !resolviendoMano && partida?.turno_inicio;
+    const acc = partida?.accion_pendiente;
+    const cantoPendienteParaMi = acc && acc.cantado_por !== user.id;
+    const activo = (cantoPendienteParaMi || (!acc && partida?.turno_inicio)) && !resolviendoMano;
     if (!activo) { setDisplayTimer(null); return; }
     function tick() {
       const p = partidaRef.current;
@@ -487,11 +490,20 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       const elapsed = (Date.now() - new Date(p.turno_inicio).getTime()) / 1000;
       const remaining = Math.max(0, 15 - Math.floor(elapsed));
       setDisplayTimer(remaining);
-      if (remaining <= 0 && p.turno === user.id) {
-        if (timerAutoFiredRef.current !== p.turno_inicio) {
-          timerAutoFiredRef.current = p.turno_inicio;
-          clearInterval(displayTimerIntervalRef.current);
-          irseAlMazoRef.current?.();
+      if (remaining <= 0) {
+        const pAcc = p.accion_pendiente;
+        if (pAcc && pAcc.cantado_por !== user.id) {
+          if (timerAutoFiredRef.current !== p.turno_inicio) {
+            timerAutoFiredRef.current = p.turno_inicio;
+            clearInterval(displayTimerIntervalRef.current);
+            noQuieroRef.current?.();
+          }
+        } else if (!pAcc && p.turno === user.id) {
+          if (timerAutoFiredRef.current !== p.turno_inicio) {
+            timerAutoFiredRef.current = p.turno_inicio;
+            clearInterval(displayTimerIntervalRef.current);
+            irseAlMazoRef.current?.();
+          }
         }
       }
     }
@@ -499,7 +511,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     displayTimerIntervalRef.current = setInterval(tick, 1000);
     return () => clearInterval(displayTimerIntervalRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partida?.turno, partida?.turno_inicio, !!partida?.accion_pendiente, resolviendoMano]);
+  }, [partida?.turno, partida?.turno_inicio, partida?.accion_pendiente?.cantado_por, resolviendoMano]);
 
   // Anti-injusticia: al volver a primer plano, re-verificar contra Supabase antes de auto-actuar
   useEffect(() => {
@@ -792,6 +804,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     await supabase.from("partidas").update({
       accion_pendiente: { tipo: 'truco', nivel: 1, cantado_por: user.id, si_quiero: 2, si_no: 1 },
       truco_jugado: true,
+      turno_inicio: new Date().toISOString(),
     }).eq("codigo", codigo);
     addLog("¡Truco!");
   }
@@ -804,6 +817,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     reproducirVoz(nuevoNivel === 2 ? 'retruco' : 'vale_cuatro');
     await supabase.from("partidas").update({
       accion_pendiente: { tipo: 'truco', nivel: nuevoNivel, cantado_por: user.id, si_quiero: nuevoNivel + 1, si_no: nuevoNivel },
+      turno_inicio: new Date().toISOString(),
     }).eq("codigo", codigo);
     addLog(`¡${labels[nuevoNivel]}!`);
   }
@@ -821,6 +835,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         cantado_por: user.id, si_quiero: VALS[subtipo], si_no: subtipo === 'falta_envido' ? 2 : 1,
       },
       envido_jugado: true,
+      turno_inicio: new Date().toISOString(),
     }).eq("codigo", codigo);
     addLog(`¡${LABEL_ENV[subtipo]}!`);
   }
@@ -842,6 +857,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         si_quiero: subtipo === 'falta_envido' ? falta : acc.si_quiero + VALS[subtipo],
         si_no: acc.si_quiero,
       },
+      turno_inicio: new Date().toISOString(),
     }).eq("codigo", codigo);
     addLog(`¡${nuevaCadena.map(s => LABEL_ENV[s]).join(' + ')}!`);
   }
@@ -955,7 +971,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function irseAlMazo() {
-    if (!partida || resolviendoMano) return;
+    if (!partida || resolviendoMano || partida.accion_pendiente) return;
     const puntosObj = partida.puntos || 15;
     const rivalId = user.id === partida.jugador1_id ? partida.jugador2_id : partida.jugador1_id;
     const rivalEsJ1 = rivalId === partida.jugador1_id;
@@ -1000,6 +1016,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   irseAlMazoRef.current = irseAlMazo;
+  noQuieroRef.current = noQuiero;
 
   /* ─── revancha ─── */
   function solicitarRevancha() {
@@ -1382,9 +1399,6 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
                   )}
                   <button onClick={noQuiero} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(248,113,113,0.08)",border:"1px solid #f87171",color:"#f87171",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
                     ❌ No quiero
-                  </button>
-                  <button onClick={irseAlMazo} style={{ padding:"9px",borderRadius:10,cursor:"pointer",background:"rgba(127,29,29,0.12)",border:"1px solid rgba(248,113,113,0.35)",color:"rgba(248,113,113,0.65)",fontFamily:"'Lato',sans-serif",fontSize:12,fontWeight:700 }}>
-                    🏳 Me voy al mazo
                   </button>
                 </div>
               </div>
