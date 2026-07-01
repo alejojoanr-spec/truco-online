@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { resolverGanadorMano } from "./trucoReglas";
 import { AVATARES, avatarSrc } from "./avatares";
 import { btnStyle } from "./GameComponents";
 import { MesaJuego } from "./MesaJuego";
@@ -356,9 +357,9 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     const nuevosGanadores = [...ganadoresRondas, ganador];
     setGanadoresRondas(nuevosGanadores);
     setTimeout(() => {
-      const ganadorMano = determinarGanadorMano(nuevosGanadores);
-      if (ganadorMano || rondaActual+1 > 3 || jugadasJ.length >= 3) {
-        resolverMano(ganadorMano || "empate");
+      const ganadorMano = resolverGanadorManoBridge(nuevosGanadores);
+      if (ganadorMano !== null) {
+        resolverMano(ganadorMano);
       } else {
         setRondaActual(r => r + 1);
         // Quién abre la próxima ronda:
@@ -390,13 +391,12 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     }, 800);
   }
 
-  function determinarGanadorMano(ganadores) {
-    const j = ganadores.filter(g=>g==="jugador").length;
-    const r = ganadores.filter(g=>g==="rival").length;
-    if (j>=2) return "jugador";
-    if (r>=2) return "rival";
-    // Después de 3 rondas: quien ganó más rondas; empate total → jugador (es siempre el mano)
-    if (ganadores.length===3) return j > r ? "jugador" : r > j ? "rival" : "jugador";
+  function resolverGanadorManoBridge(ganadores) {
+    const mapa = { jugador: "A", rival: "B", empate: "parda" };
+    const bazas = ganadores.map(g => mapa[g]);
+    const resultado = resolverGanadorMano(bazas, "A");
+    if (resultado === "A") return "jugador";
+    if (resultado === "B") return "rival";
     return null;
   }
 
