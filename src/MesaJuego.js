@@ -45,7 +45,7 @@ export function MesaJuego({
   const esMobile = useEsMobile();
 
   return (
-    <div style={{ height:"100dvh", background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)", fontFamily:"'Lato',sans-serif", display:"flex", flexDirection:"column", alignItems:"center", padding:"8px 8px 4px", overflow:"hidden", boxSizing:"border-box", gap:4 }}>
+    <div style={{ height:"100dvh", background:"#101010", fontFamily:"'Lato',sans-serif", display:"flex", flexDirection:"column", alignItems:"center", padding:"8px 8px 4px", overflow:"hidden", boxSizing:"border-box", gap:4 }}>
 
       {/* Marcador */}
       <div style={{ background:"rgba(0,0,0,0.5)", border:"1px solid #2d6a4f", borderRadius:12, padding:"8px 14px", display:"flex", gap:12, alignItems:"flex-start", flexShrink:0 }}>

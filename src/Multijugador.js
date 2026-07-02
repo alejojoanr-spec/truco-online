@@ -1168,7 +1168,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const mesaActual = partida?.mesa ? JSON.parse(partida.mesa) : [];
 
   if (resultadoPartida) return (
-    <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Lato',sans-serif",padding:24 }}>
+    <div style={{ minHeight:"100vh",background:"#101010",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Lato',sans-serif",padding:24 }}>
       {resultadoPartida.ganaste ? (
         /* ── Pantalla de victoria ── */
         <div style={{ textAlign:"center",maxWidth:320,width:"100%" }}>
