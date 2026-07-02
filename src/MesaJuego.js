@@ -66,7 +66,7 @@ export function MesaJuego({
         </div>
       </div>
 
-      <button onClick={onSalir} style={{ position:"fixed", top:14, right:14, zIndex:30, width:36, height:36, borderRadius:10, border:"1px solid #374151", background:"rgba(0,0,0,0.6)", color:"#9ca3af", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>✕</button>
+      <button onClick={onSalir} style={{ position:"fixed", top:14, right:14, zIndex:30, width:36, height:36, borderRadius:10, border:"none", background:"rgba(0,0,0,0.6)", color:"#9ca3af", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>✕</button>
 
       {/* Mano del rival + timer cuando es su turno */}
       <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, flexShrink:0 }}>
@@ -94,7 +94,7 @@ export function MesaJuego({
 
       {/* Mano del jugador */}
       <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0 }}>
-        <div style={{ fontSize:10, color:"#4ade80", letterSpacing:2, textTransform:"uppercase", marginBottom:8 }}>
+        <div style={{ fontSize:10, color:"#ffffff", letterSpacing:2, textTransform:"uppercase", marginBottom:8 }}>
           {instruccion}
         </div>
         <div style={{ display:"inline-flex", gap:10 }}>
