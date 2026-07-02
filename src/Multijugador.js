@@ -197,6 +197,10 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const irseAlMazoRef = useRef(null);
   const noQuieroRef = useRef(null);
   const resolviendoManoRef = useRef(false);
+  const refetchPartidaRef = useRef(null);
+  const reconectarRef = useRef(null);
+  const reconectandoRef = useRef(false);
+  const reconexionTimerRef = useRef(null);
 
   useEffect(() => { partidaRef.current = partida; }, [partida]);
 
@@ -418,61 +422,75 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       }
     }
 
-    const channel = supabase.channel(`partida-${codigo}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "partidas", filter: `codigo=eq.${codigo}` },
-        (payload) => { setPartida(payload.new); procesarCambio(payload.new); }
-      )
-      .on("broadcast", { event: "revancha_request" }, () => {
-        setRevanchaEstado("rival_pide");
-      })
-      .on("broadcast", { event: "revancha_reject" }, () => {
-        if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current);
-        setRevanchaEstado("rechazada");
-        setTimeout(() => setRevanchaEstado(null), 3000);
-      })
-      .on("broadcast", { event: "revancha_accept" }, async ({ payload }) => {
-        if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current);
-        const { nuevoCodigo } = payload;
-        setRevanchaEstado("procesando");
+    async function refetchPartida() {
+      const { data } = await supabase.from("partidas").select("*").eq("codigo", codigo).single();
+      if (data) { setPartida(data); procesarCambio(data); }
+    }
+    refetchPartidaRef.current = refetchPartida;
 
-        const apuestaR = partidaRef.current?.apuesta || 0;
-        if (apuestaR > 0) {
-          const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-          const saldoActual = fresh?.saldo || 0;
-          if (saldoActual < apuestaR) {
-            setRevanchaEstado("cancelada");
-            setTimeout(() => setRevanchaEstado(null), 3000);
-            return;
+    function crearCanal() {
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
+      const ch = supabase.channel(`partida-${codigo}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "partidas", filter: `codigo=eq.${codigo}` },
+          (payload) => { setPartida(payload.new); procesarCambio(payload.new); }
+        )
+        .on("broadcast", { event: "revancha_request" }, () => {
+          setRevanchaEstado("rival_pide");
+        })
+        .on("broadcast", { event: "revancha_reject" }, () => {
+          if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current);
+          setRevanchaEstado("rechazada");
+          setTimeout(() => setRevanchaEstado(null), 3000);
+        })
+        .on("broadcast", { event: "revancha_accept" }, async ({ payload }) => {
+          if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current);
+          const { nuevoCodigo } = payload;
+          setRevanchaEstado("procesando");
+
+          const apuestaR = partidaRef.current?.apuesta || 0;
+          if (apuestaR > 0) {
+            const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+            const saldoActual = fresh?.saldo || 0;
+            if (saldoActual < apuestaR) {
+              setRevanchaEstado("cancelada");
+              setTimeout(() => setRevanchaEstado(null), 3000);
+              return;
+            }
+            const saldoNuevo = saldoActual - apuestaR;
+            await supabase.from("perfiles").update({ saldo: saldoNuevo }).eq("usuario_id", user.id);
+            await supabase.from("transacciones").insert({
+              usuario_id: user.id, tipo: "apuesta", monto: apuestaR, estado: "aprobado",
+              nota: `Apuesta revancha ${nuevoCodigo}`, ejecutado_por: "sistema",
+              saldo_anterior: saldoActual, saldo_nuevo: saldoNuevo,
+            });
           }
-          const saldoNuevo = saldoActual - apuestaR;
-          await supabase.from("perfiles").update({ saldo: saldoNuevo }).eq("usuario_id", user.id);
-          await supabase.from("transacciones").insert({
-            usuario_id: user.id, tipo: "apuesta", monto: apuestaR, estado: "aprobado",
-            nota: `Apuesta revancha ${nuevoCodigo}`, ejecutado_por: "sistema",
-            saldo_anterior: saldoActual, saldo_nuevo: saldoNuevo,
-          });
-        }
 
-        const { data: nuevaPartida } = await supabase.from("partidas").select("*").eq("codigo", nuevoCodigo).single();
-        if (!nuevaPartida) { setRevanchaEstado("cancelada"); setTimeout(() => setRevanchaEstado(null), 3000); return; }
+          const { data: nuevaPartida } = await supabase.from("partidas").select("*").eq("codigo", nuevoCodigo).single();
+          if (!nuevaPartida) { setRevanchaEstado("cancelada"); setTimeout(() => setRevanchaEstado(null), 3000); return; }
 
-        // Solicitante entra como jugador2 (aceptante creó como jugador1)
-        pagoProcesadoRef.current = false;
-        accionLogueadaRef.current = null;
-        setResultadoPartida(null);
-        setRevanchaEstado(null);
-        setCartaSeleccionada(null);
-        setPartida(nuevaPartida);
-        setSoyJugador1(false);
-        setMiMano(JSON.parse(nuevaPartida.mano_jugador2));
-        setManoRival(JSON.parse(nuevaPartida.mano_jugador1));
-        setPantalla("jugando");
-        setCodigo(nuevoCodigo);
-      })
-      .subscribe();
+          // Solicitante entra como jugador2 (aceptante creó como jugador1)
+          pagoProcesadoRef.current = false;
+          accionLogueadaRef.current = null;
+          setResultadoPartida(null);
+          setRevanchaEstado(null);
+          setCartaSeleccionada(null);
+          setPartida(nuevaPartida);
+          setSoyJugador1(false);
+          setMiMano(JSON.parse(nuevaPartida.mano_jugador2));
+          setManoRival(JSON.parse(nuevaPartida.mano_jugador1));
+          setPantalla("jugando");
+          setCodigo(nuevoCodigo);
+        })
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED")
+            console.warn("[Realtime] Canal caído:", status);
+        });
+      channelRef.current = ch;
+    }
+    reconectarRef.current = async () => { crearCanal(); await refetchPartida(); };
 
-    channelRef.current = channel;
-    return () => { supabase.removeChannel(channel); channelRef.current = null; };
+    crearCanal();
+    return () => { if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null; } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codigo, soyJugador1]);
 
@@ -538,6 +556,30 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     return () => document.removeEventListener("visibilitychange", onVisible);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codigo, user.id]);
+
+  // Reconexión Realtime: al volver a primer plano o recuperar red, refetch + re-subscribe
+  useEffect(() => {
+    if (!codigo) return;
+    async function ejecutarReconexion() {
+      if (reconectandoRef.current) return;
+      reconectandoRef.current = true;
+      try { await reconectarRef.current?.(); }
+      finally { reconectandoRef.current = false; }
+    }
+    function onVuelveAlFrente() {
+      if (reconexionTimerRef.current) clearTimeout(reconexionTimerRef.current);
+      reconexionTimerRef.current = setTimeout(ejecutarReconexion, 500);
+    }
+    function onVisible() { if (!document.hidden) onVuelveAlFrente(); }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onVuelveAlFrente);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onVuelveAlFrente);
+      if (reconexionTimerRef.current) clearTimeout(reconexionTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [codigo]);
 
   async function crearSala() {
     // Eliminar salas propias previas en espera (evita acumulación y reemplaza la anterior)
@@ -796,6 +838,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   async function cantarTruco() {
     if (!partida || partida.accion_pendiente || partida.truco_jugado) return;
+    if (partida.turno !== user.id) return;
     reproducirVoz('truco');
     await supabase.from("partidas").update({
       accion_pendiente: { tipo: 'truco', nivel: 1, cantado_por: user.id, si_quiero: 2, si_no: 1 },
@@ -820,6 +863,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   async function cantarEnvido(subtipo) {
     if (!partida || partida.accion_pendiente || partida.envido_jugado) return;
+    if (partida.turno !== user.id) return;
     if (JSON.parse(partida.mesa || "[]").length >= 2) return;
     const puntosObj = partida.puntos || 15;
     const falta = Math.max(1, puntosObj - Math.max(partida.puntos1 || 0, partida.puntos2 || 0));
@@ -1317,14 +1361,14 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         botonesSlot={<>
           {!partida?.accion_pendiente && (
             <>
-              {mesaActual.length < 2 && !partida?.envido_jugado && (
+              {miTurno && mesaActual.length < 2 && !partida?.envido_jugado && (
                 <>
                   <button onClick={()=>cantarEnvido("envido")} style={btnStyle("#1d4ed8","#60a5fa")}>Envido</button>
                   <button onClick={()=>cantarEnvido("real_envido")} style={btnStyle("#5b21b6","#a78bfa")}>Real Envido</button>
                   <button onClick={()=>cantarEnvido("falta_envido")} style={btnStyle("#065f46","#34d399")}>Falta Envido</button>
                 </>
               )}
-              {!partida?.truco_jugado && (
+              {miTurno && !partida?.truco_jugado && (
                 <button onClick={cantarTruco} style={btnStyle("#b45309","#fbbf24")}>Truco</button>
               )}
             </>
