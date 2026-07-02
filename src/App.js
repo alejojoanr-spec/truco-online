@@ -330,7 +330,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         mostrarRivalMsg("🏳️ El rival se fue al mazo");
         addLog("Rival: Me voy al mazo.");
         rivalFueAlMazoRef.current = true;
-        setTimeout(() => resolverMano("jugador"), 500);
+        setTimeout(() => resolverMano("jugador", puntoEnvidoPorMazo()), 500);
         return;
       }
     }
@@ -400,7 +400,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     return null;
   }
 
-  function resolverMano(ganador) {
+  function resolverMano(ganador, puntosEnvidoExtra = 0) {
     const ptsTruco = estadoTruco === "quiero" ? ptsTrucoApostados : 1;
     // Usar refs para leer los puntos actuales: evita que un closure stale
     // (por ej. responderEnvido → pending jugarRival) produzca un puntosJugador viejo
@@ -409,7 +409,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     const ptsR = puntosRivalRef.current;
     let juegoTerminado = false;
     if (ganador === "jugador") {
-      const nuevos = ptsJ + ptsTruco;
+      const nuevos = ptsJ + ptsTruco + puntosEnvidoExtra;
       addLog(`🏆 Ganaste la mano (+${ptsTruco} pts)`);
       if (nuevos >= limitePuntos) {
         juegoTerminado = true;
@@ -423,7 +423,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       }
       setPuntosJugador(nuevos);
     } else if (ganador === "rival") {
-      const nuevos = ptsR + ptsTruco;
+      const nuevos = ptsR + ptsTruco + puntosEnvidoExtra;
       addLog(`💀 El rival ganó la mano (+${ptsTruco} pts)`);
       if (nuevos >= limitePuntos) {
         juegoTerminado = true;
@@ -657,11 +657,13 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     }, 1000);
   }
 
+  function puntoEnvidoPorMazo() { return envidoDisponible ? 1 : 0; }
+
   function irseAlMazo() {
     if (esperandoRespuestaEnvido) return;
     reproducirVoz('me_voy_al_mazo');
     addLog("Te fuiste al mazo.");
-    setTimeout(()=>resolverMano("rival"),500);
+    setTimeout(()=>resolverMano("rival", puntoEnvidoPorMazo()),500);
   }
 
   puntosJugadorRef.current = puntosJugador;
