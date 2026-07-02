@@ -1,8 +1,20 @@
+import { useState, useEffect } from "react";
 import { Carta, PalitosPuntaje } from "./GameComponents";
 
 const MESA_E = 0.91;
 const MW = 70 * MESA_E;
 const MH = 110 * MESA_E;
+
+function useEsMobile(bp = 480) {
+  const [m, setM] = useState(() => typeof window !== "undefined" && window.matchMedia(`(max-width:${bp}px)`).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width:${bp}px)`);
+    const h = e => setM(e.matches);
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
+  }, [bp]);
+  return m;
+}
 
 function Slot() {
   return (
@@ -30,6 +42,7 @@ export function MesaJuego({
   const rivalCards = typeof rivalHand === "number"
     ? Array(rivalHand).fill({ oculta: true })
     : rivalHand;
+  const esMobile = useEsMobile();
 
   return (
     <div style={{ height:"100dvh", background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)", fontFamily:"'Lato',sans-serif", display:"flex", flexDirection:"column", alignItems:"center", padding:"8px 8px 4px", overflow:"hidden", boxSizing:"border-box", gap:4 }}>
@@ -70,7 +83,7 @@ export function MesaJuego({
       </div>
 
       {/* Mesa — 3 slots fijos */}
-      <div style={{ background:"rgba(0,0,0,0.25)", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth:420, flexGrow:1, minHeight:228, maxHeight:340 }}>
+      <div style={{ background:"rgba(0,0,0,0.25)", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth: esMobile ? 300 : 420, margin:"0 auto", flexGrow:1, minHeight:228, maxHeight:340 }}>
         {rondas.map((r, ri) => (
           <div key={ri} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
             {r.rival ? <Carta carta={r.rival} escala={MESA_E} /> : <Slot />}
