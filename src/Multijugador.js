@@ -680,12 +680,13 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       if (saldoErr) { setError("Error al procesar el saldo."); return; }
       saldoAntesUne = saldoActual;
     }
+    const turnoInicio = new Date().toISOString();
     await supabase.from("partidas").update({
       jugador2_id: user.id,
       jugador2_nombre: perfil?.nombre || "",
       jugador2_avatar: avatarSrc(perfil?.avatar),
       estado: "jugando",
-      turno_inicio: new Date().toISOString(),
+      turno_inicio: turnoInicio,
     }).eq("codigo", cod);
     if (montoSala > 0) {
       await supabase.from("transacciones").insert({
@@ -703,7 +704,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     setSoyJugador1(false);
     setMiMano(JSON.parse(data.mano_jugador2));
     setManoRival(JSON.parse(data.mano_jugador1));
-    setPartida({ ...data, jugador2_id: user.id, estado: "jugando" });
+    setPartida({ ...data, jugador2_id: user.id, estado: "jugando", turno_inicio: turnoInicio });
     setPantalla("jugando");
     addLog("¡Partida iniciada!");
   }
@@ -1131,6 +1132,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       apuesta: apuestaR,
       puntos: p?.puntos || 15,
       es_torneo: p?.es_torneo || false,
+      turno_inicio: new Date().toISOString(),
     });
 
     if (errInsert) { setRevanchaEstado(null); return; }
@@ -1139,12 +1141,16 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       channelRef.current.send({ type: "broadcast", event: "revancha_accept", payload: { nuevoCodigo: nuevoCod } });
     }
 
+    // Cargar la partida nueva en estado local (evita ver el marcador de la partida anterior)
+    const { data: nuevaPartida } = await supabase.from("partidas").select("*").eq("codigo", nuevoCod).single();
+
     // Aceptante entra como jugador1
     pagoProcesadoRef.current = false;
     accionLogueadaRef.current = null;
     setResultadoPartida(null);
     setRevanchaEstado(null);
     setCartaSeleccionada(null);
+    if (nuevaPartida) setPartida(nuevaPartida);
     setSoyJugador1(true);
     setMiMano(mano1);
     setManoRival(mano2);
