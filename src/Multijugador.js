@@ -971,10 +971,13 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const puntosObj = partida.puntos || 15;
     const rivalId = user.id === partida.jugador1_id ? partida.jugador2_id : partida.jugador1_id;
     const rivalEsJ1 = rivalId === partida.jugador1_id;
-    const ptsParaRival = partida.puntos_mano || 1;
+    const mesaLen = JSON.parse(partida.mesa || "[]").length;
+    const envidoVivo = !partida.envido_jugado && mesaLen < 2;
+    const puntoEnvido = envidoVivo ? 1 : 0;
+    const ptsParaRival = (partida.puntos_mano || 1) + puntoEnvido;
     const np1 = (partida.puntos1 || 0) + (rivalEsJ1 ? ptsParaRival : 0);
     const np2 = (partida.puntos2 || 0) + (!rivalEsJ1 ? ptsParaRival : 0);
-    addLog(`Te fuiste al mazo. Rival suma ${ptsParaRival} pt${ptsParaRival > 1 ? 's' : ''}.`);
+    addLog(`Te fuiste al mazo. Rival suma ${ptsParaRival} pt${ptsParaRival > 1 ? 's' : ''}${puntoEnvido ? ' (incl. envido)' : ''}.`);
     reproducirVoz('me_voy_al_mazo');
     const gameOver = np1 >= puntosObj || np2 >= puntosObj;
     const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
