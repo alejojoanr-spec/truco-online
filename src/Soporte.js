@@ -77,7 +77,7 @@ export default function BotonSoporte({ perfil }) {
       .eq("usuario_id", perfil.usuario_id)
       .order("created_at", { ascending: false })
       .limit(1);
-    const c = data?.[0] || null;
+    const c = (data?.[0] && data[0].estado !== "resuelto") ? data[0] : null;
     setCaso(c);
     if (c) {
       const { data: msgs } = await supabase
