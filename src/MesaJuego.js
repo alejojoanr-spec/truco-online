@@ -18,7 +18,7 @@ function useEsMobile(bp = 480) {
 
 function Slot() {
   return (
-    <div style={{ width:MW, height:MH, borderRadius:8*MESA_E, border:"1px solid rgba(107,114,128,0.22)", background:"rgba(0,0,0,0.12)", flexShrink:0 }} />
+    <div style={{ width:MW, height:MH, flexShrink:0 }} />
   );
 }
 
