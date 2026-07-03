@@ -45,7 +45,7 @@ export function MesaJuego({
   const esMobile = useEsMobile();
 
   return (
-    <div style={{ height:"100dvh", background:"#101010", fontFamily:"'Lato',sans-serif", display:"flex", flexDirection:"column", alignItems:"center", padding:"8px 8px 4px", overflow:"hidden", boxSizing:"border-box", gap:4 }}>
+    <div style={{ height:"100dvh", background:"#101010", fontFamily:"'Lato',sans-serif", display:"flex", flexDirection:"column", alignItems:"center", padding:"8px 8px 4px", overflow:"hidden", boxSizing:"border-box", gap:2 }}>
 
       {/* X de salir */}
       <div style={{ width:"100%", maxWidth:640, display:"flex", justifyContent:"flex-end", flexShrink:0, margin:"0 auto" }}>
@@ -81,7 +81,7 @@ export function MesaJuego({
         )}
         <div style={{ display:"flex", gap:8, justifyContent:"center" }}>
           {rivalCards.map((c, i) => (
-            <Carta key={i} carta={c.carta} escala={0.82} oculta={c.oculta !== false} jugada={c.jugada} />
+            <Carta key={i} carta={c.carta} escala={0.57} oculta={c.oculta !== false} jugada={c.jugada} />
           ))}
         </div>
       </div>
