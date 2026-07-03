@@ -47,9 +47,14 @@ export function MesaJuego({
   return (
     <div style={{ height:"100dvh", background:"#101010", fontFamily:"'Lato',sans-serif", display:"flex", flexDirection:"column", alignItems:"center", padding:"8px 8px 4px", overflow:"hidden", boxSizing:"border-box", gap:4 }}>
 
+      {/* X de salir */}
+      <div style={{ width:"100%", maxWidth:640, display:"flex", justifyContent:"flex-end", flexShrink:0, margin:"0 auto" }}>
+        <button onClick={onSalir} style={{ width:36, height:36, borderRadius:10, border:"none", background:"rgba(0,0,0,0.6)", color:"#9ca3af", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>✕</button>
+      </div>
+
       {/* Marcador */}
-      <div style={{ background:"rgba(0,0,0,0.5)", border:"1px solid #2d6a4f", borderRadius:12, padding:"8px 14px", display:"flex", gap:12, alignItems:"flex-start", flexShrink:0 }}>
-        <div>
+      <div style={{ background:"rgba(0,0,0,0.5)", border:"1px solid #2d6a4f", borderRadius:12, padding:"8px 14px", display:"flex", gap:12, alignItems:"flex-start", flexShrink:0, width:"100%", maxWidth:640, margin:"0 auto", boxSizing:"border-box" }}>
+        <div style={{ flex:1 }}>
           <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:5, maxWidth:128, overflow:"hidden" }}>
             <img src={avatarJugador && avatarJugador.startsWith("/avatars/") ? avatarJugador : "/avatars/avatar_01.png"} alt="" style={{ width:20, height:20, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
             <span style={{ fontSize:12, color:"#4ade80", letterSpacing:0.5, fontFamily:"'Lato',sans-serif", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{nombreJugador}</span>
@@ -57,7 +62,7 @@ export function MesaJuego({
           <PalitosPuntaje puntos={puntosJugador} total={limitePuntos} />
         </div>
         <div style={{ width:1, alignSelf:"stretch", background:"#2d6a4f", margin:"0 2px" }}/>
-        <div>
+        <div style={{ flex:1 }}>
           <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:5, maxWidth:128, overflow:"hidden" }}>
             <img src={avatarRival && avatarRival.startsWith("/avatars/") ? avatarRival : "/avatars/avatar_01.png"} alt="" style={{ width:20, height:20, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
             <span style={{ fontSize:12, color:"#f87171", letterSpacing:0.5, fontFamily:"'Lato',sans-serif", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{nombreRival}</span>
@@ -66,7 +71,6 @@ export function MesaJuego({
         </div>
       </div>
 
-      <button onClick={onSalir} style={{ position:"fixed", top:14, right:14, zIndex:30, width:36, height:36, borderRadius:10, border:"none", background:"rgba(0,0,0,0.6)", color:"#9ca3af", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>✕</button>
 
       {/* Mano del rival + timer cuando es su turno */}
       <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, flexShrink:0 }}>
