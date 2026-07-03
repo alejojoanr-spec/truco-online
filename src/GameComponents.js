@@ -56,25 +56,24 @@ export function Carta({ carta, oculta, onClick, jugada, seleccionada, escala = 1
     <div
       onClick={onClick}
       style={{
-        width: W, height: H, borderRadius: 8 * escala, flexShrink: 0,
-        overflow: "hidden", userSelect: "none", position: "relative",
-        background: "white",
+        width: W, height: H, flexShrink: 0,
+        userSelect: "none", position: "relative",
+        background: "transparent",
         cursor: onClick && !jugada ? "pointer" : "default",
         opacity: jugada ? 0.5 : 1,
         transform: seleccionada ? `translateY(${-12*escala}px) scale(1.05)` : jugada ? "scale(0.95)" : "none",
         transition: "all 0.2s",
-        border: seleccionada ? `${2.5*escala}px solid #f59e0b` : "none",
-        boxShadow: seleccionada
-          ? "0 6px 16px rgba(0,0,0,0.6), 0 0 10px rgba(245,158,11,0.75)"
+        filter: seleccionada
+          ? "drop-shadow(0 6px 10px rgba(0,0,0,0.6)) drop-shadow(0 0 6px rgba(245,158,11,0.75))"
           : jugada
-          ? "0 2px 5px rgba(0,0,0,0.3)"
-          : "0 0 0 1px rgba(0,0,0,0.78), 0 6px 16px rgba(0,0,0,0.45)",
+          ? "drop-shadow(0 2px 4px rgba(0,0,0,0.3))"
+          : "drop-shadow(0 6px 10px rgba(0,0,0,0.45))",
       }}
     >
       <img
         src={`/cartas/${carta.palo}_${carta.num}.png`}
         alt={`${carta.num} de ${carta.palo}`}
-        style={{ width:"100%", height:"100%", display:"block", objectFit:"cover" }}
+        style={{ width:"100%", height:"100%", display:"block", objectFit:"contain" }}
         draggable={false}
       />
     </div>
