@@ -1358,6 +1358,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         manoJugador={miMano}
         jugadasJugador={[]}
         cartaSeleccionada={cartaSeleccionada}
+        esMiTurno={miTurno && !partida?.accion_pendiente && !resolviendoMano}
         onClickCarta={(i) => jugarCarta(i)}
         timerSegundos={miTurno && !partida?.accion_pendiente && !resolviendoMano ? displayTimer : null}
         rivalTimerSegundos={!miTurno && !partida?.accion_pendiente && !resolviendoMano ? displayTimer : null}

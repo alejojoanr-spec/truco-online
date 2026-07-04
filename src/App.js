@@ -728,6 +728,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         manoJugador={manoJugador}
         jugadasJugador={jugadasJugador}
         cartaSeleccionada={cartaSeleccionada}
+        esMiTurno={puedeJugar}
         onClickCarta={(i) => {
           if (!puedeJugar || jugadasJugador.includes(i)) return;
           if (cartaSeleccionada === i) jugarCarta(i);

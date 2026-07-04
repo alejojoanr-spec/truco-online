@@ -44,6 +44,7 @@ export function MesaJuego({
   botonesSlot,
   log,
   onSalir,
+  esMiTurno = true,
 }) {
   const esMobile = useEsMobile();
 
@@ -89,7 +90,13 @@ export function MesaJuego({
         <div style={{ fontSize:10, color:"#ffffff", letterSpacing:2, textTransform:"uppercase", marginBottom:8 }}>
           {instruccion}
         </div>
-        <div style={{ display:"inline-flex", alignItems:"flex-end" }}>
+        <div style={{
+          display:"inline-flex",
+          alignItems:"flex-end",
+          filter: esMiTurno ? "none" : "grayscale(1) opacity(0.85)",
+          pointerEvents: esMiTurno ? "auto" : "none",
+          transition: "filter 0.2s",
+        }}>
           {manoJugador.map((c, i) => {
             const n = manoJugador.length;
             const angulo = n <= 1 ? 0 : -FAN_ANGLE + i * ((2 * FAN_ANGLE) / (n - 1));
