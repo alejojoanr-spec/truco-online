@@ -8,6 +8,9 @@ const MH = 110 * MESA_E;
 const FAN_OVERLAP = -18;
 const FAN_ANGLE = 8;
 
+const PANO_MARGIN_TOP = 32;
+const PANO_MAX_HEIGHT = 260;
+
 function useEsMobile(bp = 480) {
   const [m, setM] = useState(() => typeof window !== "undefined" && window.matchMedia(`(max-width:${bp}px)`).matches);
   useEffect(() => {
@@ -42,9 +45,6 @@ export function MesaJuego({
   log,
   onSalir,
 }) {
-  const rivalCards = typeof rivalHand === "number"
-    ? Array(rivalHand).fill({ oculta: true })
-    : rivalHand;
   const esMobile = useEsMobile();
 
   return (
@@ -74,23 +74,8 @@ export function MesaJuego({
         </div>
       </div>
 
-
-      {/* Mano del rival + timer cuando es su turno */}
-      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, flexShrink:0 }}>
-        {rivalTimerSegundos !== null && rivalTimerSegundos !== undefined && (
-          <div style={{ fontSize:11, color: rivalTimerSegundos <= 5 ? "#f87171" : "#9ca3af", fontFamily:"'Lato',sans-serif", fontWeight:700, letterSpacing:1 }}>
-            ⏱ {rivalTimerSegundos}s
-          </div>
-        )}
-        <div style={{ display:"flex", gap:8, justifyContent:"center" }}>
-          {rivalCards.map((c, i) => (
-            <Carta key={i} carta={c.carta} escala={0.57} oculta={c.oculta !== false} jugada={c.jugada} />
-          ))}
-        </div>
-      </div>
-
       {/* Mesa — 3 slots fijos */}
-      <div style={{ background:"#1a472a", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth: esMobile ? 300 : 420, margin:"0 auto", flexGrow:1, minHeight:228, maxHeight:340 }}>
+      <div style={{ background:"#1a472a", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth: esMobile ? 300 : 420, margin:"0 auto", marginTop:PANO_MARGIN_TOP, flexGrow:1, minHeight:228, maxHeight:PANO_MAX_HEIGHT }}>
         {rondas.map((r, ri) => (
           <div key={ri} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
             {r.rival ? <Carta carta={r.rival} escala={MESA_E} /> : <Slot />}
