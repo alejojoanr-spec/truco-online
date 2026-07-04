@@ -5,6 +5,9 @@ const MESA_E = 0.91;
 const MW = 70 * MESA_E;
 const MH = 110 * MESA_E;
 
+const FAN_OVERLAP = -18;
+const FAN_ANGLE = 8;
+
 function useEsMobile(bp = 480) {
   const [m, setM] = useState(() => typeof window !== "undefined" && window.matchMedia(`(max-width:${bp}px)`).matches);
   useEffect(() => {
@@ -101,11 +104,22 @@ export function MesaJuego({
         <div style={{ fontSize:10, color:"#ffffff", letterSpacing:2, textTransform:"uppercase", marginBottom:8 }}>
           {instruccion}
         </div>
-        <div style={{ display:"inline-flex", gap:10 }}>
-          {manoJugador.map((c, i) => (
-            i === 0 && timerSegundos != null ? (
-              <div key={i} style={{ position:"relative" }}>
-                <Carta carta={c} escala={1.1} jugada={jugadasJugador.includes(i)} seleccionada={cartaSeleccionada === i}
+        <div style={{ display:"inline-flex", alignItems:"flex-end" }}>
+          {manoJugador.map((c, i) => {
+            const n = manoJugador.length;
+            const angulo = n <= 1 ? 0 : -FAN_ANGLE + i * ((2 * FAN_ANGLE) / (n - 1));
+            const estaSeleccionada = cartaSeleccionada === i;
+            const wrapperStyle = {
+              position: "relative",
+              transform: `rotate(${estaSeleccionada ? 0 : angulo}deg)`,
+              transformOrigin: "bottom center",
+              marginLeft: i === 0 ? 0 : FAN_OVERLAP,
+              zIndex: estaSeleccionada ? 100 : i,
+              transition: "transform 0.2s",
+            };
+            return i === 0 && timerSegundos != null ? (
+              <div key={i} style={wrapperStyle}>
+                <Carta carta={c} escala={1.1} jugada={jugadasJugador.includes(i)} seleccionada={estaSeleccionada}
                   onClick={jugadasJugador.includes(i) ? undefined : () => onClickCarta(i)} />
                 {timerSegundos > 0 && (
                   <svg width="44" height="44" style={{ position:"absolute", left:-10, bottom:-10, zIndex:10, filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
@@ -120,10 +134,12 @@ export function MesaJuego({
                 )}
               </div>
             ) : (
-              <Carta key={i} carta={c} escala={1.1} jugada={jugadasJugador.includes(i)} seleccionada={cartaSeleccionada === i}
-                onClick={jugadasJugador.includes(i) ? undefined : () => onClickCarta(i)} />
-            )
-          ))}
+              <div key={i} style={wrapperStyle}>
+                <Carta carta={c} escala={1.1} jugada={jugadasJugador.includes(i)} seleccionada={estaSeleccionada}
+                  onClick={jugadasJugador.includes(i) ? undefined : () => onClickCarta(i)} />
+              </div>
+            );
+          })}
         </div>
         {cartaSeleccionada !== null && !jugadasJugador.includes(cartaSeleccionada) && (
           <div style={{ marginTop:6, fontSize:11, color:"#fbbf24" }}>Tocá de nuevo para confirmar</div>
