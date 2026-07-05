@@ -1166,6 +1166,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   const miTurno = partida?.turno === user.id;
   const mesaActual = partida?.mesa ? JSON.parse(partida.mesa) : [];
+  const puedoActuar = miTurno && !partida?.accion_pendiente && !resolviendoMano;
+  const estaEsperandoRival = !miTurno && !partida?.accion_pendiente && !resolviendoMano;
 
   if (resultadoPartida) return (
     <div style={{ minHeight:"100vh",background:"#101010",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Lato',sans-serif",padding:24 }}>
@@ -1358,11 +1360,11 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         manoJugador={miMano}
         jugadasJugador={[]}
         cartaSeleccionada={cartaSeleccionada}
-        esMiTurno={miTurno && !partida?.accion_pendiente && !resolviendoMano}
+        esMiTurno={puedoActuar}
         onClickCarta={(i) => jugarCarta(i)}
         timerSegundos={miTurno && !partida?.accion_pendiente && !resolviendoMano ? displayTimer : null}
         rivalTimerSegundos={!miTurno && !partida?.accion_pendiente && !resolviendoMano ? displayTimer : null}
-        instruccion={partida?.accion_pendiente ? "⏳ Canto pendiente..." : miTurno ? "👆 Tu turno — tocá una carta" : "⏳ Turno del rival..."}
+        instruccion={partida?.accion_pendiente ? "⏳ Canto pendiente..." : miTurno ? "👆 Tu turno — tocá una carta" : estaEsperandoRival ? "" : "⏳ Turno del rival..."}
         onSalir={() => setMostrarConfirmSalir(true)}
         log={null}
         botonesSlot={<>
@@ -1385,8 +1387,13 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
               {getCantoLabel(partida.accion_pendiente)} — Esperando respuesta...
             </div>
           )}
-          {!resolviendoMano && (
+          {!resolviendoMano && (miTurno || partida?.accion_pendiente?.cantado_por === user.id) && (
             <button onClick={irseAlMazo} style={btnStyle("#7f1d1d","#f87171")}>Ir al mazo</button>
+          )}
+          {estaEsperandoRival && (
+            <div style={{ padding:"7px 14px", borderRadius:8, background:"rgba(0,0,0,0.35)", border:"1px solid rgba(45,106,79,0.4)", color:"#9ca3af", fontSize:12, fontFamily:"'Lato',sans-serif", letterSpacing:0.5, pointerEvents:"none" }}>
+              ⏳ Esperando a tu rival…
+            </div>
           )}
         </>}
       />
