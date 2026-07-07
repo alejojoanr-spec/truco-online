@@ -47,6 +47,8 @@ export function MesaJuego({
   esMiTurno = true,
 }) {
   const esMobile = useEsMobile();
+  const valorTimer = esMiTurno ? timerSegundos : rivalTimerSegundos;
+  const colorTimer = esMiTurno ? "#4ade80" : "#f87171";
 
   return (
     <div style={{ height:"100dvh", background:"#101010", fontFamily:"'Lato',sans-serif", display:"flex", flexDirection:"column", alignItems:"center", padding:"8px 8px 4px", overflow:"hidden", boxSizing:"border-box", gap:2 }}>
@@ -90,48 +92,45 @@ export function MesaJuego({
         <div style={{ fontSize:10, color:"#ffffff", letterSpacing:2, textTransform:"uppercase", marginBottom:8 }}>
           {instruccion}
         </div>
-        <div style={{
-          display:"inline-flex",
-          alignItems:"flex-end",
-          filter: esMiTurno ? "none" : "grayscale(1) opacity(0.85)",
-          pointerEvents: esMiTurno ? "auto" : "none",
-          transition: "filter 0.2s",
-        }}>
-          {manoJugador.map((c, i) => {
-            const n = manoJugador.length;
-            const angulo = n <= 1 ? 0 : -FAN_ANGLE + i * ((2 * FAN_ANGLE) / (n - 1));
-            const estaSeleccionada = cartaSeleccionada === i;
-            const wrapperStyle = {
-              position: "relative",
-              transform: `rotate(${estaSeleccionada ? 0 : angulo}deg)`,
-              transformOrigin: "bottom center",
-              marginLeft: i === 0 ? 0 : FAN_OVERLAP,
-              zIndex: estaSeleccionada ? 100 : i,
-              transition: "transform 0.2s",
-            };
-            return i === 0 && timerSegundos != null ? (
-              <div key={i} style={wrapperStyle}>
-                <Carta carta={c} escala={1.1} jugada={jugadasJugador.includes(i)} seleccionada={estaSeleccionada}
-                  onClick={jugadasJugador.includes(i) ? undefined : () => onClickCarta(i)} />
-                {timerSegundos > 0 && (
-                  <svg width="44" height="44" style={{ position:"absolute", left:-10, bottom:-10, zIndex:10, filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
-                    <circle cx="22" cy="22" r="17" fill="rgba(0,0,0,0.75)" stroke="rgba(255,255,255,0.06)" strokeWidth="3"/>
-                    <circle cx="22" cy="22" r="17" fill="none" stroke="#4ade80" strokeWidth="3"
-                      strokeDasharray={2*Math.PI*17} strokeDashoffset={2*Math.PI*17*(1 - timerSegundos/15)}
-                      strokeLinecap="round" style={{ transform:"rotate(-90deg)", transformOrigin:"22px 22px" }}/>
-                    <text x="22" y="22" textAnchor="middle" dominantBaseline="middle" fill="#4ade80" fontSize="13" fontWeight="700">
-                      {timerSegundos}
-                    </text>
-                  </svg>
-                )}
-              </div>
-            ) : (
-              <div key={i} style={wrapperStyle}>
-                <Carta carta={c} escala={1.1} jugada={jugadasJugador.includes(i)} seleccionada={estaSeleccionada}
-                  onClick={jugadasJugador.includes(i) ? undefined : () => onClickCarta(i)} />
-              </div>
-            );
-          })}
+        <div style={{ display:"flex", alignItems:"flex-end", gap:10 }}>
+          {valorTimer != null && valorTimer > 0 && (
+            <svg width="44" height="44" style={{ flexShrink:0, transform:"scale(1.05)", filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
+              <circle cx="22" cy="22" r="17" fill="rgba(0,0,0,0.75)" stroke="rgba(255,255,255,0.06)" strokeWidth="3"/>
+              <circle cx="22" cy="22" r="17" fill="none" stroke={colorTimer} strokeWidth="3"
+                strokeDasharray={2*Math.PI*17} strokeDashoffset={2*Math.PI*17*(1 - valorTimer/15)}
+                strokeLinecap="round" style={{ transform:"rotate(-90deg)", transformOrigin:"22px 22px" }}/>
+              <text x="22" y="22" textAnchor="middle" dominantBaseline="middle" fill={colorTimer} fontSize="13" fontWeight="700">
+                {valorTimer}
+              </text>
+            </svg>
+          )}
+          <div style={{
+            display:"inline-flex",
+            alignItems:"flex-end",
+            filter: esMiTurno ? "none" : "grayscale(1) opacity(0.85)",
+            pointerEvents: esMiTurno ? "auto" : "none",
+            transition: "filter 0.2s",
+          }}>
+            {manoJugador.map((c, i) => {
+              const n = manoJugador.length;
+              const angulo = n <= 1 ? 0 : -FAN_ANGLE + i * ((2 * FAN_ANGLE) / (n - 1));
+              const estaSeleccionada = cartaSeleccionada === i;
+              const wrapperStyle = {
+                position: "relative",
+                transform: `rotate(${estaSeleccionada ? 0 : angulo}deg)`,
+                transformOrigin: "bottom center",
+                marginLeft: i === 0 ? 0 : FAN_OVERLAP,
+                zIndex: estaSeleccionada ? 100 : i,
+                transition: "transform 0.2s",
+              };
+              return (
+                <div key={i} style={wrapperStyle}>
+                  <Carta carta={c} escala={1.1} jugada={jugadasJugador.includes(i)} seleccionada={estaSeleccionada}
+                    onClick={jugadasJugador.includes(i) ? undefined : () => onClickCarta(i)} />
+                </div>
+              );
+            })}
+          </div>
         </div>
         {cartaSeleccionada !== null && !jugadasJugador.includes(cartaSeleccionada) && (
           <div style={{ marginTop:6, fontSize:11, color:"#fbbf24" }}>Tocá de nuevo para confirmar</div>
