@@ -989,24 +989,12 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
 
     if (acc.tipo === 'envido') {
-      // El cantador muestra su puntaje; el que dice "no quiero" muestra "Son buenas"
-      const singerIsJ1 = callerEsJ1;
-      const singerMano = singerIsJ1 ? JSON.parse(partida.mano_jugador1) : JSON.parse(partida.mano_jugador2);
-      const singerScore = valorEnvido(singerMano);
-      const envidoRes = {
-        texto_j1: singerIsJ1 ? `¡Son ${singerScore}!` : "Son buenas",
-        texto_j2: singerIsJ1 ? "Son buenas" : `¡Son ${singerScore}!`,
-      };
       if (gameOver) {
-        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", envido_resultado: envidoRes }).eq("codigo", codigo);
+        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
         if (error) console.error("noQuiero envido gameOver:", error);
       } else {
-        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString(), envido_resultado: envidoRes }).eq("codigo", codigo);
+        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString() }).eq("codigo", codigo);
         if (error) console.error("noQuiero envido:", error);
-        setTimeout(async () => {
-          const { error: errClean } = await supabase.from("partidas").update({ envido_resultado: null }).eq("codigo", codigo);
-          if (errClean) console.error("noQuiero envido cleanup:", errClean);
-        }, 4000);
       }
       return;
     }

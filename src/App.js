@@ -617,7 +617,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       reproducirVoz('no_quiero');
       addLog(`Vos: No quiero. Rival suma ${monto.noquiero} punto${monto.noquiero > 1 ? "s" : ""}`);
       setPuntosRival(p => p + monto.noquiero); reproducirSonidoPunto();
-      mostrarGlobosEnvido("Son buenas", `¡Son ${envidoRival}!`);
       setEstadoEnvido("noquiero");
     }
     if (pending) setTimeout(() => jugarRival(pending.jugadasJ, pending.mesaJ, pending.jugadasR), 700);
@@ -649,7 +648,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       } else {
         addLog(`Ganás ${siNo} punto${siNo > 1 ? "s" : ""}`);
         setPuntosJugador(p => p + siNo);
-        mostrarGlobosEnvido(`¡Son ${calcularEnvido(manoJugador)}!`, "Son buenas");
       }
       reproducirSonidoPunto();
       setEstadoEnvido("quiero");
