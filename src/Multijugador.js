@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { resolverGanadorMano } from "./trucoReglas";
+import { resolverGanadorMano, calcularFalta } from "./trucoReglas";
 import { supabase } from "./supabase";
 import { avatarSrc } from "./avatares";
 import { leerConfig } from "./Configuracion";
@@ -889,13 +889,13 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (partida.turno !== user.id) return;
     if (JSON.parse(partida.mesa || "[]").length >= 2) return;
     const puntosObj = partida.puntos || 15;
-    const falta = Math.max(1, puntosObj - Math.max(partida.puntos1 || 0, partida.puntos2 || 0));
+    const falta = calcularFalta(puntosObj, partida.puntos1 || 0, partida.puntos2 || 0);
     const VALS = { envido: 2, real_envido: 3, falta_envido: falta };
     reproducirVoz(VOZ_ENV[subtipo] || 'envido');
     await supabase.from("partidas").update({
       accion_pendiente: {
         tipo: 'envido', subtipo, cadena: [subtipo],
-        cantado_por: user.id, si_quiero: VALS[subtipo], si_no: subtipo === 'falta_envido' ? 2 : 1,
+        cantado_por: user.id, si_quiero: VALS[subtipo], si_no: 1,
       },
       envido_jugado: true,
       turno_inicio: new Date().toISOString(),
@@ -909,7 +909,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (acc.subtipo === 'falta_envido') return;
     if (acc.subtipo === 'real_envido' && subtipo !== 'falta_envido') return;
     const puntosObj = partida.puntos || 15;
-    const falta = Math.max(1, puntosObj - Math.max(partida.puntos1 || 0, partida.puntos2 || 0));
+    const falta = calcularFalta(puntosObj, partida.puntos1 || 0, partida.puntos2 || 0);
     const VALS = { envido: 2, real_envido: 3, falta_envido: falta };
     const nuevaCadena = [...(acc.cadena || [acc.subtipo]), subtipo];
     reproducirVoz(VOZ_ENV[subtipo] || 'envido');
@@ -944,10 +944,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const ganadorEnv = v1 > v2 ? partida.jugador1_id : v2 > v1 ? partida.jugador2_id : partida.jugador1_id;
     const miVal = soyJugador1 ? v1 : v2, rivalVal = soyJugador1 ? v2 : v1;
 
-    // Falta envido: el ganador recibe exactamente los puntos que le faltan para llegar al límite
-    const ptosEnvido = acc.subtipo === 'falta_envido'
-      ? Math.max(1, puntosObj - (ganadorEnv === partida.jugador1_id ? (partida.puntos1 || 0) : (partida.puntos2 || 0)))
-      : acc.si_quiero;
+    const ptosEnvido = acc.si_quiero;
 
     addLog(`Quiero. Vos: ${miVal} | Rival: ${rivalVal}. +${ptosEnvido} para ${ganadorEnv === user.id ? 'vos' : 'rival'}`);
 
@@ -1414,7 +1411,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             const acc = partida.accion_pendiente;
             const esTruco = acc.tipo === 'truco';
             const puntosObj = partida.puntos || 15;
-            const faltaVal = Math.max(1, puntosObj - Math.max(partida.puntos1||0, partida.puntos2||0));
+            const faltaVal = calcularFalta(puntosObj, partida.puntos1||0, partida.puntos2||0);
             const accentColor = esTruco ? "#fbbf24" : "#a78bfa";
             const borderColor = esTruco ? "rgba(251,191,36,0.5)" : "rgba(167,139,250,0.5)";
             const BTN_ESCALAR = { padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(167,139,250,0.08)",border:"1px solid #a78bfa",color:"#a78bfa",fontFamily:"'Lato',sans-serif",fontSize:13,fontWeight:700 };

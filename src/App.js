@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { resolverGanadorMano } from "./trucoReglas";
+import { resolverGanadorMano, calcularFalta } from "./trucoReglas";
 import { AVATARES, avatarSrc } from "./avatares";
 import { btnStyle } from "./GameComponents";
 import { MesaJuego } from "./MesaJuego";
@@ -539,7 +539,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         addLog(`Vos: ${envJ} - Rival: ${envidoRival}`);
         const jugadorGana = envJ >= envidoRival;
         if (tipo === "faltaenvido") {
-          const pts = jugadorGana ? limitePuntos - ptsJ : limitePuntos - ptsR;
+          const pts = calcularFalta(limitePuntos, ptsJ, ptsR);
           if (jugadorGana) { addLog(`✅ Ganaste Falta Envido (+${pts})`); setPuntosJugador(p => p + pts); reproducirSonidoPunto(); }
           else { addLog(`❌ Rival ganó Falta Envido (+${pts})`); setPuntosRival(p => p + pts); reproducirSonidoPunto(); }
         } else if (tipo === "envido-envido") {
@@ -552,7 +552,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         }
         mostrarGlobosEnvido(jugadorGana ? `¡Son ${envJ}!` : "Son buenas", jugadorGana ? "Son buenas" : `¡Son ${envidoRival}!`);
       } else {
-        const ptsNoQ = tipo === "envido-envido" ? 2 : tipo === "faltaenvido" ? 2 : 1;
+        const ptsNoQ = tipo === "envido-envido" ? 2 : 1;
         addLog(`✅ Ganaste ${ptsNoQ} punto${ptsNoQ > 1 ? "s" : ""} por envido`);
         setPuntosJugador(p => p + ptsNoQ); reproducirSonidoPunto();
         mostrarGlobosEnvido(`¡Son ${calcularEnvido(manoJugador)}!`, "Son buenas");
@@ -625,7 +625,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   function escalarEnvidoJugador(subtipo) {
     const envidoRival = calcularEnvido(manoRival);
     const siNo = envidoMonto.quiero;
-    const falta = Math.max(1, limitePuntos - Math.max(puntosJugador, puntosRival));
+    const falta = calcularFalta(limitePuntos, puntosJugador, puntosRival);
     const siQuiero = subtipo === "faltaenvido" ? falta : envidoMonto.quiero + (subtipo === "realenvido" ? 3 : 2);
     const pending = pendingJugarRivalRef.current;
     pendingJugarRivalRef.current = null;
