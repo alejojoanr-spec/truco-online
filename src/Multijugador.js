@@ -627,6 +627,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       mano_jugador2: JSON.stringify(mano2),
       mano_original_j1: JSON.stringify(mano1),
       mano_original_j2: JSON.stringify(mano2),
+      truco_nivel: null,
+      truco_derecho_de: null,
       turno: user.id,
       mano_id: user.id,
       mesa: JSON.stringify([]),
@@ -809,6 +811,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             puntos_mano: 1,
             envido_jugado: false,
             truco_jugado: false,
+            truco_nivel: null,
+            truco_derecho_de: null,
             accion_pendiente: null,
             turno: user.id,
           }).eq("codigo", codigo);
@@ -888,6 +892,24 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     addLog(`¡${labels[nuevoNivel]}!`);
   }
 
+  // Escalada DIFERIDA: el que tiene el derecho (aceptó el último nivel) la ejerce
+  // en su propio turno, sin que haya un canto del rival pendiente en este momento.
+  async function escalarTrucoDiferido() {
+    if (!partida || partida.accion_pendiente) return;
+    if (partida.turno !== user.id) return;
+    if (partida.truco_derecho_de !== user.id) return;
+    const nivelActual = partida.truco_nivel || 0;
+    if (nivelActual >= 3) return;
+    const nuevoNivel = nivelActual + 1;
+    const labels = { 2: 'Retruco', 3: 'Vale cuatro' };
+    reproducirVoz(nuevoNivel === 2 ? 'retruco' : 'vale_cuatro');
+    await supabase.from("partidas").update({
+      accion_pendiente: { tipo: 'truco', nivel: nuevoNivel, cantado_por: user.id, si_quiero: nuevoNivel + 1, si_no: nuevoNivel },
+      turno_inicio: new Date().toISOString(),
+    }).eq("codigo", codigo);
+    addLog(`¡${labels[nuevoNivel]}!`);
+  }
+
   async function cantarEnvido(subtipo) {
     if (!partida || partida.accion_pendiente || partida.envido_jugado) return;
     if (partida.turno !== user.id) return;
@@ -936,7 +958,13 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const puntosObj = partida.puntos || 15;
 
     if (acc.tipo === 'truco') {
-      await supabase.from("partidas").update({ accion_pendiente: null, puntos_mano: acc.si_quiero, turno_inicio: new Date().toISOString() }).eq("codigo", codigo);
+      await supabase.from("partidas").update({
+        accion_pendiente: null,
+        puntos_mano: acc.si_quiero,
+        truco_nivel: acc.nivel,
+        truco_derecho_de: user.id,
+        turno_inicio: new Date().toISOString(),
+      }).eq("codigo", codigo);
       addLog(`Quiero. Mano vale ${acc.si_quiero} pt${acc.si_quiero > 1 ? 's' : ''}.`);
       return;
     }
@@ -1011,6 +1039,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       const { error } = await supabase.from("partidas").update({
         accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1,
         envido_jugado: false, truco_jugado: false,
+        truco_nivel: null, truco_derecho_de: null,
         mesa: JSON.stringify([]),
         mano_jugador1: JSON.stringify(nuevoMazo.slice(0, 3)),
         mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
@@ -1051,6 +1080,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       const { error: err1 } = await supabase.from("partidas").update({
         accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1,
         envido_jugado: false, truco_jugado: false,
+        truco_nivel: null, truco_derecho_de: null,
         turno: user.id,
       }).eq("codigo", codigo);
       if (err1) { console.error("irseAlMazo paso1:", err1); setResolviendoMano(false); return; }
@@ -1144,6 +1174,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       mano_jugador2: JSON.stringify(mano2),
       mano_original_j1: JSON.stringify(mano1),
       mano_original_j2: JSON.stringify(mano2),
+      truco_nivel: null,
+      truco_derecho_de: null,
       turno: user.id, mano_id: user.id, mesa: JSON.stringify([]),
       puntos1: 0, puntos2: 0,
       apuesta: apuestaR,
@@ -1396,6 +1428,11 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
               )}
               {miTurno && !partida?.truco_jugado && (
                 <button onClick={cantarTruco} style={btnStyle("#b45309","#fbbf24")}>Truco</button>
+              )}
+              {miTurno && partida?.truco_derecho_de === user.id && (partida?.truco_nivel || 0) < 3 && (
+                <button onClick={escalarTrucoDiferido} style={btnStyle("#92400e","#fbbf24")}>
+                  🗣 {partida.truco_nivel === 1 ? "Retruco" : "Vale Cuatro"}
+                </button>
               )}
             </>
           )}
