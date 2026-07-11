@@ -625,6 +625,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       jugador1_avatar: avatarSrc(perfil?.avatar),
       mano_jugador1: JSON.stringify(mano1),
       mano_jugador2: JSON.stringify(mano2),
+      mano_original_j1: JSON.stringify(mano1),
+      mano_original_j2: JSON.stringify(mano2),
       turno: user.id,
       mano_id: user.id,
       mesa: JSON.stringify([]),
@@ -820,6 +822,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             mesa: JSON.stringify([]),
             mano_jugador1: JSON.stringify(nuevoMazo.slice(0, 3)),
             mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
+            mano_original_j1: JSON.stringify(nuevoMazo.slice(0, 3)),
+            mano_original_j2: JSON.stringify(nuevoMazo.slice(3, 6)),
             turno: siguienteMano,
             mano_id: siguienteMano,
             turno_inicio: new Date().toISOString(),
@@ -938,8 +942,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     }
 
     // Envido: comparar valores
-    const mano1 = JSON.parse(partida.mano_jugador1);
-    const mano2 = JSON.parse(partida.mano_jugador2);
+    const mano1 = JSON.parse(partida.mano_original_j1 || partida.mano_jugador1);
+    const mano2 = JSON.parse(partida.mano_original_j2 || partida.mano_jugador2);
     const v1 = valorEnvido(mano1), v2 = valorEnvido(mano2);
     const ganadorEnv = v1 > v2 ? partida.jugador1_id : v2 > v1 ? partida.jugador2_id : partida.jugador1_id;
     const miVal = soyJugador1 ? v1 : v2, rivalVal = soyJugador1 ? v2 : v1;
@@ -1010,6 +1014,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         mesa: JSON.stringify([]),
         mano_jugador1: JSON.stringify(nuevoMazo.slice(0, 3)),
         mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
+        mano_original_j1: JSON.stringify(nuevoMazo.slice(0, 3)),
+        mano_original_j2: JSON.stringify(nuevoMazo.slice(3, 6)),
         turno: siguienteManoNQ,
         mano_id: siguienteManoNQ,
         turno_inicio: new Date().toISOString(),
@@ -1057,6 +1063,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         mesa: JSON.stringify([]),
         mano_jugador1: JSON.stringify(nuevoMazo.slice(0, 3)),
         mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
+        mano_original_j1: JSON.stringify(nuevoMazo.slice(0, 3)),
+        mano_original_j2: JSON.stringify(nuevoMazo.slice(3, 6)),
         turno: siguienteMano,
         mano_id: siguienteMano,
         turno_inicio: new Date().toISOString(),
@@ -1134,6 +1142,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       jugador2_avatar: avatarSrc(rivalAvatar),
       mano_jugador1: JSON.stringify(mano1),
       mano_jugador2: JSON.stringify(mano2),
+      mano_original_j1: JSON.stringify(mano1),
+      mano_original_j2: JSON.stringify(mano2),
       turno: user.id, mano_id: user.id, mesa: JSON.stringify([]),
       puntos1: 0, puntos2: 0,
       apuesta: apuestaR,
