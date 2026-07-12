@@ -166,6 +166,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const [miMano, setMiMano] = useState([]);
   const [manoRival, setManoRival] = useState([]);
   const [cartaSeleccionada, setCartaSeleccionada] = useState(null);
+  const [elEnvidoPrimero, setElEnvidoPrimero] = useState(false);
   const [error, setError] = useState("");
   const [copiado, setCopiado] = useState(false);
   const [resolviendoMano, setResolviendoMano] = useState(false);
@@ -496,6 +497,10 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   useEffect(() => { resolviendoManoRef.current = resolviendoMano; }, [resolviendoMano]);
 
+  useEffect(() => {
+    setElEnvidoPrimero(false);
+  }, [partida?.accion_pendiente?.tipo, partida?.accion_pendiente?.nivel, partida?.accion_pendiente?.cantado_por]);
+
   // Timer sincronizado: ambos clientes calculan el tiempo restante desde turno_inicio (Supabase)
   useEffect(() => {
     if (displayTimerIntervalRef.current) clearInterval(displayTimerIntervalRef.current);
@@ -629,6 +634,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       mano_original_j2: JSON.stringify(mano2),
       truco_nivel: null,
       truco_derecho_de: null,
+      truco_en_pausa: null,
       turno: user.id,
       mano_id: user.id,
       mesa: JSON.stringify([]),
@@ -813,6 +819,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             truco_jugado: false,
             truco_nivel: null,
             truco_derecho_de: null,
+            truco_en_pausa: null,
             accion_pendiente: null,
             turno: user.id,
           }).eq("codigo", codigo);
@@ -929,6 +936,27 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     addLog(`¡${LABEL_ENV[subtipo]}!`);
   }
 
+  async function cantarEnvidoSobreTruco(subtipo) {
+    const acc = partida?.accion_pendiente;
+    if (!acc || acc.tipo !== 'truco' || acc.nivel !== 1 || acc.cantado_por === user.id) return;
+    if (partida.envido_jugado) return;
+    if (JSON.parse(partida.mesa || "[]").length >= 2) return;
+    const puntosObj = partida.puntos || 15;
+    const falta = calcularFalta(puntosObj, partida.puntos1 || 0, partida.puntos2 || 0);
+    const VALS = { envido: 2, real_envido: 3, falta_envido: falta };
+    reproducirVoz(VOZ_ENV[subtipo] || 'envido');
+    await supabase.from("partidas").update({
+      truco_en_pausa: acc,
+      accion_pendiente: {
+        tipo: 'envido', subtipo, cadena: [subtipo],
+        cantado_por: user.id, si_quiero: VALS[subtipo], si_no: 1,
+      },
+      envido_jugado: true,
+      turno_inicio: new Date().toISOString(),
+    }).eq("codigo", codigo);
+    addLog(`¡${LABEL_ENV[subtipo]}! (el Truco queda en pausa)`);
+  }
+
   async function escalarEnvido(subtipo) {
     const acc = partida?.accion_pendiente;
     if (!acc || acc.tipo !== 'envido' || acc.cantado_por === user.id) return;
@@ -991,10 +1019,10 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const np2 = (partida.puntos2 || 0) + (ganadorEnv === partida.jugador2_id ? ptosEnvido : 0);
     if (np1 >= puntosObj || np2 >= puntosObj) {
       const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
-      const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", envido_resultado: envidoRes }).eq("codigo", codigo);
+      const { error } = await supabase.from("partidas").update({ accion_pendiente: null, truco_en_pausa: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", envido_resultado: envidoRes }).eq("codigo", codigo);
       if (error) console.error("quiero envido gameOver:", error);
     } else {
-      const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString(), envido_resultado: envidoRes }).eq("codigo", codigo);
+      const { error } = await supabase.from("partidas").update({ accion_pendiente: partida.truco_en_pausa || null, truco_en_pausa: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString(), envido_resultado: envidoRes }).eq("codigo", codigo);
       if (error) console.error("quiero envido:", error);
       // Limpiar envido_resultado después de que ambos clientes alcancen a mostrarlo (2.5s display + margen de red)
       setTimeout(async () => {
@@ -1019,10 +1047,10 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
     if (acc.tipo === 'envido') {
       if (gameOver) {
-        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
+        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, truco_en_pausa: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
         if (error) console.error("noQuiero envido gameOver:", error);
       } else {
-        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString() }).eq("codigo", codigo);
+        const { error } = await supabase.from("partidas").update({ accion_pendiente: partida.truco_en_pausa || null, truco_en_pausa: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString() }).eq("codigo", codigo);
         if (error) console.error("noQuiero envido:", error);
       }
       return;
@@ -1039,7 +1067,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       const { error } = await supabase.from("partidas").update({
         accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1,
         envido_jugado: false, truco_jugado: false,
-        truco_nivel: null, truco_derecho_de: null,
+        truco_nivel: null, truco_derecho_de: null, truco_en_pausa: null,
         mesa: JSON.stringify([]),
         mano_jugador1: JSON.stringify(nuevoMazo.slice(0, 3)),
         mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
@@ -1080,7 +1108,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       const { error: err1 } = await supabase.from("partidas").update({
         accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1,
         envido_jugado: false, truco_jugado: false,
-        truco_nivel: null, truco_derecho_de: null,
+        truco_nivel: null, truco_derecho_de: null, truco_en_pausa: null,
         turno: user.id,
       }).eq("codigo", codigo);
       if (err1) { console.error("irseAlMazo paso1:", err1); setResolviendoMano(false); return; }
@@ -1176,6 +1204,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       mano_original_j2: JSON.stringify(mano2),
       truco_nivel: null,
       truco_derecho_de: null,
+      truco_en_pausa: null,
       turno: user.id, mano_id: user.id, mesa: JSON.stringify([]),
       puntos1: 0, puntos2: 0,
       apuesta: apuestaR,
@@ -1462,55 +1491,77 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             const accentColor = esTruco ? "#fbbf24" : "#a78bfa";
             const borderColor = esTruco ? "rgba(251,191,36,0.5)" : "rgba(167,139,250,0.5)";
             const BTN_ESCALAR = { padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(167,139,250,0.08)",border:"1px solid #a78bfa",color:"#a78bfa",fontFamily:"'Lato',sans-serif",fontSize:13,fontWeight:700 };
+            const envidoVivo = !partida.envido_jugado && JSON.parse(partida.mesa || "[]").length < 2;
+            const mostrarPasoEnvido = elEnvidoPrimero && esTruco && acc.nivel === 1;
             return (
               <div style={{ background:"radial-gradient(ellipse at top,#1a2a0f 0%,#050f08 100%)",border:`1px solid ${borderColor}`,borderRadius:20,padding:"24px 20px",maxWidth:300,width:"100%",textAlign:"center",fontFamily:"'Lato',sans-serif" }}>
-                <div style={{ fontSize:36,marginBottom:6 }}>{esTruco?"🤺":"🃏"}</div>
+                <div style={{ fontSize:36,marginBottom:6 }}>{mostrarPasoEnvido ? "🃏" : esTruco?"🤺":"🃏"}</div>
                 <div style={{ fontSize:9,color:"#6b7280",letterSpacing:3,textTransform:"uppercase",marginBottom:4 }}>
-                  El rival {esTruco?"canta":"toca"}
+                  {mostrarPasoEnvido ? "Elegí tu envido" : `El rival ${esTruco?"canta":"toca"}`}
                 </div>
                 <div style={{ fontSize:22,fontWeight:900,color:accentColor,marginBottom:6 }}>
-                  ¡{getCantoLabel(acc)}!
+                  {mostrarPasoEnvido ? "¿Qué cantás?" : `¡${getCantoLabel(acc)}!`}
                 </div>
                 <div style={{ fontSize:11,color:"#6b7280",marginBottom:16,lineHeight:1.6 }}>
-                  {esTruco
+                  {mostrarPasoEnvido
+                    ? "El Truco queda en pausa hasta resolver el envido."
+                    : esTruco
                     ? `Quiero → mano vale ${acc.si_quiero} pt${acc.si_quiero>1?'s':''} · No quiero → rival suma ${acc.si_no}`
                     : `Quiero → se comparan · No quiero → rival suma ${acc.si_no} pt${acc.si_no>1?'s':''}`}
                 </div>
                 <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-                  <button onClick={quiero} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
-                    ✅ Quiero
-                  </button>
-                  {esTruco && acc.nivel === 1 && (
-                    <button onClick={subirTruco} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(251,191,36,0.08)",border:"1px solid #fbbf24",color:"#fbbf24",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
-                      🔥 Quiero Retruco
-                    </button>
-                  )}
-                  {esTruco && acc.nivel === 2 && (
-                    <button onClick={subirTruco} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(251,191,36,0.08)",border:"1px solid #fbbf24",color:"#fbbf24",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
-                      🔥 Quiero Vale Cuatro
-                    </button>
-                  )}
-                  {!esTruco && acc.subtipo === 'envido' && (
+                  {mostrarPasoEnvido ? (
                     <>
-                      <button onClick={()=>escalarEnvido('envido')} style={BTN_ESCALAR}>
-                        ↗ Envido ({acc.si_quiero + 2} pts)
+                      <button onClick={()=>cantarEnvidoSobreTruco('envido')} style={BTN_ESCALAR}>🃏 Envido</button>
+                      <button onClick={()=>cantarEnvidoSobreTruco('real_envido')} style={BTN_ESCALAR}>🃏 Real Envido</button>
+                      <button onClick={()=>cantarEnvidoSobreTruco('falta_envido')} style={BTN_ESCALAR}>🃏 Falta Envido ({faltaVal} pts)</button>
+                      <button onClick={()=>setElEnvidoPrimero(false)} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"transparent",border:"1px solid #6b7280",color:"#9ca3af",fontFamily:"'Lato',sans-serif",fontSize:13,fontWeight:700 }}>
+                        ‹ Volver
                       </button>
-                      <button onClick={()=>escalarEnvido('real_envido')} style={BTN_ESCALAR}>
-                        ↗ Real Envido ({acc.si_quiero + 3} pts)
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={quiero} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
+                        ✅ Quiero
                       </button>
-                      <button onClick={()=>escalarEnvido('falta_envido')} style={BTN_ESCALAR}>
-                        ↗ Falta Envido ({faltaVal} pts)
+                      {esTruco && acc.nivel === 1 && (
+                        <button onClick={subirTruco} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(251,191,36,0.08)",border:"1px solid #fbbf24",color:"#fbbf24",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
+                          🔥 Quiero Retruco
+                        </button>
+                      )}
+                      {esTruco && acc.nivel === 1 && envidoVivo && (
+                        <button onClick={()=>setElEnvidoPrimero(true)} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(96,165,250,0.08)",border:"1px solid #60a5fa",color:"#60a5fa",fontFamily:"'Lato',sans-serif",fontSize:13,fontWeight:700 }}>
+                          🃏 El envido está primero
+                        </button>
+                      )}
+                      {esTruco && acc.nivel === 2 && (
+                        <button onClick={subirTruco} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(251,191,36,0.08)",border:"1px solid #fbbf24",color:"#fbbf24",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
+                          🔥 Quiero Vale Cuatro
+                        </button>
+                      )}
+                      {!esTruco && acc.subtipo === 'envido' && (
+                        <>
+                          <button onClick={()=>escalarEnvido('envido')} style={BTN_ESCALAR}>
+                            ↗ Envido ({acc.si_quiero + 2} pts)
+                          </button>
+                          <button onClick={()=>escalarEnvido('real_envido')} style={BTN_ESCALAR}>
+                            ↗ Real Envido ({acc.si_quiero + 3} pts)
+                          </button>
+                          <button onClick={()=>escalarEnvido('falta_envido')} style={BTN_ESCALAR}>
+                            ↗ Falta Envido ({faltaVal} pts)
+                          </button>
+                        </>
+                      )}
+                      {!esTruco && acc.subtipo === 'real_envido' && (
+                        <button onClick={()=>escalarEnvido('falta_envido')} style={BTN_ESCALAR}>
+                          ↗ Falta Envido ({faltaVal} pts)
+                        </button>
+                      )}
+                      <button onClick={noQuiero} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(248,113,113,0.08)",border:"1px solid #f87171",color:"#f87171",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
+                        ❌ No quiero
                       </button>
                     </>
                   )}
-                  {!esTruco && acc.subtipo === 'real_envido' && (
-                    <button onClick={()=>escalarEnvido('falta_envido')} style={BTN_ESCALAR}>
-                      ↗ Falta Envido ({faltaVal} pts)
-                    </button>
-                  )}
-                  <button onClick={noQuiero} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(248,113,113,0.08)",border:"1px solid #f87171",color:"#f87171",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
-                    ❌ No quiero
-                  </button>
                 </div>
               </div>
             );
