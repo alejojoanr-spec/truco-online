@@ -11,6 +11,31 @@ const FAN_ANGLE = 8;
 const PANO_MARGIN_TOP = 32;
 const PANO_MAX_HEIGHT = 260;
 
+// Tamaño de "diseño" de referencia: iPhone 14 (390x844), con el que se
+// calibraron a mano las ~60 medidas fijas de este archivo. El resto de la
+// pantalla se escala en bloque para que el mismo layout se vea proporcional
+// en cualquier dispositivo, sin tocar ninguna medida individual.
+const DISENO_W = 390;
+const DISENO_H = 844;
+const ESCALA_MIN = 0.75;
+const ESCALA_MAX = 1.5;
+
+function calcularEscala() {
+  if (typeof window === "undefined") return 1;
+  const cruda = Math.min(window.innerWidth / DISENO_W, window.innerHeight / DISENO_H);
+  return Math.min(ESCALA_MAX, Math.max(ESCALA_MIN, cruda));
+}
+
+function useEscalaPantalla() {
+  const [escala, setEscala] = useState(calcularEscala);
+  useEffect(() => {
+    const onResize = () => setEscala(calcularEscala());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return escala;
+}
+
 function useEsMobile(bp = 480) {
   const [m, setM] = useState(() => typeof window !== "undefined" && window.matchMedia(`(max-width:${bp}px)`).matches);
   useEffect(() => {
@@ -47,11 +72,23 @@ export function MesaJuego({
   esMiTurno = true,
 }) {
   const esMobile = useEsMobile();
+  const escala = useEscalaPantalla();
+  const altoVentana = typeof window !== "undefined" ? window.innerHeight : DISENO_H;
+  const margenVertical = Math.max(0, (altoVentana - DISENO_H * escala) / 2);
   const valorTimer = esMiTurno ? timerSegundos : rivalTimerSegundos;
   const colorTimer = esMiTurno ? "#4ade80" : "#f87171";
 
   return (
-    <div style={{ height:"100dvh", background:"#101010", fontFamily:"'Lato',sans-serif", display:"flex", flexDirection:"column", alignItems:"center", padding:"8px 8px 4px", overflow:"hidden", boxSizing:"border-box", gap:2 }}>
+    <div style={{ height:"100dvh", width:"100%", background:"#101010", display:"flex", justifyContent:"center", overflow:"hidden", boxSizing:"border-box" }}>
+    <div style={{
+      width: DISENO_W,
+      height: DISENO_H,
+      marginTop: margenVertical,
+      transform: `scale(${escala})`,
+      transformOrigin: "top center",
+      flexShrink: 0,
+      background:"#101010", fontFamily:"'Lato',sans-serif", display:"flex", flexDirection:"column", alignItems:"center", padding:"8px 8px 4px", boxSizing:"border-box", gap:2,
+    }}>
 
       {/* X de salir */}
       <div style={{ width:"100%", maxWidth:640, display:"flex", justifyContent:"flex-end", flexShrink:0, margin:"0 auto" }}>
@@ -150,6 +187,7 @@ export function MesaJuego({
           ))}
         </div>
       )}
+    </div>
     </div>
   );
 }
