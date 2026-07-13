@@ -198,7 +198,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [envidoMonto, setEnvidoMonto] = useState({ quiero: 0, noquiero: 0 });
   const [envidoGlobos, setEnvidoGlobos] = useState(null);
   const esperandoRespuestaEnvido = envidoCantadoPor === "rival" && !!estadoEnvido && !["quiero","noquiero"].includes(estadoEnvido);
-  const [log, setLog] = useState([]);
+  const [, setLog] = useState([]);
 
   function guardarAvatar(av) {
     localStorage.setItem(`truco_avatar_${user.id}`, av);
@@ -831,7 +831,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         timerSegundos={turno === "jugador" && fasePartida === "jugando" ? timerSegundos : null}
         instruccion={puedeJugar ? "👆 Tocá una carta para jugar" : estaEsperandoRival ? "" : turno === "rival" ? "Esperando rival..." : "Tu mano"}
         onSalir={() => setMostrarConfirmSalir(true)}
-        log={log}
+        log={null}
         botonesSlot={<>
           {trucoDisponible && <button onClick={cantarTruco} style={btnStyle("#b45309","#fbbf24")}>🗣 Truco</button>}
           {puedoEscalarDiferido && (

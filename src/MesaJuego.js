@@ -175,7 +175,7 @@ export function MesaJuego({
       </div>
 
       {/* Botones de acción */}
-      <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center", maxWidth:500, flexShrink:0, paddingBottom:4, minHeight:32 }}>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center", alignItems:"center", alignContent:"center", maxWidth:500, flexShrink:0, paddingBottom:4, height:76 }}>
         {botonesSlot}
       </div>
 

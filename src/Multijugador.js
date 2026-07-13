@@ -1476,15 +1476,13 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           {partida?.accion_pendiente && partida.accion_pendiente.cantado_por !== user.id && (() => {
             const acc = partida.accion_pendiente;
             const esTruco = acc.tipo === 'truco';
-            const puntosObj = partida.puntos || 15;
-            const faltaVal = calcularFalta(puntosObj, partida.puntos1||0, partida.puntos2||0);
             const envidoVivo = !partida.envido_jugado && JSON.parse(partida.mesa || "[]").length < 2;
             const mostrarPasoEnvido = elEnvidoPrimero && esTruco && acc.nivel === 1;
             return mostrarPasoEnvido ? (
               <>
                 <button onClick={()=>cantarEnvidoSobreTruco('envido')} style={btnStyle("#1d4ed8","#60a5fa")}>Envido</button>
                 <button onClick={()=>cantarEnvidoSobreTruco('real_envido')} style={btnStyle("#5b21b6","#a78bfa")}>Real Envido</button>
-                <button onClick={()=>cantarEnvidoSobreTruco('falta_envido')} style={btnStyle("#065f46","#34d399")}>Falta Envido ({faltaVal} pts)</button>
+                <button onClick={()=>cantarEnvidoSobreTruco('falta_envido')} style={btnStyle("#065f46","#34d399")}>Falta Envido</button>
                 <button onClick={()=>setElEnvidoPrimero(false)} style={btnStyle("#374151","#9ca3af")}>‹ Volver</button>
               </>
             ) : (
@@ -1501,13 +1499,13 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
                 )}
                 {!esTruco && acc.subtipo === 'envido' && (
                   <>
-                    <button onClick={()=>escalarEnvido('envido')} style={btnStyle("#1d4ed8","#60a5fa")}>↗ Envido ({acc.si_quiero + 2} pts)</button>
-                    <button onClick={()=>escalarEnvido('real_envido')} style={btnStyle("#5b21b6","#a78bfa")}>↗ Real Envido ({acc.si_quiero + 3} pts)</button>
-                    <button onClick={()=>escalarEnvido('falta_envido')} style={btnStyle("#065f46","#34d399")}>↗ Falta Envido ({faltaVal} pts)</button>
+                    <button onClick={()=>escalarEnvido('envido')} style={btnStyle("#1d4ed8","#60a5fa")}>↗ Envido</button>
+                    <button onClick={()=>escalarEnvido('real_envido')} style={btnStyle("#5b21b6","#a78bfa")}>↗ Real Envido</button>
+                    <button onClick={()=>escalarEnvido('falta_envido')} style={btnStyle("#065f46","#34d399")}>↗ Falta Envido</button>
                   </>
                 )}
                 {!esTruco && acc.subtipo === 'real_envido' && (
-                  <button onClick={()=>escalarEnvido('falta_envido')} style={btnStyle("#065f46","#34d399")}>↗ Falta Envido ({faltaVal} pts)</button>
+                  <button onClick={()=>escalarEnvido('falta_envido')} style={btnStyle("#065f46","#34d399")}>↗ Falta Envido</button>
                 )}
                 <button onClick={noQuiero} style={btnStyle("#7f1d1d","#f87171")}>❌ No quiero</button>
               </>
