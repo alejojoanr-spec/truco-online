@@ -764,6 +764,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const esperandoRespuestaRetruco = estadoTruco === "retruco" && trucoCantadoPor === "rival";
   const esperandoRespuestaTruco = estadoTruco === "truco" && trucoCantadoPor === "rival";
   const esperandoRespuestaValeCuatro = estadoTruco === "valecuatro" && trucoCantadoPor === "rival";
+  const hayCantoPendiente = esperandoRespuestaRetruco || esperandoRespuestaTruco || esperandoRespuestaValeCuatro || esperandoRespuestaEnvido;
   const puedeJugar = turno === "jugador" && fasePartida === "jugando" && !esperandoRespuestaRetruco && !esperandoRespuestaTruco && !esperandoRespuestaEnvido && !(estadoTruco && !["quiero","noquiero"].includes(estadoTruco) && trucoCantadoPor === "rival");
   const puedoEscalarDiferido = puedeJugar && derechoTrucoDe === "jugador" && nivelTrucoAceptado > 0 && nivelTrucoAceptado < 3 && !esManoDeLasAceites;
   const hayAccionMia = puedeJugar || trucoDisponible || esperandoRespuestaRetruco || esperandoRespuestaTruco || esperandoRespuestaValeCuatro || esperandoRespuestaEnvido || envidoDisponible;
@@ -864,13 +865,13 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
               <button onClick={()=>escalarEnvidoJugador("faltaenvido")} style={btnStyle("#065f46","#34d399")}>Falta Envido</button>
             )}
           </>}
-          {envidoDisponible && <>
+          {envidoDisponible && !hayCantoPendiente && <>
             <button onClick={()=>cantarEnvido("envido")} style={btnStyle("#1d4ed8","#60a5fa")}>Envido</button>
             <button onClick={()=>cantarEnvido("realenvido")} style={btnStyle("#5b21b6","#a78bfa")}>Real Envido</button>
             <button onClick={()=>cantarEnvido("faltaenvido")} style={btnStyle("#065f46","#34d399")}>Falta Envido</button>
           </>}
           {rivalMsg && <div style={{ padding:"6px 14px",borderRadius:8,background:"rgba(248,113,113,0.15)",border:"1px solid rgba(248,113,113,0.5)",color:"#f87171",fontSize:12,fontWeight:700,fontFamily:"'Lato',sans-serif" }}>{rivalMsg}</div>}
-          {hayAccionMia && !esperandoRespuestaEnvido && (
+          {hayAccionMia && !hayCantoPendiente && (
             <button onClick={irseAlMazo} style={btnStyle("#7f1d1d","#f87171")}>Ir al mazo</button>
           )}
           {estaEsperandoRival && (
