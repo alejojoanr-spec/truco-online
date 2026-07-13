@@ -73,19 +73,16 @@ export function MesaJuego({
 }) {
   const esMobile = useEsMobile();
   const escala = useEscalaPantalla();
-  const altoVentana = typeof window !== "undefined" ? window.innerHeight : DISENO_H;
-  const margenVertical = Math.max(0, (altoVentana - DISENO_H * escala) / 2);
   const valorTimer = esMiTurno ? timerSegundos : rivalTimerSegundos;
   const colorTimer = esMiTurno ? "#4ade80" : "#f87171";
 
   return (
-    <div style={{ height:"100dvh", width:"100%", background:"#101010", display:"flex", justifyContent:"center", overflow:"hidden", boxSizing:"border-box" }}>
+    <div style={{ height:"100dvh", width:"100%", background:"#101010", display:"flex", justifyContent:"center", alignItems:"center", overflow:"hidden", boxSizing:"border-box" }}>
     <div style={{
       width: DISENO_W,
       height: DISENO_H,
-      marginTop: margenVertical,
       transform: `scale(${escala})`,
-      transformOrigin: "top center",
+      transformOrigin: "center",
       flexShrink: 0,
       background:"#101010", fontFamily:"'Lato',sans-serif", display:"flex", flexDirection:"column", alignItems:"center", padding:"8px 8px 4px", boxSizing:"border-box", gap:2,
     }}>
