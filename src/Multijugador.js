@@ -1442,7 +1442,15 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         onClickCarta={(i) => jugarCarta(i)}
         timerSegundos={miTurno && !partida?.accion_pendiente && !resolviendoMano ? displayTimer : null}
         rivalTimerSegundos={!miTurno && !partida?.accion_pendiente && !resolviendoMano ? displayTimer : null}
-        instruccion={partida?.accion_pendiente ? "⏳ Canto pendiente..." : miTurno ? "👆 Tu turno — tocá una carta" : estaEsperandoRival ? "" : "⏳ Turno del rival..."}
+        instruccion={
+          partida?.accion_pendiente
+            ? (partida.accion_pendiente.cantado_por !== user.id
+                ? (elEnvidoPrimero && partida.accion_pendiente.tipo === 'truco' && partida.accion_pendiente.nivel === 1
+                    ? "🃏 Elegí qué envido cantar"
+                    : `El rival cantó ¡${getCantoLabel(partida.accion_pendiente)}!`)
+                : "⏳ Canto pendiente...")
+            : miTurno ? "👆 Tu turno — tocá una carta" : estaEsperandoRival ? "" : "⏳ Turno del rival..."
+        }
         onSalir={() => setMostrarConfirmSalir(true)}
         log={null}
         botonesSlot={<>
@@ -1465,6 +1473,46 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
               )}
             </>
           )}
+          {partida?.accion_pendiente && partida.accion_pendiente.cantado_por !== user.id && (() => {
+            const acc = partida.accion_pendiente;
+            const esTruco = acc.tipo === 'truco';
+            const puntosObj = partida.puntos || 15;
+            const faltaVal = calcularFalta(puntosObj, partida.puntos1||0, partida.puntos2||0);
+            const envidoVivo = !partida.envido_jugado && JSON.parse(partida.mesa || "[]").length < 2;
+            const mostrarPasoEnvido = elEnvidoPrimero && esTruco && acc.nivel === 1;
+            return mostrarPasoEnvido ? (
+              <>
+                <button onClick={()=>cantarEnvidoSobreTruco('envido')} style={btnStyle("#1d4ed8","#60a5fa")}>Envido</button>
+                <button onClick={()=>cantarEnvidoSobreTruco('real_envido')} style={btnStyle("#5b21b6","#a78bfa")}>Real Envido</button>
+                <button onClick={()=>cantarEnvidoSobreTruco('falta_envido')} style={btnStyle("#065f46","#34d399")}>Falta Envido ({faltaVal} pts)</button>
+                <button onClick={()=>setElEnvidoPrimero(false)} style={btnStyle("#374151","#9ca3af")}>‹ Volver</button>
+              </>
+            ) : (
+              <>
+                <button onClick={quiero} style={btnStyle("#065f46","#4ade80")}>✅ Quiero</button>
+                {esTruco && acc.nivel === 1 && (
+                  <button onClick={subirTruco} style={btnStyle("#92400e","#fbbf24")}>🔥 Quiero Retruco</button>
+                )}
+                {esTruco && acc.nivel === 1 && envidoVivo && (
+                  <button onClick={()=>setElEnvidoPrimero(true)} style={btnStyle("#1d4ed8","#60a5fa")}>🃏 El envido está primero</button>
+                )}
+                {esTruco && acc.nivel === 2 && (
+                  <button onClick={subirTruco} style={btnStyle("#92400e","#fbbf24")}>🔥 Quiero Vale Cuatro</button>
+                )}
+                {!esTruco && acc.subtipo === 'envido' && (
+                  <>
+                    <button onClick={()=>escalarEnvido('envido')} style={btnStyle("#1d4ed8","#60a5fa")}>↗ Envido ({acc.si_quiero + 2} pts)</button>
+                    <button onClick={()=>escalarEnvido('real_envido')} style={btnStyle("#5b21b6","#a78bfa")}>↗ Real Envido ({acc.si_quiero + 3} pts)</button>
+                    <button onClick={()=>escalarEnvido('falta_envido')} style={btnStyle("#065f46","#34d399")}>↗ Falta Envido ({faltaVal} pts)</button>
+                  </>
+                )}
+                {!esTruco && acc.subtipo === 'real_envido' && (
+                  <button onClick={()=>escalarEnvido('falta_envido')} style={btnStyle("#065f46","#34d399")}>↗ Falta Envido ({faltaVal} pts)</button>
+                )}
+                <button onClick={noQuiero} style={btnStyle("#7f1d1d","#f87171")}>❌ No quiero</button>
+              </>
+            );
+          })()}
           {partida?.accion_pendiente?.cantado_por === user.id && (
             <div style={{ padding:"6px 14px",borderRadius:8,background:"rgba(251,191,36,0.15)",border:"1px solid rgba(251,191,36,0.5)",color:"#fbbf24",fontSize:12,fontWeight:700,fontFamily:"'Lato',sans-serif" }}>
               {getCantoLabel(partida.accion_pendiente)} — Esperando respuesta...
@@ -1481,93 +1529,6 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         </>}
       />
 
-      {partida?.accion_pendiente && partida.accion_pendiente.cantado_por !== user.id && (
-        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.82)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50,padding:16 }}>
-          {(() => {
-            const acc = partida.accion_pendiente;
-            const esTruco = acc.tipo === 'truco';
-            const puntosObj = partida.puntos || 15;
-            const faltaVal = calcularFalta(puntosObj, partida.puntos1||0, partida.puntos2||0);
-            const accentColor = esTruco ? "#fbbf24" : "#a78bfa";
-            const borderColor = esTruco ? "rgba(251,191,36,0.5)" : "rgba(167,139,250,0.5)";
-            const BTN_ESCALAR = { padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(167,139,250,0.08)",border:"1px solid #a78bfa",color:"#a78bfa",fontFamily:"'Lato',sans-serif",fontSize:13,fontWeight:700 };
-            const envidoVivo = !partida.envido_jugado && JSON.parse(partida.mesa || "[]").length < 2;
-            const mostrarPasoEnvido = elEnvidoPrimero && esTruco && acc.nivel === 1;
-            return (
-              <div style={{ background:"radial-gradient(ellipse at top,#1a2a0f 0%,#050f08 100%)",border:`1px solid ${borderColor}`,borderRadius:20,padding:"24px 20px",maxWidth:300,width:"100%",textAlign:"center",fontFamily:"'Lato',sans-serif" }}>
-                <div style={{ fontSize:36,marginBottom:6 }}>{mostrarPasoEnvido ? "🃏" : esTruco?"🤺":"🃏"}</div>
-                <div style={{ fontSize:9,color:"#6b7280",letterSpacing:3,textTransform:"uppercase",marginBottom:4 }}>
-                  {mostrarPasoEnvido ? "Elegí tu envido" : `El rival ${esTruco?"canta":"toca"}`}
-                </div>
-                <div style={{ fontSize:22,fontWeight:900,color:accentColor,marginBottom:6 }}>
-                  {mostrarPasoEnvido ? "¿Qué cantás?" : `¡${getCantoLabel(acc)}!`}
-                </div>
-                <div style={{ fontSize:11,color:"#6b7280",marginBottom:16,lineHeight:1.6 }}>
-                  {mostrarPasoEnvido
-                    ? "El Truco queda en pausa hasta resolver el envido."
-                    : esTruco
-                    ? `Quiero → mano vale ${acc.si_quiero} pt${acc.si_quiero>1?'s':''} · No quiero → rival suma ${acc.si_no}`
-                    : `Quiero → se comparan · No quiero → rival suma ${acc.si_no} pt${acc.si_no>1?'s':''}`}
-                </div>
-                <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-                  {mostrarPasoEnvido ? (
-                    <>
-                      <button onClick={()=>cantarEnvidoSobreTruco('envido')} style={BTN_ESCALAR}>🃏 Envido</button>
-                      <button onClick={()=>cantarEnvidoSobreTruco('real_envido')} style={BTN_ESCALAR}>🃏 Real Envido</button>
-                      <button onClick={()=>cantarEnvidoSobreTruco('falta_envido')} style={BTN_ESCALAR}>🃏 Falta Envido ({faltaVal} pts)</button>
-                      <button onClick={()=>setElEnvidoPrimero(false)} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"transparent",border:"1px solid #6b7280",color:"#9ca3af",fontFamily:"'Lato',sans-serif",fontSize:13,fontWeight:700 }}>
-                        ‹ Volver
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button onClick={quiero} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
-                        ✅ Quiero
-                      </button>
-                      {esTruco && acc.nivel === 1 && (
-                        <button onClick={subirTruco} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(251,191,36,0.08)",border:"1px solid #fbbf24",color:"#fbbf24",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
-                          🔥 Quiero Retruco
-                        </button>
-                      )}
-                      {esTruco && acc.nivel === 1 && envidoVivo && (
-                        <button onClick={()=>setElEnvidoPrimero(true)} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(96,165,250,0.08)",border:"1px solid #60a5fa",color:"#60a5fa",fontFamily:"'Lato',sans-serif",fontSize:13,fontWeight:700 }}>
-                          🃏 El envido está primero
-                        </button>
-                      )}
-                      {esTruco && acc.nivel === 2 && (
-                        <button onClick={subirTruco} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(251,191,36,0.08)",border:"1px solid #fbbf24",color:"#fbbf24",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
-                          🔥 Quiero Vale Cuatro
-                        </button>
-                      )}
-                      {!esTruco && acc.subtipo === 'envido' && (
-                        <>
-                          <button onClick={()=>escalarEnvido('envido')} style={BTN_ESCALAR}>
-                            ↗ Envido ({acc.si_quiero + 2} pts)
-                          </button>
-                          <button onClick={()=>escalarEnvido('real_envido')} style={BTN_ESCALAR}>
-                            ↗ Real Envido ({acc.si_quiero + 3} pts)
-                          </button>
-                          <button onClick={()=>escalarEnvido('falta_envido')} style={BTN_ESCALAR}>
-                            ↗ Falta Envido ({faltaVal} pts)
-                          </button>
-                        </>
-                      )}
-                      {!esTruco && acc.subtipo === 'real_envido' && (
-                        <button onClick={()=>escalarEnvido('falta_envido')} style={BTN_ESCALAR}>
-                          ↗ Falta Envido ({faltaVal} pts)
-                        </button>
-                      )}
-                      <button onClick={noQuiero} style={{ padding:"11px",borderRadius:10,cursor:"pointer",background:"rgba(248,113,113,0.08)",border:"1px solid #f87171",color:"#f87171",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}>
-                        ❌ No quiero
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-      )}
       {envidoGlobos && (
         <div style={{ position:"fixed",inset:0,zIndex:15,pointerEvents:"none",display:"flex",flexDirection:"column",justifyContent:"space-between",padding:"70px 24px 90px" }}>
           <div style={{ opacity:envidoGlobos.visible?1:0,transition:"opacity 0.5s",alignSelf:"center",position:"relative",background:"#fff",borderRadius:10,padding:"7px 14px",fontWeight:900,fontSize:15,color:"#111",boxShadow:"2px 2px 0 #111",whiteSpace:"nowrap" }}>
