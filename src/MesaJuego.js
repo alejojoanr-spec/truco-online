@@ -16,24 +16,25 @@ const PANO_MAX_HEIGHT = 260;
 // pantalla se escala en bloque para que el mismo layout se vea proporcional
 // en cualquier dispositivo, sin tocar ninguna medida individual.
 const DISENO_W = 390;
-const DISENO_H = 844;
 const ESCALA_MIN = 0.75;
 const ESCALA_MAX = 1.5;
 
-function calcularEscala() {
-  if (typeof window === "undefined") return 1;
-  const cruda = Math.min(window.innerWidth / DISENO_W, window.innerHeight / DISENO_H);
-  return Math.min(ESCALA_MAX, Math.max(ESCALA_MIN, cruda));
+function calcularDimensionesPantalla() {
+  if (typeof window === "undefined") return { escala: 1, alturaLienzo: 844 };
+  const cruda = window.innerWidth / DISENO_W;
+  const escala = Math.min(ESCALA_MAX, Math.max(ESCALA_MIN, cruda));
+  const alturaLienzo = window.innerHeight / escala;
+  return { escala, alturaLienzo };
 }
 
 function useEscalaPantalla() {
-  const [escala, setEscala] = useState(calcularEscala);
+  const [dimensiones, setDimensiones] = useState(calcularDimensionesPantalla);
   useEffect(() => {
-    const onResize = () => setEscala(calcularEscala());
+    const onResize = () => setDimensiones(calcularDimensionesPantalla());
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
-  return escala;
+  return dimensiones;
 }
 
 function useEsMobile(bp = 480) {
@@ -72,7 +73,7 @@ export function MesaJuego({
   esMiTurno = true,
 }) {
   const esMobile = useEsMobile();
-  const escala = useEscalaPantalla();
+  const { escala, alturaLienzo } = useEscalaPantalla();
   const valorTimer = esMiTurno ? timerSegundos : rivalTimerSegundos;
   const colorTimer = esMiTurno ? "#4ade80" : "#f87171";
 
@@ -80,7 +81,7 @@ export function MesaJuego({
     <div style={{ height:"100dvh", width:"100%", background:"#101010", display:"flex", justifyContent:"center", alignItems:"center", overflow:"hidden", boxSizing:"border-box" }}>
     <div style={{
       width: DISENO_W,
-      height: DISENO_H,
+      height: alturaLienzo,
       transform: `scale(${escala})`,
       transformOrigin: "center",
       flexShrink: 0,
