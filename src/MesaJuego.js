@@ -175,8 +175,18 @@ export function MesaJuego({
       </div>
 
       {/* Botones de acción */}
-      <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center", alignItems:"center", alignContent:"center", maxWidth:500, flexShrink:0, paddingBottom:4, height:76 }}>
-        {botonesSlot}
+      <div style={{
+        width: "calc(100% + 16px)",
+        marginLeft: -8,
+        marginBottom: -4,
+        background: "#1c1c1c",
+        flexShrink: 0,
+        boxSizing: "border-box",
+        padding: "0 8px 4px",
+      }}>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center", alignItems:"center", alignContent:"center", width:"100%", maxWidth:500, margin:"0 auto", height:76 }}>
+          {botonesSlot}
+        </div>
       </div>
 
       {/* Log — últimas 2 líneas */}
