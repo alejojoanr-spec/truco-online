@@ -85,6 +85,7 @@ export function MesaJuego({
       transform: `scale(${escala})`,
       transformOrigin: "center",
       flexShrink: 0,
+      overflowY: "auto",
       background:"#101010", fontFamily:"'Lato',sans-serif", display:"flex", flexDirection:"column", alignItems:"center", padding:"8px 8px 4px", boxSizing:"border-box", gap:2,
     }}>
 
