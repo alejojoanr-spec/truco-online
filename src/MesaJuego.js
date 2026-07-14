@@ -18,9 +18,14 @@ const DISENO_W = 390;
 const ESCALA_MIN = 0.75;
 const ESCALA_MAX = 1.5;
 
+// Alto mínimo (a escala 1x) que necesita el contenido del lienzo para
+// mostrarse completo sin cortarse (calculado sumando todos los bloques
+// fijos: marcador, paño, mano, botones, gaps y padding, con margen).
+const ALTURA_MINIMA_CONTENIDO = 650;
+
 function calcularDimensionesPantalla() {
   if (typeof window === "undefined") return { escala: 1, alturaLienzo: 844 };
-  const cruda = window.innerWidth / DISENO_W;
+  const cruda = Math.min(window.innerWidth / DISENO_W, window.innerHeight / ALTURA_MINIMA_CONTENIDO);
   const escala = Math.min(ESCALA_MAX, Math.max(ESCALA_MIN, cruda));
   const alturaLienzo = window.innerHeight / escala;
   return { escala, alturaLienzo };
