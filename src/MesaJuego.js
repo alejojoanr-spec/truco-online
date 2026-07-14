@@ -21,7 +21,9 @@ const ESCALA_MAX = 1.5;
 // Alto mínimo (a escala 1x) que necesita el contenido del lienzo para
 // mostrarse completo sin cortarse (calculado sumando todos los bloques
 // fijos: marcador, paño, mano, botones, gaps y padding, con margen).
-const ALTURA_MINIMA_CONTENIDO = 650;
+// El panel de botones ahora puede ocupar 2 filas (máx. 3 por fila), así
+// que se suman ~48px extra (segunda fila ~40px + gap:8) al cálculo base.
+const ALTURA_MINIMA_CONTENIDO = 700;
 
 function calcularDimensionesPantalla() {
   if (typeof window === "undefined") return { escala: 1, alturaLienzo: 844 };
@@ -188,7 +190,7 @@ export function MesaJuego({
         boxSizing: "border-box",
         padding: "0 8px 4px",
       }}>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center", alignItems:"center", alignContent:"center", width:"100%", maxWidth:500, margin:"0 auto", height:76 }}>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center", alignItems:"center", alignContent:"center", width:"100%", maxWidth:500, margin:"0 auto", minHeight:76 }}>
           {botonesSlot}
         </div>
       </div>
