@@ -1083,13 +1083,19 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   async function irseAlMazo() {
     if (!partida || resolviendoMano || partida.accion_pendiente) return;
+    const { data: freshPartida, error: errFresh } = await supabase
+      .from("partidas")
+      .select("puntos_mano, envido_jugado, mesa, truco_nivel")
+      .eq("codigo", codigo)
+      .single();
+    if (errFresh) { console.error("irseAlMazo fetch fresco:", errFresh); return; }
     const puntosObj = partida.puntos || 15;
     const rivalId = user.id === partida.jugador1_id ? partida.jugador2_id : partida.jugador1_id;
     const rivalEsJ1 = rivalId === partida.jugador1_id;
-    const mesaLen = JSON.parse(partida.mesa || "[]").length;
-    const envidoVivo = !partida.envido_jugado && mesaLen < 2;
+    const mesaLen = JSON.parse(freshPartida.mesa || "[]").length;
+    const envidoVivo = !freshPartida.envido_jugado && mesaLen < 2;
     const puntoEnvido = envidoVivo ? 1 : 0;
-    const ptsParaRival = (partida.puntos_mano || 1) + puntoEnvido;
+    const ptsParaRival = (freshPartida.puntos_mano || 1) + puntoEnvido;
     const np1 = (partida.puntos1 || 0) + (rivalEsJ1 ? ptsParaRival : 0);
     const np2 = (partida.puntos2 || 0) + (!rivalEsJ1 ? ptsParaRival : 0);
     addLog(`Te fuiste al mazo. Rival suma ${ptsParaRival} pt${ptsParaRival > 1 ? 's' : ''}${puntoEnvido ? ' (incl. envido)' : ''}.`);
