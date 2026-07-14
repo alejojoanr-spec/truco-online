@@ -133,9 +133,9 @@ export function MesaJuego({
         <div style={{ fontSize:10, color:"#ffffff", letterSpacing:2, textTransform:"uppercase", marginBottom:8 }}>
           {instruccion}
         </div>
-        <div style={{ display:"flex", alignItems:"flex-end", gap:10 }}>
+        <div style={{ position:"relative", display:"inline-flex", alignItems:"flex-end" }}>
           {valorTimer != null && valorTimer > 0 && (
-            <svg width="44" height="44" style={{ flexShrink:0, transform:"scale(1.05)", filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
+            <svg width="44" height="44" style={{ position:"absolute", right:"100%", bottom:0, marginRight:16, transform:"scale(1.05)", filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
               <circle cx="22" cy="22" r="17" fill="rgba(0,0,0,0.75)" stroke="rgba(255,255,255,0.06)" strokeWidth="3"/>
               <circle cx="22" cy="22" r="17" fill="none" stroke={colorTimer} strokeWidth="3"
                 strokeDasharray={2*Math.PI*17} strokeDashoffset={2*Math.PI*17*(1 - valorTimer/15)}
