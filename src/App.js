@@ -189,6 +189,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [timerSegundos, setTimerSegundos] = useState(15);
   const timerRef = useRef(null);
   const esperandoRespuestaEnvidoRef = useRef(false);
+  const envidoPropioPendienteRef = useRef(false);
   const responderEnvidoRef = useRef(null);
   const rivalFueAlMazoRef = useRef(false);
   const pendingJugarRivalRef = useRef(null);
@@ -198,6 +199,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [envidoMonto, setEnvidoMonto] = useState({ quiero: 0, noquiero: 0 });
   const [envidoGlobos, setEnvidoGlobos] = useState(null);
   const esperandoRespuestaEnvido = envidoCantadoPor === "rival" && !!estadoEnvido && !["quiero","noquiero"].includes(estadoEnvido);
+  const envidoPropioPendiente = envidoCantadoPor === "jugador" && !!estadoEnvido && !["quiero","noquiero"].includes(estadoEnvido);
   const [, setLog] = useState([]);
 
   function guardarAvatar(av) {
@@ -238,6 +240,9 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       if (timerRef.current) clearInterval(timerRef.current);
       if (esperandoRespuestaEnvidoRef.current) {
         responderEnvidoRef.current("noquiero");
+      } else if (envidoPropioPendienteRef.current) {
+        // El jugador ya cantó su propio Envido; el setTimeout de 1000ms
+        // interno de cantarEnvido() resuelve solo — no hacer nada acá.
       } else {
         irseAlMazo();
       }
@@ -600,6 +605,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     const vozEnv = tipo === 'realenvido' ? 'real_envido' : tipo === 'faltaenvido' ? 'falta_envido' : 'envido';
     reproducirVoz(vozEnv);
     setEstadoEnvido(tipo); addLog(`Vos: ¡${tipo === "envido-envido" ? "ENVIDO ENVIDO" : tipo.toUpperCase()}!`);
+    setEnvidoCantadoPor("jugador");
     const ptsJ = puntosJugador;
     const ptsR = puntosRival;
     setTimeout(() => {
@@ -624,6 +630,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       const r = envidoRival >= 25 || Math.random() > 0.5 ? "quiero" : "noquiero";
       reproducirVoz(r === 'quiero' ? 'quiero' : 'no_quiero');
       setEstadoEnvido(r); addLog(`Rival: ${r === "quiero" ? "¡Quiero!" : "No quiero"}`);
+      setEnvidoCantadoPor(null);
       if (r === "quiero") {
         const envJ = calcularEnvido(manoJugador);
         addLog(`Vos: ${envJ} - Rival: ${envidoRival}`);
@@ -645,7 +652,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         const ptsNoQ = tipo === "envido-envido" ? 2 : 1;
         addLog(`✅ Ganaste ${ptsNoQ} punto${ptsNoQ > 1 ? "s" : ""} por envido`);
         setPuntosJugador(p => p + ptsNoQ); reproducirSonidoPunto();
-        mostrarGlobosEnvido(`¡Son ${calcularEnvido(manoJugador)}!`, "Son buenas");
       }
     }, 1000);
   }
@@ -750,7 +756,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   function puntoEnvidoPorMazo() { return envidoDisponible ? 1 : 0; }
 
   function irseAlMazo() {
-    if (esperandoRespuestaEnvido) return;
+    if (esperandoRespuestaEnvido || envidoPropioPendiente) return;
     reproducirVoz('me_voy_al_mazo');
     addLog("Te fuiste al mazo.");
     setTimeout(()=>resolverMano("rival", puntoEnvidoPorMazo()),500);
@@ -761,12 +767,12 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
   const esManoDeLasAceites = puntosJugador >= limitePuntos - 1 || puntosRival >= limitePuntos - 1;
   const envidoDisponible = !estadoEnvido && rondaActual === 1 && jugadasJugador.length === 0;
-  const trucoDisponible = !estadoTruco && turno === "jugador" && fasePartida === "jugando" && !esManoDeLasAceites;
+  const trucoDisponible = !estadoTruco && turno === "jugador" && fasePartida === "jugando" && !esManoDeLasAceites && !envidoPropioPendiente;
   const esperandoRespuestaRetruco = estadoTruco === "retruco" && trucoCantadoPor === "rival";
   const esperandoRespuestaTruco = estadoTruco === "truco" && trucoCantadoPor === "rival";
   const esperandoRespuestaValeCuatro = estadoTruco === "valecuatro" && trucoCantadoPor === "rival";
-  const hayCantoPendiente = esperandoRespuestaRetruco || esperandoRespuestaTruco || esperandoRespuestaValeCuatro || esperandoRespuestaEnvido;
-  const puedeJugar = turno === "jugador" && fasePartida === "jugando" && !esperandoRespuestaRetruco && !esperandoRespuestaTruco && !esperandoRespuestaEnvido && !(estadoTruco && !["quiero","noquiero"].includes(estadoTruco) && trucoCantadoPor === "rival");
+  const hayCantoPendiente = esperandoRespuestaRetruco || esperandoRespuestaTruco || esperandoRespuestaValeCuatro || esperandoRespuestaEnvido || envidoPropioPendiente;
+  const puedeJugar = turno === "jugador" && fasePartida === "jugando" && !esperandoRespuestaRetruco && !esperandoRespuestaTruco && !esperandoRespuestaEnvido && !envidoPropioPendiente && !(estadoTruco && !["quiero","noquiero"].includes(estadoTruco) && trucoCantadoPor === "rival");
   const puedoEscalarDiferido = puedeJugar && derechoTrucoDe === "jugador" && nivelTrucoAceptado > 0 && nivelTrucoAceptado < 3 && !esManoDeLasAceites;
   const hayAccionMia = puedeJugar || trucoDisponible || esperandoRespuestaRetruco || esperandoRespuestaTruco || esperandoRespuestaValeCuatro || esperandoRespuestaEnvido || envidoDisponible;
   const estaEsperandoRival = !hayAccionMia && !rivalMsg;
@@ -774,6 +780,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const nombreJugador = perfil?.nombre || user.email?.split("@")[0] || "Vos";
 
   esperandoRespuestaEnvidoRef.current = esperandoRespuestaEnvido;
+  envidoPropioPendienteRef.current = envidoPropioPendiente;
   responderEnvidoRef.current = responderEnvido;
 
   if (eligiendo) {
