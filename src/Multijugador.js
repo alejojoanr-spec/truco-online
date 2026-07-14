@@ -962,6 +962,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (!acc || acc.tipo !== 'envido' || acc.cantado_por === user.id) return;
     if (acc.subtipo === 'falta_envido') return;
     if (acc.subtipo === 'real_envido' && subtipo !== 'falta_envido') return;
+    const vecesEnvido = (acc.cadena || []).filter(s => s === 'envido').length;
+    if (subtipo === 'envido' && vecesEnvido >= 2) return;
     const puntosObj = partida.puntos || 15;
     const falta = calcularFalta(puntosObj, partida.puntos1 || 0, partida.puntos2 || 0);
     const VALS = { envido: 2, real_envido: 3, falta_envido: falta };
@@ -1505,7 +1507,9 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
                 )}
                 {!esTruco && acc.subtipo === 'envido' && (
                   <>
-                    <button onClick={()=>escalarEnvido('envido')} style={btnStyle("#1d4ed8","#60a5fa")}>↗ Envido</button>
+                    {(acc.cadena || []).filter(s => s === 'envido').length < 2 && (
+                      <button onClick={()=>escalarEnvido('envido')} style={btnStyle("#1d4ed8","#60a5fa")}>↗ Envido</button>
+                    )}
                     <button onClick={()=>escalarEnvido('real_envido')} style={btnStyle("#5b21b6","#a78bfa")}>↗ Real Envido</button>
                     <button onClick={()=>escalarEnvido('falta_envido')} style={btnStyle("#065f46","#34d399")}>↗ Falta Envido</button>
                   </>
