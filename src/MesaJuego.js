@@ -9,7 +9,6 @@ const FAN_OVERLAP = -18;
 const FAN_ANGLE = 8;
 
 const PANO_MARGIN_TOP = 32;
-const PANO_MAX_HEIGHT = 260;
 
 // Tamaño de "diseño" de referencia: iPhone 14 (390x844), con el que se
 // calibraron a mano las ~60 medidas fijas de este archivo. El resto de la
@@ -114,7 +113,7 @@ export function MesaJuego({
       </div>
 
       {/* Mesa — 3 slots fijos */}
-      <div style={{ background:"#1a472a", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth: esMobile ? 300 : 420, margin:"0 auto", marginTop:PANO_MARGIN_TOP, flexGrow:1, minHeight:228, maxHeight:PANO_MAX_HEIGHT }}>
+      <div style={{ background:"#1a472a", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth: esMobile ? 300 : 420, margin:"0 auto", marginTop:PANO_MARGIN_TOP, flexGrow:1, minHeight:228 }}>
         {rondas.map((r, ri) => (
           <div key={ri} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
             {r.rival ? <Carta carta={r.rival} escala={MESA_E} /> : <Slot />}
