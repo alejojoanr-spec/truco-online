@@ -960,21 +960,28 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   async function escalarEnvido(subtipo) {
     const acc = partida?.accion_pendiente;
     if (!acc || acc.tipo !== 'envido' || acc.cantado_por === user.id) return;
-    if (acc.subtipo === 'falta_envido') return;
-    if (acc.subtipo === 'real_envido' && subtipo !== 'falta_envido') return;
-    const vecesEnvido = (acc.cadena || []).filter(s => s === 'envido').length;
+    const { data: freshPartida, error: errFresh } = await supabase
+      .from("partidas")
+      .select("accion_pendiente")
+      .eq("codigo", codigo)
+      .single();
+    if (errFresh || !freshPartida?.accion_pendiente) { console.error("escalarEnvido fetch fresco:", errFresh); return; }
+    const accFresh = freshPartida.accion_pendiente;
+    if (accFresh.subtipo === 'falta_envido') return;
+    if (accFresh.subtipo === 'real_envido' && subtipo !== 'falta_envido') return;
+    const vecesEnvido = (accFresh.cadena || []).filter(s => s === 'envido').length;
     if (subtipo === 'envido' && vecesEnvido >= 2) return;
     const puntosObj = partida.puntos || 15;
     const falta = calcularFalta(puntosObj, partida.puntos1 || 0, partida.puntos2 || 0);
     const VALS = { envido: 2, real_envido: 3, falta_envido: falta };
-    const nuevaCadena = [...(acc.cadena || [acc.subtipo]), subtipo];
+    const nuevaCadena = [...(accFresh.cadena || [accFresh.subtipo]), subtipo];
     reproducirVoz(VOZ_ENV[subtipo] || 'envido');
     await supabase.from("partidas").update({
       accion_pendiente: {
         tipo: 'envido', subtipo, cadena: nuevaCadena,
         cantado_por: user.id,
-        si_quiero: subtipo === 'falta_envido' ? falta : acc.si_quiero + VALS[subtipo],
-        si_no: acc.si_quiero,
+        si_quiero: subtipo === 'falta_envido' ? falta : accFresh.si_quiero + VALS[subtipo],
+        si_no: accFresh.si_quiero,
       },
       turno_inicio: new Date().toISOString(),
     }).eq("codigo", codigo);
