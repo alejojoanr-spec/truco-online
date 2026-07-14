@@ -252,6 +252,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     setMesaJugador([]); setMesaRival([]);
     setTurno("jugador"); setEstadoTruco(null); setEstadoEnvido(null);
     setTrucoCantadoPor(null); setPtsTrucoApostados(0); setRondaActual(1); setGanadoresRondas([]);
+    setPuntosJugador(0); setPuntosRival(0);
     setNivelTrucoAceptado(0); setDerechoTrucoDe(null);
     setFasePartida("jugando"); setGanadorPartida(null);
     setCartaSeleccionada(null);
