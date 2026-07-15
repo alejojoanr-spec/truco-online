@@ -731,6 +731,19 @@ function TabPartidas() {
   const esEnJuego   = p => p.estado === "jugando" && !p.ganador_id;
   const esFinalizada = p => !!p.ganador_id;
   const winratePct  = u => Math.round((u.partidas_ganadas / u.partidas_jugadas) * 100);
+  const MOTIVO_FIN_LABEL = { puntaje: "Por puntos", abandono: "Abandono", timeout: "Timeout", timeout_cron: "Timeout (auto)" };
+  function duracionPartida(p) {
+    if (!p.finalizado_en || !p.created_at) return null;
+    const totalMin = Math.round((new Date(p.finalizado_en) - new Date(p.created_at)) / 60000);
+    if (totalMin >= 60) return `${Math.floor(totalMin / 60)}h ${totalMin % 60}m`;
+    return `${totalMin}min`;
+  }
+  function nombreDebiaJugar(p) {
+    if (!p.debia_jugada_id) return null;
+    if (p.debia_jugada_id === p.jugador1_id) return p.jugador1_nombre;
+    if (p.debia_jugada_id === p.jugador2_id) return p.jugador2_nombre;
+    return null;
+  }
 
   // Stats calculados sobre el período seleccionado (partidas ya filtradas por fecha desde Supabase)
   const stats = {
@@ -755,6 +768,8 @@ function TabPartidas() {
     const enJuego    = esEnJuego(partidaSel);
     const statusColor = finalizada ? "#4ade80" : enJuego ? "#60a5fa" : "#fbbf24";
     const statusLabel = finalizada ? "Finalizada" : enJuego ? "En juego" : "Esperando";
+    const duracion = duracionPartida(partidaSel);
+    const debiaNombre = nombreDebiaJugar(partidaSel);
     return (
       <>
         <button onClick={() => setPartidaSel(null)} style={BACK_BTN}>{BACK_ICON} Volver a partidas</button>
@@ -763,7 +778,14 @@ function TabPartidas() {
         <div style={{ ...CARD, marginBottom:12 }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
             <div style={{ fontSize:11, color:"#6b7280" }}>Código: <strong style={{ color:"#9ca3af" }}>{partidaSel.codigo || "—"}</strong></div>
-            <span style={{ fontSize:10, padding:"2px 8px", borderRadius:4, border:`1px solid ${statusColor}`, color:statusColor, fontWeight:700 }}>{statusLabel}</span>
+            <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+              <span style={{ fontSize:10, padding:"2px 8px", borderRadius:4, border:`1px solid ${statusColor}`, color:statusColor, fontWeight:700 }}>{statusLabel}</span>
+              {partidaSel.motivo_fin && (
+                <span style={{ fontSize:10, padding:"2px 8px", borderRadius:4, border:"1px solid #6b7280", color:"#9ca3af", fontWeight:700 }}>
+                  {MOTIVO_FIN_LABEL[partidaSel.motivo_fin] || partidaSel.motivo_fin}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Jugadores */}
@@ -789,6 +811,12 @@ function TabPartidas() {
             </div>
           </div>
 
+          {debiaNombre && (
+            <div style={{ textAlign:"center", fontSize:11, color:"#9ca3af", marginTop:-8, marginBottom:16 }}>
+              No respondió: <strong style={{ color:"#e2f5e9" }}>{debiaNombre}</strong>
+            </div>
+          )}
+
           {/* Stats grid */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
             <div style={{ background:"rgba(0,0,0,0.3)", borderRadius:8, padding:"10px 12px" }}>
@@ -812,6 +840,9 @@ function TabPartidas() {
             <div style={{ background:"rgba(0,0,0,0.3)", borderRadius:8, padding:"10px 12px" }}>
               <div style={{ fontSize:11, color:"#6b7280" }}>Fecha</div>
               <div style={{ fontSize:12, fontWeight:700, color:"#9ca3af", marginTop:4 }}>{partidaSel.created_at ? fechaHora(partidaSel.created_at) : "—"}</div>
+              {duracion && (
+                <div style={{ fontSize:11, color:"#6b7280", marginTop:2 }}>Duración: {duracion}</div>
+              )}
             </div>
           </div>
 
@@ -953,6 +984,8 @@ function TabPartidas() {
                 const statusColor = finalizada ? "#4ade80" : enJuego ? "#60a5fa" : "#fbbf24";
                 const statusLabel = finalizada ? "Finalizada" : enJuego ? "En juego" : "Esperando";
                 const ganadorSosp = finalizada && sospechosos.some(s => s.usuario_id === p.ganador_id);
+                const duracion = duracionPartida(p);
+                const debiaNombre = nombreDebiaJugar(p);
                 return (
                   <div key={p.id} onClick={() => setPartidaSel(p)}
                     style={{ ...CARD, padding:"10px 14px", cursor:"pointer" }}
@@ -968,10 +1001,18 @@ function TabPartidas() {
                           <span style={{ fontSize:10, padding:"1px 6px", borderRadius:4, border:`1px solid ${statusColor}`, color:statusColor }}>
                             {statusLabel}
                           </span>
+                          {p.motivo_fin && (
+                            <span style={{ fontSize:10, padding:"1px 6px", borderRadius:4, border:"1px solid #6b7280", color:"#9ca3af" }}>
+                              {MOTIVO_FIN_LABEL[p.motivo_fin] || p.motivo_fin}
+                            </span>
+                          )}
                           {ganadorSosp && <span style={{ fontSize:11 }}>⚠️</span>}
                         </div>
                         <div style={{ display:"flex", gap:10, marginTop:5, flexWrap:"wrap" }}>
                           <span style={{ fontSize:11, color:"#6b7280" }}>{p.created_at ? fechaHora(p.created_at) : ""}</span>
+                          {duracion && (
+                            <span style={{ fontSize:11, color:"#6b7280" }}>Duración: {duracion}</span>
+                          )}
                           {(p.apuesta || 0) > 0 && (
                             <span style={{ fontSize:11, color:"#fbbf24" }}>Apuesta: {formatARS(p.apuesta)}</span>
                           )}
@@ -981,6 +1022,9 @@ function TabPartidas() {
                         </div>
                         {finalizada && p.ganador_id && (
                           <div style={{ fontSize:11, color:"#4ade80", marginTop:3 }}>Ganó: {p.ganador_id === p.jugador1_id ? p.jugador1_nombre : p.jugador2_nombre}</div>
+                        )}
+                        {debiaNombre && (
+                          <div style={{ fontSize:11, color:"#9ca3af", marginTop:2 }}>No respondió: {debiaNombre}</div>
                         )}
                       </div>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0, marginTop:3 }}><path d="M9 18l6-6-6-6"/></svg>
