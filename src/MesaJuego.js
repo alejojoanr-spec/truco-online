@@ -5,7 +5,7 @@ const MESA_E = 0.91;
 const MW = 70 * MESA_E;
 const MH = 110 * MESA_E;
 
-const FAN_OVERLAP = -18;
+const FAN_OVERLAP = -25;
 const FAN_ANGLE = 8;
 
 const PANO_MARGIN_TOP = 32;
@@ -23,7 +23,7 @@ const ESCALA_MAX = 1.5;
 // fijos: marcador, paño, mano, botones, gaps y padding, con margen).
 // El panel de botones ahora puede ocupar 2 filas (máx. 3 por fila), así
 // que se suman ~48px extra (segunda fila ~40px + gap:8) al cálculo base.
-const ALTURA_MINIMA_CONTENIDO = 700;
+const ALTURA_MINIMA_CONTENIDO = 756;
 
 function calcularDimensionesPantalla() {
   if (typeof window === "undefined") return { escala: 1, alturaLienzo: 844 };
@@ -131,7 +131,7 @@ export function MesaJuego({
       </div>
 
       {/* Mano del jugador */}
-      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0 }}>
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0, marginTop:-86, position:"relative", zIndex:150 }}>
         <div style={{ position:"relative", display:"inline-flex", alignItems:"flex-end" }}>
           {valorTimer != null && valorTimer > 0 && (
             <svg width="44" height="44" style={{ position:"absolute", right:"100%", bottom:0, marginRight:16, transform:"scale(1.05)", filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
@@ -165,7 +165,7 @@ export function MesaJuego({
               };
               return (
                 <div key={i} style={wrapperStyle}>
-                  <Carta carta={c} escala={1.1} jugada={jugadasJugador.includes(i)} seleccionada={estaSeleccionada}
+                  <Carta carta={c} escala={1.57} jugada={jugadasJugador.includes(i)} seleccionada={estaSeleccionada}
                     onClick={jugadasJugador.includes(i) ? undefined : () => onClickCarta(i)} />
                 </div>
               );
@@ -187,7 +187,7 @@ export function MesaJuego({
         position: "relative",
         zIndex: 150,
       }}>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center", alignItems:"center", alignContent:"center", width:"100%", maxWidth:500, margin:"0 auto", minHeight:92 }}>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center", alignItems:"center", alignContent:"center", width:"100%", maxWidth:500, margin:"0 auto", minHeight:106 }}>
           {botonesSlot}
         </div>
       </div>
