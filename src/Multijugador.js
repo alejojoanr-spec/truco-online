@@ -1478,11 +1478,11 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
                 <>
                   <button onClick={()=>cantarEnvido("envido")} style={{ ...btnStyle("#1d4ed8","#60a5fa"), flex:"0 1 30%", minWidth:100 }}>Envido</button>
                   <button onClick={()=>cantarEnvido("real_envido")} style={{ ...btnStyle("#5b21b6","#a78bfa"), flex:"0 1 30%", minWidth:100 }}>Real Envido</button>
-                  <button onClick={()=>cantarEnvido("falta_envido")} style={{ ...btnStyle("#065f46","#34d399"), flex:"0 1 30%", minWidth:100 }}>Falta Envido</button>
+                  <button onClick={()=>cantarEnvido("falta_envido")} style={{ ...btnStyle("#065f46","#34d399"), flex:"0 1 30%", minWidth:100 }}>Falta Envido!</button>
                 </>
               )}
               {miTurno && !partida?.truco_jugado && (
-                <button onClick={cantarTruco} style={{ ...btnStyle("#b45309","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>Truco</button>
+                <button onClick={cantarTruco} style={{ ...btnStyle("#b45309","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>Truco!</button>
               )}
               {miTurno && partida?.truco_derecho_de === user.id && (partida?.truco_nivel || 0) < 3 && (
                 <button onClick={escalarTrucoDiferido} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>
@@ -1500,7 +1500,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
               <>
                 <button onClick={()=>cantarEnvidoSobreTruco('envido')} style={{ ...btnStyle("#1d4ed8","#60a5fa"), flex:"0 1 30%", minWidth:100 }}>Envido</button>
                 <button onClick={()=>cantarEnvidoSobreTruco('real_envido')} style={{ ...btnStyle("#5b21b6","#a78bfa"), flex:"0 1 30%", minWidth:100 }}>Real Envido</button>
-                <button onClick={()=>cantarEnvidoSobreTruco('falta_envido')} style={{ ...btnStyle("#065f46","#34d399"), flex:"0 1 30%", minWidth:100 }}>Falta Envido</button>
+                <button onClick={()=>cantarEnvidoSobreTruco('falta_envido')} style={{ ...btnStyle("#065f46","#34d399"), flex:"0 1 30%", minWidth:100 }}>Falta Envido!</button>
                 <button onClick={()=>setElEnvidoPrimero(false)} style={{ ...btnStyle("#374151","#9ca3af"), flex:"0 1 30%", minWidth:100 }}>‹ Volver</button>
               </>
             ) : (
@@ -1513,7 +1513,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
                   <button onClick={()=>setElEnvidoPrimero(true)} style={{ ...btnStyle("#1d4ed8","#60a5fa"), flex:"0 1 30%", minWidth:100 }}>🃏 El envido está primero</button>
                 )}
                 {esTruco && acc.nivel === 2 && (
-                  <button onClick={subirTruco} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>🔥 Quiero Vale Cuatro</button>
+                  <button onClick={subirTruco} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>🔥 Quiero Vale Cuatro!</button>
                 )}
                 {!esTruco && acc.subtipo === 'envido' && (
                   <>
@@ -1521,7 +1521,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
                       <button onClick={()=>escalarEnvido('envido')} style={{ ...btnStyle("#1d4ed8","#60a5fa"), flex:"0 1 30%", minWidth:100 }}>↗ Envido</button>
                     )}
                     <button onClick={()=>escalarEnvido('real_envido')} style={{ ...btnStyle("#5b21b6","#a78bfa"), flex:"0 1 30%", minWidth:100 }}>↗ Real Envido</button>
-                    <button onClick={()=>escalarEnvido('falta_envido')} style={{ ...btnStyle("#065f46","#34d399"), flex:"0 1 30%", minWidth:100 }}>↗ Falta Envido</button>
+                    <button onClick={()=>escalarEnvido('falta_envido')} style={{ ...btnStyle("#065f46","#34d399"), flex:"0 1 30%", minWidth:100 }}>↗ Falta Envido!</button>
                   </>
                 )}
                 {!esTruco && acc.subtipo === 'real_envido' && (
