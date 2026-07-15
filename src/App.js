@@ -841,29 +841,29 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         onSalir={() => setMostrarConfirmSalir(true)}
         log={null}
         botonesSlot={<>
-          {trucoDisponible && <button onClick={cantarTruco} style={{ ...btnStyle("#b45309","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>🗣 Truco!</button>}
+          {trucoDisponible && <button onClick={cantarTruco} style={{ ...btnStyle("#b45309","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>Truco!</button>}
           {puedoEscalarDiferido && (
             <button onClick={escalarTrucoDiferido} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>
-              🗣 {nivelTrucoAceptado === 1 ? "Retruco" : "Vale Cuatro"}
+              {nivelTrucoAceptado === 1 ? "Retruco" : "Vale Cuatro"}
             </button>
           )}
           {esperandoRespuestaRetruco && <>
-            <button onClick={()=>responderRetruco("quiero")} style={{ ...btnStyle("#065f46","#4ade80"), flex:"0 1 30%", minWidth:100 }}>✅ Quiero</button>
-            <button onClick={()=>responderRetruco("noquiero")} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>❌ No quiero</button>
-            {!esManoDeLasAceites && <button onClick={()=>responderRetruco("valecuatro")} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>🗣 Vale Cuatro</button>}
+            <button onClick={()=>responderRetruco("quiero")} style={{ ...btnStyle("#065f46","#4ade80"), flex:"0 1 30%", minWidth:100 }}>Quiero</button>
+            <button onClick={()=>responderRetruco("noquiero")} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>No quiero</button>
+            {!esManoDeLasAceites && <button onClick={()=>responderRetruco("valecuatro")} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>Vale Cuatro</button>}
           </>}
           {esperandoRespuestaTruco && <>
-            <button onClick={()=>responderTruco("quiero")} style={{ ...btnStyle("#065f46","#4ade80"), flex:"0 1 30%", minWidth:100 }}>✅ Quiero</button>
-            <button onClick={()=>responderTruco("noquiero")} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>❌ No quiero</button>
-            {!esManoDeLasAceites && <button onClick={()=>responderTruco("retruco")} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>🗣 Retruco</button>}
+            <button onClick={()=>responderTruco("quiero")} style={{ ...btnStyle("#065f46","#4ade80"), flex:"0 1 30%", minWidth:100 }}>Quiero</button>
+            <button onClick={()=>responderTruco("noquiero")} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>No quiero</button>
+            {!esManoDeLasAceites && <button onClick={()=>responderTruco("retruco")} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>Retruco</button>}
           </>}
           {esperandoRespuestaValeCuatro && <>
-            <button onClick={()=>responderValeCuatro("quiero")} style={{ ...btnStyle("#065f46","#4ade80"), flex:"0 1 30%", minWidth:100 }}>✅ Quiero</button>
-            <button onClick={()=>responderValeCuatro("noquiero")} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>❌ No quiero</button>
+            <button onClick={()=>responderValeCuatro("quiero")} style={{ ...btnStyle("#065f46","#4ade80"), flex:"0 1 30%", minWidth:100 }}>Quiero</button>
+            <button onClick={()=>responderValeCuatro("noquiero")} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>No quiero</button>
           </>}
           {esperandoRespuestaEnvido && <>
-            <button onClick={()=>responderEnvido("quiero")} style={{ ...btnStyle("#065f46","#4ade80"), flex:"0 1 30%", minWidth:100 }}>✅ Quiero</button>
-            <button onClick={()=>responderEnvido("noquiero")} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>❌ No quiero</button>
+            <button onClick={()=>responderEnvido("quiero")} style={{ ...btnStyle("#065f46","#4ade80"), flex:"0 1 30%", minWidth:100 }}>Quiero</button>
+            <button onClick={()=>responderEnvido("noquiero")} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>No quiero</button>
             {estadoEnvido === "envido" && <>
               <button onClick={()=>escalarEnvidoJugador("envido")} style={{ ...btnStyle("#1d4ed8","#60a5fa"), flex:"0 1 30%", minWidth:100 }}>Envido</button>
               <button onClick={()=>escalarEnvidoJugador("realenvido")} style={{ ...btnStyle("#5b21b6","#a78bfa"), flex:"0 1 30%", minWidth:100 }}>Real Envido</button>

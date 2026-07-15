@@ -1486,7 +1486,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
               )}
               {miTurno && partida?.truco_derecho_de === user.id && (partida?.truco_nivel || 0) < 3 && (
                 <button onClick={escalarTrucoDiferido} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>
-                  🗣 {partida.truco_nivel === 1 ? "Retruco" : "Vale Cuatro"}
+                  {partida.truco_nivel === 1 ? "Retruco" : "Vale Cuatro"}
                 </button>
               )}
             </>
@@ -1505,29 +1505,29 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
               </>
             ) : (
               <>
-                <button onClick={quiero} style={{ ...btnStyle("#065f46","#4ade80"), flex:"0 1 30%", minWidth:100 }}>✅ Quiero</button>
+                <button onClick={quiero} style={{ ...btnStyle("#065f46","#4ade80"), flex:"0 1 30%", minWidth:100 }}>Quiero</button>
                 {esTruco && acc.nivel === 1 && (
-                  <button onClick={subirTruco} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>🔥 Quiero Retruco</button>
+                  <button onClick={subirTruco} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>Quiero Retruco</button>
                 )}
                 {esTruco && acc.nivel === 1 && envidoVivo && (
-                  <button onClick={()=>setElEnvidoPrimero(true)} style={{ ...btnStyle("#1d4ed8","#60a5fa"), flex:"0 1 30%", minWidth:100 }}>🃏 El envido está primero</button>
+                  <button onClick={()=>setElEnvidoPrimero(true)} style={{ ...btnStyle("#1d4ed8","#60a5fa"), flex:"0 1 30%", minWidth:100 }}>El envido está primero</button>
                 )}
                 {esTruco && acc.nivel === 2 && (
-                  <button onClick={subirTruco} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>🔥 Quiero Vale Cuatro!</button>
+                  <button onClick={subirTruco} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>Quiero Vale Cuatro!</button>
                 )}
                 {!esTruco && acc.subtipo === 'envido' && (
                   <>
                     {(acc.cadena || []).filter(s => s === 'envido').length < 2 && (
-                      <button onClick={()=>escalarEnvido('envido')} style={{ ...btnStyle("#1d4ed8","#60a5fa"), flex:"0 1 30%", minWidth:100 }}>↗ Envido</button>
+                      <button onClick={()=>escalarEnvido('envido')} style={{ ...btnStyle("#1d4ed8","#60a5fa"), flex:"0 1 30%", minWidth:100 }}>Envido</button>
                     )}
-                    <button onClick={()=>escalarEnvido('real_envido')} style={{ ...btnStyle("#5b21b6","#a78bfa"), flex:"0 1 30%", minWidth:100 }}>↗ Real Envido</button>
-                    <button onClick={()=>escalarEnvido('falta_envido')} style={{ ...btnStyle("#065f46","#34d399"), flex:"0 1 30%", minWidth:100 }}>↗ Falta Envido!</button>
+                    <button onClick={()=>escalarEnvido('real_envido')} style={{ ...btnStyle("#5b21b6","#a78bfa"), flex:"0 1 30%", minWidth:100 }}>Real Envido</button>
+                    <button onClick={()=>escalarEnvido('falta_envido')} style={{ ...btnStyle("#065f46","#34d399"), flex:"0 1 30%", minWidth:100 }}>Falta Envido!</button>
                   </>
                 )}
                 {!esTruco && acc.subtipo === 'real_envido' && (
-                  <button onClick={()=>escalarEnvido('falta_envido')} style={{ ...btnStyle("#065f46","#34d399"), flex:"0 1 30%", minWidth:100 }}>↗ Falta Envido</button>
+                  <button onClick={()=>escalarEnvido('falta_envido')} style={{ ...btnStyle("#065f46","#34d399"), flex:"0 1 30%", minWidth:100 }}>Falta Envido</button>
                 )}
-                <button onClick={noQuiero} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>❌ No quiero</button>
+                <button onClick={noQuiero} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>No quiero</button>
               </>
             );
           })()}
