@@ -102,21 +102,24 @@ export function MesaJuego({
       </div>
 
       {/* Marcador */}
-      <div style={{ background:"rgba(0,0,0,0.5)", border:"1px solid #2d6a4f", borderRadius:12, padding:"8px 14px", display:"flex", gap:12, alignItems:"flex-start", flexShrink:0, width:"100%", maxWidth:640, margin:"0 auto", boxSizing:"border-box" }}>
+      <div style={{ display:"flex", gap:12, alignItems:"flex-start", flexShrink:0, width:"100%", maxWidth:640, margin:"0 auto", boxSizing:"border-box" }}>
         <div style={{ flex:1 }}>
           <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:5, maxWidth:128, overflow:"hidden" }}>
             <img src={avatarJugador && avatarJugador.startsWith("/avatars/") ? avatarJugador : "/avatars/avatar_01.png"} alt="" style={{ width:20, height:20, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
             <span style={{ fontSize:12, color:"#4ade80", letterSpacing:0.5, fontFamily:"'Lato',sans-serif", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{nombreJugador}</span>
           </div>
-          <PalitosPuntaje puntos={puntosJugador} total={limitePuntos} />
+          <div style={{ border:"1px solid #2d6a4f", borderRadius:8, padding:"4px 8px", display:"inline-block" }}>
+            <PalitosPuntaje puntos={puntosJugador} total={limitePuntos} />
+          </div>
         </div>
-        <div style={{ width:1, alignSelf:"stretch", background:"#2d6a4f", margin:"0 2px" }}/>
-        <div style={{ flex:1 }}>
+        <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"flex-end" }}>
           <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:5, maxWidth:128, overflow:"hidden" }}>
             <img src={avatarRival && avatarRival.startsWith("/avatars/") ? avatarRival : "/avatars/avatar_01.png"} alt="" style={{ width:20, height:20, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
             <span style={{ fontSize:12, color:"#f87171", letterSpacing:0.5, fontFamily:"'Lato',sans-serif", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{nombreRival}</span>
           </div>
-          <PalitosPuntaje puntos={puntosRival} total={limitePuntos} />
+          <div style={{ border:"1px solid #2d6a4f", borderRadius:8, padding:"4px 8px", display:"inline-block" }}>
+            <PalitosPuntaje puntos={puntosRival} total={limitePuntos} />
+          </div>
         </div>
       </div>
 
