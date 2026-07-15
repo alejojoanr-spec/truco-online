@@ -132,9 +132,6 @@ export function MesaJuego({
 
       {/* Mano del jugador */}
       <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0 }}>
-        <div style={{ fontSize:10, color:"#ffffff", letterSpacing:2, textTransform:"uppercase", marginBottom:8 }}>
-          {instruccion}
-        </div>
         <div style={{ position:"relative", display:"inline-flex", alignItems:"flex-end" }}>
           {valorTimer != null && valorTimer > 0 && (
             <svg width="44" height="44" style={{ position:"absolute", right:"100%", bottom:0, marginRight:16, transform:"scale(1.05)", filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
@@ -175,9 +172,6 @@ export function MesaJuego({
             })}
           </div>
         </div>
-        {cartaSeleccionada !== null && !jugadasJugador.includes(cartaSeleccionada) && (
-          <div style={{ marginTop:6, fontSize:11, color:"#fbbf24" }}>Tocá de nuevo para confirmar</div>
-        )}
       </div>
 
       {/* Botones de acción */}
