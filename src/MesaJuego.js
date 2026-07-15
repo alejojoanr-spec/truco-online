@@ -138,10 +138,10 @@ export function MesaJuego({
       </div>
 
       {/* Mano del jugador */}
-      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0, marginTop:-86, position:"relative", zIndex:200 }}>
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0, marginTop:-86 }}>
         <div style={{ position:"relative", display:"inline-flex", alignItems:"flex-end" }}>
           {valorTimer != null && valorTimer > 0 && (
-            <svg width="44" height="44" style={{ position:"absolute", right:"100%", bottom:0, marginRight:16, transform:"scale(1.05)", filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
+            <svg width="44" height="44" style={{ position:"absolute", right:"100%", bottom:0, marginRight:16, zIndex:300, transform:"scale(1.05)", filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
               <circle cx="22" cy="22" r="17" fill="rgba(0,0,0,0.75)" stroke="rgba(255,255,255,0.06)" strokeWidth="3"/>
               <circle cx="22" cy="22" r="17" fill="none" stroke={colorTimer} strokeWidth="3"
                 strokeDasharray={2*Math.PI*17} strokeDashoffset={2*Math.PI*17*(1 - valorTimer/15)}
@@ -194,7 +194,7 @@ export function MesaJuego({
         position: "relative",
         zIndex: 150,
       }}>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center", alignItems:"center", alignContent:"center", width:"100%", maxWidth:500, margin:"0 auto", minHeight:117 }}>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center", alignItems:"center", alignContent:"center", width:"100%", maxWidth:500, margin:"0 auto", minHeight:125 }}>
           {botonesSlot}
         </div>
       </div>
