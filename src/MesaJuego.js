@@ -184,13 +184,16 @@ export function MesaJuego({
       <div style={{
         width: "calc(100% + 16px)",
         marginLeft: -8,
+        marginTop: -10,
         marginBottom: -4,
         background: "#1c1c1c",
         flexShrink: 0,
         boxSizing: "border-box",
         padding: "0 8px 4px",
+        position: "relative",
+        zIndex: 150,
       }}>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center", alignItems:"center", alignContent:"center", width:"100%", maxWidth:500, margin:"0 auto", minHeight:76 }}>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center", alignItems:"center", alignContent:"center", width:"100%", maxWidth:500, margin:"0 auto", minHeight:92 }}>
           {botonesSlot}
         </div>
       </div>
