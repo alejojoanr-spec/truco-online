@@ -526,7 +526,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           if (timerAutoFiredRef.current !== p.turno_inicio) {
             timerAutoFiredRef.current = p.turno_inicio;
             clearInterval(displayTimerIntervalRef.current);
-            irseAlMazoRef.current?.();
+            irseAlMazoRef.current?.("timeout");
           }
         }
       }
@@ -551,7 +551,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             if (data && data.turno === user.id && data.turno_inicio === p.turno_inicio) {
               if (timerAutoFiredRef.current !== data.turno_inicio) {
                 timerAutoFiredRef.current = data.turno_inicio;
-                irseAlMazoRef.current?.();
+                irseAlMazoRef.current?.("timeout");
               }
             }
           });
@@ -804,7 +804,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
         if (nuevoPuntos1 >= puntosObjetivo || nuevoPuntos2 >= puntosObjetivo) {
           const ganadorId = nuevoPuntos1 >= puntosObjetivo ? partida.jugador1_id : partida.jugador2_id;
-          updateData = { ...updateData, puntos1: nuevoPuntos1, puntos2: nuevoPuntos2, puntos_mano: 1, accion_pendiente: null, ganador_id: ganadorId, estado: "terminada" };
+          updateData = { ...updateData, puntos1: nuevoPuntos1, puntos2: nuevoPuntos2, puntos_mano: 1, accion_pendiente: null, ganador_id: ganadorId, estado: "terminada", finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null };
         } else {
           // New hand: two-step update so both players see the mesa before it clears
           setResolviendoMano(true);
@@ -867,7 +867,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       if (rivalId) {
         pagoProcesadoRef.current = true;
         await supabase.from("partidas")
-          .update({ ganador_id: rivalId, estado: "terminada" })
+          .update({ ganador_id: rivalId, estado: "terminada", finalizado_en: new Date().toISOString(), motivo_fin: "abandono", debia_jugada_id: null })
           .eq("codigo", codigo);
       }
     }
@@ -1028,7 +1028,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const np2 = (partida.puntos2 || 0) + (ganadorEnv === partida.jugador2_id ? ptosEnvido : 0);
     if (np1 >= puntosObj || np2 >= puntosObj) {
       const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
-      const { error } = await supabase.from("partidas").update({ accion_pendiente: null, truco_en_pausa: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", envido_resultado: envidoRes }).eq("codigo", codigo);
+      const { error } = await supabase.from("partidas").update({ accion_pendiente: null, truco_en_pausa: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", envido_resultado: envidoRes, finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null }).eq("codigo", codigo);
       if (error) console.error("quiero envido gameOver:", error);
     } else {
       const { error } = await supabase.from("partidas").update({ accion_pendiente: partida.truco_en_pausa || null, truco_en_pausa: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString(), envido_resultado: envidoRes }).eq("codigo", codigo);
@@ -1056,7 +1056,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
     if (acc.tipo === 'envido') {
       if (gameOver) {
-        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, truco_en_pausa: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
+        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, truco_en_pausa: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null }).eq("codigo", codigo);
         if (error) console.error("noQuiero envido gameOver:", error);
       } else {
         const { error } = await supabase.from("partidas").update({ accion_pendiente: partida.truco_en_pausa || null, truco_en_pausa: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString() }).eq("codigo", codigo);
@@ -1067,7 +1067,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
     // Truco rechazado: termina la mano
     if (gameOver) {
-      const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1, ganador_id: ganadorId, estado: "terminada" }).eq("codigo", codigo);
+      const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1, ganador_id: ganadorId, estado: "terminada", finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null }).eq("codigo", codigo);
       if (error) console.error("noQuiero truco gameOver:", error);
     } else {
       const nuevoMazo = mezclar(MAZO);
@@ -1090,7 +1090,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     }
   }
 
-  async function irseAlMazo() {
+  async function irseAlMazo(origen = "manual") {
     if (!partida || resolviendoMano || partida.accion_pendiente) return;
     const { data: freshPartida, error: errFresh } = await supabase
       .from("partidas")
@@ -1098,6 +1098,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       .eq("codigo", codigo)
       .single();
     if (errFresh) { console.error("irseAlMazo fetch fresco:", errFresh); return; }
+    const motivoFin = origen === "timeout" ? "timeout" : "abandono";
+    const debiaJugadaId = origen === "timeout" ? partida.turno : null;
     const puntosObj = partida.puntos || 15;
     const rivalId = user.id === partida.jugador1_id ? partida.jugador2_id : partida.jugador1_id;
     const rivalEsJ1 = rivalId === partida.jugador1_id;
@@ -1115,6 +1117,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       const { error } = await supabase.from("partidas").update({
         accion_pendiente: null, puntos1: np1, puntos2: np2,
         puntos_mano: 1, ganador_id: ganadorId, estado: "terminada",
+        finalizado_en: new Date().toISOString(), motivo_fin: motivoFin, debia_jugada_id: debiaJugadaId,
       }).eq("codigo", codigo);
       if (error) console.error("irseAlMazo gameOver:", error);
     } else {
@@ -1534,7 +1537,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             </div>
           )}
           {!resolviendoMano && (miTurno || partida?.accion_pendiente?.cantado_por === user.id) && (
-            <button onClick={irseAlMazo} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>Ir al mazo</button>
+            <button onClick={() => irseAlMazo()} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>Ir al mazo</button>
           )}
           {estaEsperandoRival && (
             <div style={{ padding:"7px 14px", borderRadius:8, background:"rgba(0,0,0,0.35)", border:"1px solid rgba(45,106,79,0.4)", color:"#9ca3af", fontSize:12, fontFamily:"'Lato',sans-serif", letterSpacing:0.5, pointerEvents:"none" }}>
