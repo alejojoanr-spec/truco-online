@@ -1,5 +1,5 @@
 export function btnStyle(bg, border) {
-  return { background:`${bg}88`,border:`1px solid ${border}`,borderRadius:8,padding:"7px 14px",color:border,fontSize:12,cursor:"pointer",fontFamily:"'Lato',sans-serif",letterSpacing:0.5 };
+  return { background:`${bg}88`,border:`1px solid ${border}`,borderRadius:8,padding:"7px 14px",color:border,fontSize:14,cursor:"pointer",fontFamily:"'Lato',sans-serif",letterSpacing:0.5 };
 }
 
 function GrupoCinco({ activos }) {

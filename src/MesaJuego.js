@@ -190,7 +190,7 @@ export function MesaJuego({
         position: "relative",
         zIndex: 150,
       }}>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center", alignItems:"center", alignContent:"center", width:"100%", maxWidth:500, margin:"0 auto", minHeight:106 }}>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center", alignItems:"center", alignContent:"center", width:"100%", maxWidth:500, margin:"0 auto", minHeight:117 }}>
           {botonesSlot}
         </div>
       </div>
