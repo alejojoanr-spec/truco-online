@@ -5,10 +5,10 @@ const MESA_E = 0.91;
 const MW = 70 * MESA_E;
 const MH = 110 * MESA_E;
 
-const FAN_OVERLAP = -25;
+const FAN_OVERLAP = -58;
 const FAN_ANGLE = 8;
 
-const PANO_MARGIN_TOP = 32;
+const PANO_MARGIN_TOP = 40;
 
 // Tamaño de "diseño" de referencia: iPhone 14 (390x844), con el que se
 // calibraron a mano las ~60 medidas fijas de este archivo. El resto de la
@@ -27,9 +27,19 @@ const ALTURA_MINIMA_CONTENIDO = 756;
 
 function calcularDimensionesPantalla() {
   if (typeof window === "undefined") return { escala: 1, alturaLienzo: 844 };
-  const cruda = Math.min(window.innerWidth / DISENO_W, window.innerHeight / ALTURA_MINIMA_CONTENIDO);
+  const ratioAncho = window.innerWidth / DISENO_W;
+  const ratioAlto = window.innerHeight / ALTURA_MINIMA_CONTENIDO;
+  const cruda = Math.min(ratioAncho, ratioAlto);
   const escala = Math.min(ESCALA_MAX, Math.max(ESCALA_MIN, cruda));
   const alturaLienzo = window.innerHeight / escala;
+  console.log("[DEBUG escala]", {
+    innerWidth: window.innerWidth,
+    innerHeight: window.innerHeight,
+    ratioAncho,
+    ratioAlto,
+    limitadoPor: ratioAncho <= ratioAlto ? "ANCHO" : "ALTURA",
+    escalaFinal: escala,
+  });
   return { escala, alturaLienzo };
 }
 
@@ -158,25 +168,35 @@ export function MesaJuego({
             pointerEvents: esMiTurno ? "auto" : "none",
             transition: "filter 0.2s",
           }}>
-            {manoJugador.map((c, i) => {
-              const n = manoJugador.length;
-              const angulo = n <= 1 ? 0 : -FAN_ANGLE + i * ((2 * FAN_ANGLE) / (n - 1));
-              const estaSeleccionada = cartaSeleccionada === i;
-              const wrapperStyle = {
-                position: "relative",
-                transform: `rotate(${estaSeleccionada ? 0 : angulo}deg)`,
-                transformOrigin: "bottom center",
-                marginLeft: i === 0 ? 0 : FAN_OVERLAP,
-                zIndex: estaSeleccionada ? 100 : i,
-                transition: "transform 0.2s",
-              };
-              return (
-                <div key={i} style={wrapperStyle}>
-                  <Carta carta={c} escala={1.57} jugada={jugadasJugador.includes(i)} seleccionada={estaSeleccionada}
-                    onClick={jugadasJugador.includes(i) ? undefined : () => onClickCarta(i)} />
-                </div>
-              );
-            })}
+            {(() => {
+              const indicesVisibles = manoJugador
+                .map((_, idx) => idx)
+                .filter(idx => !jugadasJugador.includes(idx));
+              const nVisible = indicesVisibles.length;
+              return manoJugador.map((c, i) => {
+                if (jugadasJugador.includes(i)) return null;
+                const posVisible = indicesVisibles.indexOf(i);
+                const angulo = nVisible <= 1 ? 0 : -FAN_ANGLE + posVisible * ((2 * FAN_ANGLE) / (nVisible - 1));
+                const distanciaAlCentro = nVisible <= 1 ? 0 : (posVisible / (nVisible - 1)) * 2 - 1;
+                const CURVA_MAX = 6;
+                const desplazamientoY = Math.abs(distanciaAlCentro) * CURVA_MAX;
+                const estaSeleccionada = cartaSeleccionada === i;
+                const wrapperStyle = {
+                  position: "relative",
+                  transform: `translateY(${estaSeleccionada ? 0 : desplazamientoY}px) rotate(${estaSeleccionada ? 0 : angulo}deg)`,
+                  transformOrigin: "bottom center",
+                  marginLeft: posVisible === 0 ? 0 : FAN_OVERLAP,
+                  zIndex: estaSeleccionada ? 100 : i,
+                  transition: "transform 0.2s",
+                };
+                return (
+                  <div key={i} style={wrapperStyle}>
+                    <Carta carta={c} escala={1.57} jugada={jugadasJugador.includes(i)} seleccionada={estaSeleccionada}
+                      onClick={jugadasJugador.includes(i) ? undefined : () => onClickCarta(i)} />
+                  </div>
+                );
+              });
+            })()}
           </div>
         </div>
       </div>
