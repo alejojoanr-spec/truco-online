@@ -106,8 +106,8 @@ export function MesaJuego({
         <div style={{ flex:1 }}>
           <div style={{ display:"inline-flex", flexDirection:"column", alignItems:"center" }}>
             <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:5, maxWidth:128, overflow:"hidden" }}>
-              <img src={avatarJugador && avatarJugador.startsWith("/avatars/") ? avatarJugador : "/avatars/avatar_01.png"} alt="" style={{ width:20, height:20, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
-              <span style={{ fontSize:12, color:"#4ade80", letterSpacing:0.5, fontFamily:"'Lato',sans-serif", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{nombreJugador}</span>
+              <img src={avatarJugador && avatarJugador.startsWith("/avatars/") ? avatarJugador : "/avatars/avatar_01.png"} alt="" style={{ width:22, height:22, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
+              <span style={{ fontSize:13, color:"#ffffff", letterSpacing:0.5, fontFamily:"'Lato',sans-serif", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{nombreJugador}</span>
             </div>
             <div style={{ border:"1px solid #2d6a4f", borderRadius:8, padding:"4px 8px", display:"inline-block" }}>
               <PalitosPuntaje puntos={puntosJugador} total={limitePuntos} />
@@ -117,8 +117,8 @@ export function MesaJuego({
         <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"flex-end" }}>
           <div style={{ display:"inline-flex", flexDirection:"column", alignItems:"center" }}>
             <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:5, maxWidth:128, overflow:"hidden" }}>
-              <img src={avatarRival && avatarRival.startsWith("/avatars/") ? avatarRival : "/avatars/avatar_01.png"} alt="" style={{ width:20, height:20, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
-              <span style={{ fontSize:12, color:"#f87171", letterSpacing:0.5, fontFamily:"'Lato',sans-serif", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{nombreRival}</span>
+              <img src={avatarRival && avatarRival.startsWith("/avatars/") ? avatarRival : "/avatars/avatar_01.png"} alt="" style={{ width:22, height:22, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
+              <span style={{ fontSize:13, color:"#ffffff", letterSpacing:0.5, fontFamily:"'Lato',sans-serif", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{nombreRival}</span>
             </div>
             <div style={{ border:"1px solid #2d6a4f", borderRadius:8, padding:"4px 8px", display:"inline-block" }}>
               <PalitosPuntaje puntos={puntosRival} total={limitePuntos} />
