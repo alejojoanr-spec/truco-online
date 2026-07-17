@@ -138,7 +138,7 @@ export function MesaJuego({
       </div>
 
       {/* Mesa — 3 slots fijos */}
-      <div style={{ background:"#12584d", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth: esMobile ? 300 : 420, margin:"0 auto", marginTop:PANO_MARGIN_TOP, flexGrow:1, minHeight:240, maxHeight:240 }}>
+      <div style={{ background:"#12584d", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth: esMobile ? 300 : 420, margin:"0 auto", marginTop:PANO_MARGIN_TOP, flexGrow:1, minHeight:228 }}>
         {rondas.map((r, ri) => (
           <div key={ri} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
             {r.rival ? <Carta carta={r.rival} escala={MESA_E} /> : <Slot />}
