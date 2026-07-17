@@ -2,17 +2,29 @@ export function btnStyle() {
   return { background:"#3f3f3f",border:"none",appearance:"none",WebkitAppearance:"none",borderRadius:8,padding:"7px 14px",color:"#ffffff",fontSize:14,cursor:"pointer",fontFamily:"'Lato',sans-serif",letterSpacing:0.5,minHeight:50,display:"flex",alignItems:"center",justifyContent:"center" };
 }
 
+export const GLOBO_TEXTOS = {
+  truco:          "¡Truco!",
+  retruco:        "¡Retruco!",
+  vale_cuatro:    "¡Vale cuatro!",
+  quiero:         "Quiero",
+  no_quiero:      "No quiero",
+  me_voy_al_mazo: "Me voy al mazo",
+  envido:         "¡Envido!",
+  real_envido:    "¡Real envido!",
+  falta_envido:   "¡Falta envido!",
+};
+
 function GrupoCinco({ activos }) {
   const a = "#fbbf24";
   const i = "rgba(255,140,160,0.35)";
   const c = (n) => activos >= n ? a : i;
   return (
-    <svg width="28" height="20" style={{ flexShrink:0 }}>
-      <line x1="4"  y1="1" x2="4"  y2="19" stroke={c(1)} strokeWidth="2" strokeLinecap="round"/>
-      <line x1="11" y1="1" x2="11" y2="19" stroke={c(2)} strokeWidth="2" strokeLinecap="round"/>
-      <line x1="18" y1="1" x2="18" y2="19" stroke={c(3)} strokeWidth="2" strokeLinecap="round"/>
-      <line x1="25" y1="1" x2="25" y2="19" stroke={c(4)} strokeWidth="2" strokeLinecap="round"/>
-      <line x1="27" y1="1" x2="1"  y2="19" stroke={c(5)} strokeWidth="2" strokeLinecap="round"/>
+    <svg width="24" height="24" viewBox="0 0 24 24" style={{ flexShrink:0 }}>
+      <line x1="2"  y1="2"  x2="22" y2="2"  stroke={c(1)} strokeWidth="2" strokeLinecap="round"/>
+      <line x1="22" y1="2"  x2="22" y2="22" stroke={c(2)} strokeWidth="2" strokeLinecap="round"/>
+      <line x1="22" y1="22" x2="2"  y2="22" stroke={c(3)} strokeWidth="2" strokeLinecap="round"/>
+      <line x1="2"  y1="22" x2="2"  y2="2"  stroke={c(4)} strokeWidth="2" strokeLinecap="round"/>
+      <line x1="2"  y1="2"  x2="22" y2="22" stroke={c(5)} strokeWidth="2" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -29,7 +41,6 @@ export function PalitosPuntaje({ puntos, total = 15 }) {
           return <GrupoCinco key={grupo} activos={Math.min(POR_GRUPO, Math.max(0, puntosEscalados - base))} />;
         })}
       </div>
-      <div style={{ fontSize:8, color:"#4b5563", textAlign:"right", lineHeight:1 }}>/ {total}</div>
     </div>
   );
 }

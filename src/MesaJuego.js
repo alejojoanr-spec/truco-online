@@ -77,6 +77,8 @@ export function MesaJuego({
   log,
   onSalir,
   esMiTurno = true,
+  globoJugador = "Quiero",   // TEMPORAL: valor de prueba, sacar cuando conectemos App.js/Multijugador.js
+  globoRival = "¡Truco!",    // TEMPORAL: valor de prueba, sacar cuando conectemos App.js/Multijugador.js
 }) {
   const esMobile = useEsMobile();
   const { escala, alturaLienzo } = useEscalaPantalla();
@@ -98,7 +100,7 @@ export function MesaJuego({
 
       {/* X de salir */}
       <div style={{ width:"100%", maxWidth:640, display:"flex", justifyContent:"flex-end", flexShrink:0, margin:"0 auto" }}>
-        <button onClick={onSalir} style={{ width:36, height:36, borderRadius:10, border:"none", background:"rgba(0,0,0,0.6)", color:"#9ca3af", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>✕</button>
+        <button onClick={onSalir} style={{ width:36, height:36, border:"none", background:"transparent", color:"#ffffff", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>✕</button>
       </div>
 
       {/* Marcador */}
@@ -127,8 +129,31 @@ export function MesaJuego({
         </div>
       </div>
 
+      {/* Globos de diálogo — canto rival/jugador */}
+      {(globoRival || globoJugador) && (
+        <div style={{ position:"relative", width:"100%", maxWidth:640, height:0 }}>
+          <div style={{ position:"absolute", top:0, left:0, width:"100%", display:"flex", justifyContent:"space-between", padding:"0 8px", boxSizing:"border-box", zIndex:50, pointerEvents:"none" }}>
+            {globoRival ? (
+              <div style={{ position:"relative", background:"#fff", borderRadius:10, padding:"7px 14px", fontWeight:900, fontSize:15, color:"#111", boxShadow:"2px 2px 0 #111", whiteSpace:"nowrap" }}>
+                {globoRival}
+                <div style={{ position:"absolute", left:-2, top:"50%", transform:"translateY(-50%)", width:0, height:0, borderTop:"6px solid transparent", borderBottom:"6px solid transparent", borderRight:"8px solid #fff" }}/>
+              </div>
+            ) : <div/>}
+            {globoJugador ? (
+              <div style={{ position:"relative", background:"#fff", borderRadius:10, padding:"7px 14px", fontWeight:900, fontSize:15, color:"#111", boxShadow:"2px 2px 0 #111", whiteSpace:"nowrap" }}>
+                {globoJugador}
+                <div style={{ position:"absolute", right:-2, top:"50%", transform:"translateY(-50%)", width:0, height:0, borderTop:"6px solid transparent", borderBottom:"6px solid transparent", borderLeft:"8px solid #fff" }}/>
+              </div>
+            ) : <div/>}
+          </div>
+        </div>
+      )}
+
       {/* Mesa — 3 slots fijos */}
-      <div style={{ background:"#12584d", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth: esMobile ? 340 : 420, margin:"0 auto", marginTop:PANO_MARGIN_TOP, flexGrow:1, minHeight:226 }}>
+      <div style={{ position:"relative", background:"#12584d", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth: esMobile ? 340 : 420, margin:"0 auto", marginTop:PANO_MARGIN_TOP, flexGrow:1, minHeight:226 }}>
+        <div style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%", border:"1px solid #2d6a4f", background:"rgba(0,0,0,0.3)", color:"#ffffff", fontSize:12, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          {limitePuntos}
+        </div>
         {rondas.map((r, ri) => (
           <div key={ri} style={{ position:"relative", width:MW+20, height:MH+20, marginTop:-15 }}>
             <div style={{ position:"absolute", left:0, top:20, zIndex:1 }}>
