@@ -23,7 +23,7 @@ const ESCALA_MAX = 1.5;
 // fijos: marcador, paño, mano, botones, gaps y padding, con margen).
 // El panel de botones ahora puede ocupar 2 filas (máx. 3 por fila), así
 // que se suman ~48px extra (segunda fila ~40px + gap:8) al cálculo base.
-const ALTURA_MINIMA_CONTENIDO = 756;
+const ALTURA_MINIMA_CONTENIDO = 650;
 
 function calcularDimensionesPantalla() {
   if (typeof window === "undefined") return { escala: 1, alturaLienzo: 844, debugInfo: null };
