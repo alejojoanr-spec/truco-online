@@ -1,5 +1,5 @@
 export function btnStyle() {
-  return { background:"#3f3f3f",border:"1px solid #6b7280",borderRadius:8,padding:"7px 14px",color:"#ffffff",fontSize:14,cursor:"pointer",fontFamily:"'Lato',sans-serif",letterSpacing:0.5,minHeight:50,display:"flex",alignItems:"center",justifyContent:"center" };
+  return { background:"#3f3f3f",border:"none",appearance:"none",WebkitAppearance:"none",borderRadius:8,padding:"7px 14px",color:"#ffffff",fontSize:14,cursor:"pointer",fontFamily:"'Lato',sans-serif",letterSpacing:0.5,minHeight:50,display:"flex",alignItems:"center",justifyContent:"center" };
 }
 
 function GrupoCinco({ activos }) {

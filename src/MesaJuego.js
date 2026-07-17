@@ -26,21 +26,11 @@ const ESCALA_MAX = 1.5;
 const ALTURA_MINIMA_CONTENIDO = 650;
 
 function calcularDimensionesPantalla() {
-  if (typeof window === "undefined") return { escala: 1, alturaLienzo: 844, debugInfo: null };
-  const ratioAncho = window.innerWidth / DISENO_W;
-  const ratioAlto = window.innerHeight / ALTURA_MINIMA_CONTENIDO;
-  const cruda = Math.min(ratioAncho, ratioAlto);
+  if (typeof window === "undefined") return { escala: 1, alturaLienzo: 844 };
+  const cruda = Math.min(window.innerWidth / DISENO_W, window.innerHeight / ALTURA_MINIMA_CONTENIDO);
   const escala = Math.min(ESCALA_MAX, Math.max(ESCALA_MIN, cruda));
   const alturaLienzo = window.innerHeight / escala;
-  const debugInfo = {
-    innerWidth: window.innerWidth,
-    innerHeight: window.innerHeight,
-    ratioAncho,
-    ratioAlto,
-    limitadoPor: ratioAncho <= ratioAlto ? "ANCHO" : "ALTURA",
-    escalaFinal: escala,
-  };
-  return { escala, alturaLienzo, debugInfo };
+  return { escala, alturaLienzo };
 }
 
 function useEscalaPantalla() {
@@ -89,17 +79,12 @@ export function MesaJuego({
   esMiTurno = true,
 }) {
   const esMobile = useEsMobile();
-  const { escala, alturaLienzo, debugInfo } = useEscalaPantalla();
+  const { escala, alturaLienzo } = useEscalaPantalla();
   const valorTimer = esMiTurno ? timerSegundos : rivalTimerSegundos;
   const colorTimer = esMiTurno ? "#4ade80" : "#f87171";
 
   return (
     <div style={{ height:"100dvh", width:"100%", background:"#101010", display:"flex", justifyContent:"center", alignItems:"center", overflow:"hidden", boxSizing:"border-box" }}>
-      {debugInfo && (
-        <div style={{ position:"fixed", top:0, left:0, zIndex:9999, background:"rgba(220,38,38,0.9)", color:"#ffffff", fontSize:10, fontFamily:"monospace", padding:"3px 6px", whiteSpace:"pre", pointerEvents:"none" }}>
-          {`w:${debugInfo.innerWidth} h:${debugInfo.innerHeight} esc:${debugInfo.escalaFinal.toFixed(3)} lim:${debugInfo.limitadoPor}`}
-        </div>
-      )}
     <div style={{
       width: DISENO_W,
       height: alturaLienzo,
