@@ -143,7 +143,7 @@ export function MesaJuego({
       </div>
 
       {/* Mesa — 3 slots fijos */}
-      <div style={{ background:"#12584d", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth: esMobile ? 340 : 420, margin:"0 auto", marginTop:PANO_MARGIN_TOP, flexGrow:1, minHeight:182 }}>
+      <div style={{ background:"#12584d", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth: esMobile ? 340 : 420, margin:"0 auto", marginTop:PANO_MARGIN_TOP, flexGrow:1, minHeight:226 }}>
         {rondas.map((r, ri) => (
           <div key={ri} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
             {r.rival ? <Carta carta={r.rival} escala={MESA_E} /> : <Slot />}
@@ -153,7 +153,7 @@ export function MesaJuego({
       </div>
 
       {/* Mano del jugador */}
-      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0, marginTop:0 }}>
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0, marginTop:-86 }}>
         <div style={{ position:"relative", display:"inline-flex", alignItems:"flex-end" }}>
           {valorTimer != null && valorTimer > 0 && (
             <svg width="44" height="44" style={{ position:"absolute", right:"100%", bottom:0, marginRight:16, zIndex:300, transform:"scale(1.05)", filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
