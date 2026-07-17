@@ -130,9 +130,13 @@ export function MesaJuego({
       {/* Mesa — 3 slots fijos */}
       <div style={{ background:"#12584d", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth: esMobile ? 340 : 420, margin:"0 auto", marginTop:PANO_MARGIN_TOP, flexGrow:1, minHeight:226 }}>
         {rondas.map((r, ri) => (
-          <div key={ri} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
-            {r.rival ? <Carta carta={r.rival} escala={MESA_E} /> : <Slot />}
-            {r.jugador ? <Carta carta={r.jugador} escala={MESA_E} /> : <Slot />}
+          <div key={ri} style={{ position:"relative", width:MW+20, height:MH+20, marginTop:-15 }}>
+            <div style={{ position:"absolute", left:0, top:20, zIndex:1 }}>
+              {r.rival ? <Carta carta={r.rival} escala={MESA_E} /> : <Slot />}
+            </div>
+            <div style={{ position:"absolute", left:0, top:20, zIndex:2, transform:"translate(20px, -20px)" }}>
+              {r.jugador ? <Carta carta={r.jugador} escala={MESA_E} /> : <Slot />}
+            </div>
           </div>
         ))}
       </div>
