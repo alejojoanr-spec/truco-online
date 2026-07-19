@@ -1043,7 +1043,7 @@ function TabPartidas() {
 /* ══════════════════════════════════════════
    TAB 3 — FINANZAS
 ══════════════════════════════════════════ */
-function RakeConfig() {
+function RakeConfig({ clave, label, valorDefault }) {
   const [valor, setValor] = useState("");
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -1052,17 +1052,17 @@ function RakeConfig() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("configuracion").select("valor").eq("clave", "rake_porcentaje").single();
-      setValor(data?.valor || "5");
+      const { data } = await supabase.from("configuracion").select("valor").eq("clave", clave).single();
+      setValor(data?.valor || valorDefault);
       setCargando(false);
     })();
-  }, []);
+  }, [clave, valorDefault]);
 
   async function guardar() {
     const num = parseFloat(valorEdit);
     if (isNaN(num) || num < 0 || num > 100) return;
     setGuardando(true);
-    await supabase.from("configuracion").upsert({ clave: "rake_porcentaje", valor: String(num) });
+    await supabase.from("configuracion").upsert({ clave, valor: String(num) });
     setValor(String(num));
     setEditando(false);
     setGuardando(false);
@@ -1073,7 +1073,7 @@ function RakeConfig() {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
       <div>
-        <div style={{ fontSize: 12, color: "#9ca3af" }}>Rake por partida</div>
+        <div style={{ fontSize: 12, color: "#9ca3af" }}>{label}</div>
         {editando ? (
           <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center" }}>
             <input
@@ -1364,7 +1364,9 @@ function TabFinanzas({ rol = 'admin' }) {
       {/* Rake configuration */}
       <div style={{ ...CARD, marginTop: 20 }}>
         <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>Configuración de comisiones</div>
-        <RakeConfig />
+        <RakeConfig clave="rake_porcentaje" label="Rake por partida" valorDefault="5" />
+        <div style={{ height: 1, background: "rgba(45,106,79,0.3)", margin: "14px 0" }} />
+        <RakeConfig clave="rake_torneo_porcentaje" label="Rake de torneos" valorDefault="6" />
       </div>
 
       {/* Datos de transferencia — solo admin principal */}

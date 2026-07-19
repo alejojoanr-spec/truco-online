@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
+import { crearTorneo as crearTorneoApi } from "./torneosApi";
 import { leerConfig } from "./Configuracion";
 import { getLunesActual } from "./ranking";
 import VerificarCuenta from "./VerificarCuenta";
@@ -42,7 +43,7 @@ function MenuItem({ icono, label, onClick, peligro }) {
 
 const REGEX_NOMBRE = /^[a-zA-Z0-9.]{4,13}$/;
 
-export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePrivado, onLogout, onVerTerminos, onVerPrivacidad, onConfig, onPerfilActualizado, esAdmin, esAsesor, onAdmin }) {
+export default function Home({ user, perfil, onJugar, onCrearSalaPrivada, onUnirsePrivado, onCrearTorneoPrivado, onLogout, onVerTerminos, onVerPrivacidad, onConfig, onPerfilActualizado, esAdmin, esAsesor, onAdmin }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [mostrarRanking, setMostrarRanking] = useState(false);
   const [ranking, setRanking] = useState([]);
@@ -69,6 +70,11 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
   const [mostrarSalaPrivada, setMostrarSalaPrivada] = useState(false);
   const [salaCrearApuesta, setSalaCrearApuesta] = useState("");
   const [salaCrearPuntos, setSalaCrearPuntos] = useState(15);
+  const [esTorneoCrear, setEsTorneoCrear] = useState(false);
+  const [cantJugadoresTorneo, setCantJugadoresTorneo] = useState(4);
+  const [nombreTorneoCrear, setNombreTorneoCrear] = useState("");
+  const [rakeTorneoPct, setRakeTorneoPct] = useState(6);
+  const [creandoTorneo, setCreandoTorneo] = useState(false);
   const [salaUnirseCodigo, setSalaUnirseCodigo] = useState("");
   const [salaUnirseInfo, setSalaUnirseInfo] = useState(null);
   const [buscandoSala, setBuscandoSala] = useState(false);
@@ -83,6 +89,12 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
     supabase.from("cuentas_cobro").select("*").eq("activa", true).maybeSingle()
       .then(({ data }) => { if (data) setCuentaActiva(data); });
   }, []);
+
+  useEffect(() => {
+    if (!mostrarSalaPrivada) return;
+    supabase.from("configuracion").select("valor").eq("clave", "rake_torneo_porcentaje").single()
+      .then(({ data }) => { if (data?.valor) setRakeTorneoPct(parseFloat(data.valor)); });
+  }, [mostrarSalaPrivada]);
 
   async function buscarSala(codigo) {
     setBuscandoSala(true);
@@ -386,7 +398,7 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
           </div>
         </button>
 
-        <button onClick={() => { reproducirSonidoClick(); setSalaCrearApuesta(""); setSalaUnirseCodigo(""); setSalaUnirseInfo(null); setSalaError(""); setMostrarSalaPrivada(true); }} style={{
+        <button onClick={() => { reproducirSonidoClick(); setSalaCrearApuesta(""); setEsTorneoCrear(false); setCantJugadoresTorneo(4); setNombreTorneoCrear(`Torneo de ${perfil?.nombre || "Jugador"}`); setSalaUnirseCodigo(""); setSalaUnirseInfo(null); setSalaError(""); setMostrarSalaPrivada(true); }} style={{
           background: "rgba(0,0,0,0.4)",
           border: "1px solid #a78bfa", borderRadius: 16, padding: "clamp(12px, 2.6dvh, 20px) 24px",
           cursor: "pointer", textAlign: "left", width: "100%",
@@ -969,12 +981,72 @@ export default function Home({ perfil, onJugar, onCrearSalaPrivada, onUnirsePriv
                 </div>
               </div>
 
+              {false && (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase" }}>Torneo</div>
+                    <button
+                      onClick={() => setEsTorneoCrear(v => !v)}
+                      style={{
+                        width: 52, height: 28, borderRadius: 14, cursor: "pointer",
+                        background: esTorneoCrear ? "rgba(251,191,36,0.15)" : "rgba(0,0,0,0.5)",
+                        border: esTorneoCrear ? "1.5px solid #fbbf24" : "1px solid rgba(45,106,79,0.4)",
+                        position: "relative", transition: "all 0.2s", flexShrink: 0,
+                      }}
+                    >
+                      <div style={{
+                        width: 20, height: 20, borderRadius: "50%",
+                        background: esTorneoCrear ? "#fbbf24" : "#374151",
+                        position: "absolute", top: 3, left: esTorneoCrear ? 27 : 3,
+                        transition: "left 0.2s",
+                      }} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {false && esTorneoCrear && (
+                <div>
+                  <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Cantidad de jugadores</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {[4, 8].map(n => (
+                      <button key={n} onClick={() => setCantJugadoresTorneo(n)} style={{ flex: 1, padding: "9px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'Lato',sans-serif", fontSize: 15, fontWeight: cantJugadoresTorneo === n ? 900 : 400, background: cantJugadoresTorneo === n ? "rgba(251,191,36,0.12)" : "rgba(0,0,0,0.3)", border: cantJugadoresTorneo === n ? "1.5px solid #fbbf24" : "1px solid rgba(45,106,79,0.4)", color: cantJugadoresTorneo === n ? "#fbbf24" : "#6b7280" }}>
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {false && esTorneoCrear && (
+                <div style={{ background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.25)", borderRadius: 10, padding: "10px 12px", fontSize: 12, color: "#fbbf24", lineHeight: 1.6 }}>
+                  Premio ${((parseFloat(salaCrearApuesta) || 0) * cantJugadoresTorneo).toLocaleString("es-AR", { minimumFractionDigits: 2 })}. Jugarás a {salaCrearPuntos} puntos. Comisión {rakeTorneoPct}% del total.
+                </div>
+              )}
+
+              {salaError && (
+                <div style={{ fontSize: 12, color: "#f87171", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 8, padding: "8px 12px" }}>{salaError}</div>
+              )}
+
               <button
-                onClick={() => { reproducirSonidoClick(); onCrearSalaPrivada(parseFloat(salaCrearApuesta) || 0, salaCrearPuntos); setMostrarSalaPrivada(false); }}
-                disabled={parseFloat(salaCrearApuesta) > (perfil.saldo || 0)}
-                style={{ width: "100%", padding: "13px", borderRadius: 10, cursor: parseFloat(salaCrearApuesta) > (perfil.saldo || 0) ? "not-allowed" : "pointer", background: "linear-gradient(135deg,#3b0764,#5b21b6)", border: "1px solid #a78bfa", color: "#a78bfa", fontFamily: "'Lato',sans-serif", fontSize: 15, fontWeight: 700, opacity: parseFloat(salaCrearApuesta) > (perfil.saldo || 0) ? 0.45 : 1, transition: "opacity 0.15s" }}
+                onClick={async () => {
+                  reproducirSonidoClick();
+                  if (esTorneoCrear) {
+                    setCreandoTorneo(true);
+                    const { data, error } = await crearTorneoApi({ user, perfil, nombre: nombreTorneoCrear, maxJugadores: cantJugadoresTorneo, entrada: parseFloat(salaCrearApuesta) || 0, puntos: salaCrearPuntos });
+                    setCreandoTorneo(false);
+                    if (error) { setSalaError(error); return; }
+                    onCrearTorneoPrivado(data.id);
+                    setMostrarSalaPrivada(false);
+                  } else {
+                    onCrearSalaPrivada(parseFloat(salaCrearApuesta) || 0, salaCrearPuntos);
+                    setMostrarSalaPrivada(false);
+                  }
+                }}
+                disabled={parseFloat(salaCrearApuesta) > (perfil.saldo || 0) || creandoTorneo}
+                style={{ width: "100%", padding: "13px", borderRadius: 10, cursor: (parseFloat(salaCrearApuesta) > (perfil.saldo || 0) || creandoTorneo) ? "not-allowed" : "pointer", background: "linear-gradient(135deg,#3b0764,#5b21b6)", border: "1px solid #a78bfa", color: "#a78bfa", fontFamily: "'Lato',sans-serif", fontSize: 15, fontWeight: 700, opacity: (parseFloat(salaCrearApuesta) > (perfil.saldo || 0) || creandoTorneo) ? 0.45 : 1, transition: "opacity 0.15s" }}
               >
-                ¡Crear partida!
+                {creandoTorneo ? "Creando..." : esTorneoCrear ? "¡Crear torneo!" : "¡Crear partida!"}
               </button>
             </div>
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
+import { crearTorneo as crearTorneoApi, unirseATorneo as unirseATorneoApi } from "./torneosApi";
 import { AVATARES_MASC, AVATARES_FEM, avatarSrc } from "./avatares";
 
 function formatPesos(n) {
@@ -260,6 +261,51 @@ function CardJugando({ sala }) {
   );
 }
 
+function CardTorneo({ torneo, onUnirse, uniendose, perfil, yaInscripto }) {
+  const cargando = uniendose === `torneo-${torneo.id}`;
+  return (
+    <div style={{
+      background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f",
+      borderRadius: 14, padding: "14px 18px",
+      display: "flex", alignItems: "center", gap: 14,
+    }}>
+      <div style={{ fontSize: 28, flexShrink: 0, lineHeight: 1 }}>🏆</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 900, color: "#fbbf24", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {torneo.nombre}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, color: "#4ade80", fontWeight: 700 }}>
+            {(torneo.premio || 0) > 0 ? `${formatPesos(torneo.premio)} pozo` : "Sin pozo"}
+          </span>
+          <span style={{ width: 3, height: 3, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
+          <span style={{ fontSize: 11, color: "#4ade80" }}>{torneo.jugadores_actuales}/{torneo.max_jugadores} jugadores</span>
+        </div>
+      </div>
+      <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+        <div style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid #2d6a4f", background: "rgba(0,0,0,0.3)", color: "#ffffff", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {torneo.puntos}
+        </div>
+        <button
+          onClick={() => !yaInscripto && !cargando && onUnirse(torneo)}
+          disabled={yaInscripto || cargando}
+          style={{
+            padding: "9px 18px", borderRadius: 10,
+            cursor: (yaInscripto || cargando) ? "not-allowed" : "pointer",
+            background: yaInscripto ? "rgba(251,191,36,0.1)" : "linear-gradient(135deg,#1a472a,#2d6a4f)",
+            border: yaInscripto ? "1px solid #fbbf24" : "1px solid #4ade80",
+            color: yaInscripto ? "#fbbf24" : "#4ade80",
+            fontFamily: "'Lato',sans-serif", fontSize: 13, fontWeight: 700,
+            opacity: cargando ? 0.5 : 1, transition: "opacity 0.15s",
+          }}
+        >
+          {cargando ? "..." : yaInscripto ? "Anotado ✓" : "Unirse"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CardMiSala({ sala, onEliminar, eliminando }) {
   return (
     <div style={{
@@ -326,6 +372,7 @@ const IconVolver = () => (
 export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaIniciada, onVolver }) {
   const [salas, setSalas] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [torneosAbiertos, setTorneosAbiertos] = useState([]);
   const [simuladas, setSimuladas] = useState(() => generarPartidasSimuladas());
   const [marketingActivo, setMarketingActivo] = useState(true);
   const [marketingCantidad, setMarketingCantidad] = useState(5);
@@ -354,13 +401,16 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
     return () => supabase.removeChannel(canal);
   }, []);
   const [uniendose, setUniendose] = useState(null);
+  const [errorTorneo, setErrorTorneo] = useState("");
   const [pantalla, setPantalla] = useState("lobby");
 
   // Datos del formulario de creación
   const [apuestaCrear, setApuestaCrear] = useState(0);
   const [puntosCrear, setPuntosCrear] = useState(15);
   const [esTorneoCrear, setEsTorneoCrear] = useState(false);
+  const [cantJugadoresCrear, setCantJugadoresCrear] = useState(4);
   const [rakePct, setRakePct] = useState(5);
+  const [rakeTorneoPct, setRakeTorneoPct] = useState(6);
   const [creandoSala, setCreandoSala] = useState(false);
   const [errorCrear, setErrorCrear] = useState("");
 
@@ -375,23 +425,33 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
 
   useEffect(() => {
     cargar();
+    cargarTorneos();
     const disparar = () => {
       if (cargandoRef.current) return; // ignorar si ya hay una carga en vuelo
       cargar();
     };
+    const dispararTorneos = () => { cargarTorneos(); };
     const canal = supabase.channel("truco-lobby")
       .on("postgres_changes", { event: "*", schema: "public", table: "partidas" }, disparar)
+      .on("postgres_changes", { event: "*", schema: "public", table: "torneos" }, dispararTorneos)
       // Broadcast como fallback para INSERT/DELETE (postgres_changes requiere ALTER PUBLICATION)
       .on("broadcast", { event: "sala_actualizada" }, disparar)
       .subscribe();
     canalRef.current = canal;
     return () => { supabase.removeChannel(canal); canalRef.current = null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (pantalla !== "crear") return;
     supabase.from("configuracion").select("valor").eq("clave", "rake_porcentaje").single()
       .then(({ data }) => { if (data?.valor) setRakePct(parseFloat(data.valor)); });
+  }, [pantalla]);
+
+  useEffect(() => {
+    if (pantalla !== "crear") return;
+    supabase.from("configuracion").select("valor").eq("clave", "rake_torneo_porcentaje").single()
+      .then(({ data }) => { if (data?.valor) setRakeTorneoPct(parseFloat(data.valor)); });
   }, [pantalla]);
 
   // Detecta cuando la sala abierta obtiene un contrincante y empieza la partida
@@ -470,6 +530,26 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  async function cargarTorneos() {
+    const { data: torneos } = await supabase
+      .from("torneos")
+      .select("id, nombre, estado, max_jugadores, jugadores_actuales, entrada, premio, puntos")
+      .eq("estado", "abierto")
+      .order("id", { ascending: false })
+      .limit(50);
+
+    if (!torneos || torneos.length === 0) { setTorneosAbiertos([]); return; }
+
+    const { data: inscripciones } = await supabase
+      .from("torneo_jugadores")
+      .select("torneo_id")
+      .eq("jugador_id", user.id)
+      .in("torneo_id", torneos.map(t => t.id));
+
+    const inscriptoEn = new Set((inscripciones || []).map(i => i.torneo_id));
+    setTorneosAbiertos(torneos.map(t => ({ ...t, yaInscripto: inscriptoEn.has(t.id) })));
+  }
+
   async function cargar() {
     cargandoRef.current = true;
     const { data: rawSalas } = await supabase
@@ -537,6 +617,22 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
   async function crearSalaPublica() {
     setErrorCrear("");
     setCreandoSala(true);
+
+    if (esTorneoCrear) {
+      const { error } = await crearTorneoApi({
+        user, perfil,
+        nombre: `Torneo de ${perfil?.nombre || "Jugador"}`,
+        maxJugadores: cantJugadoresCrear,
+        entrada: apuestaCrear,
+        puntos: puntosCrear,
+      });
+      setCreandoSala(false);
+      if (error) { setErrorCrear(error); return; }
+      setPantalla("lobby");
+      cargarTorneos();
+      return;
+    }
+
     // 0. Verificar que el usuario no tenga ya una partida activa
     const { data: activas } = await supabase
       .from("partidas")
@@ -634,6 +730,15 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
     onUnirse(codigo);
   }
 
+  async function unirseTorneo(torneo) {
+    setErrorTorneo("");
+    setUniendose(`torneo-${torneo.id}`);
+    const { error } = await unirseATorneoApi({ user, perfil, torneo });
+    setUniendose(null);
+    if (error) { setErrorTorneo(error); return; }
+    cargarTorneos();
+  }
+
   const mySala = salas.find(s => s.estado === "esperando" && s.jugador1_id === user.id);
   const disponibles = salas.filter(s => s.estado === "esperando" && s.jugador1_id !== user.id);
   const jugando = salas.filter(s => s.estado === "jugando");
@@ -705,8 +810,8 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
           <div style={{ background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 14, padding: "16px 18px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <div style={{ fontSize: 10, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 3 }}>Modo torneo</div>
-                <div style={{ fontSize: 12, color: "#6b7280" }}>Marca la partida como partida de torneo</div>
+                <div style={{ fontSize: 10, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 3 }}>Torneo</div>
+                <div style={{ fontSize: 12, color: "#6b7280" }}>Crear un torneo en vez de una partida 1vs1</div>
               </div>
               <button
                 onClick={() => setEsTorneoCrear(v => !v)}
@@ -727,7 +832,35 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
             </div>
           </div>
 
-          {apuestaCrear > 0 ? (
+          {esTorneoCrear && (
+            <div style={{ background: "rgba(0,0,0,0.4)", border: "1px solid #2d6a4f", borderRadius: 14, padding: "16px 18px" }}>
+              <div style={{ fontSize: 10, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>Cantidad de jugadores</div>
+              <div style={{ display: "flex", gap: 10 }}>
+                {[4, 8].map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setCantJugadoresCrear(n)}
+                    style={{
+                      flex: 1, padding: "10px", borderRadius: 10, cursor: "pointer",
+                      background: cantJugadoresCrear === n ? "rgba(251,191,36,0.12)" : "rgba(0,0,0,0.3)",
+                      border: cantJugadoresCrear === n ? "1.5px solid #fbbf24" : "1px solid rgba(45,106,79,0.4)",
+                      color: cantJugadoresCrear === n ? "#fbbf24" : "#6b7280",
+                      fontFamily: "'Lato',sans-serif", fontSize: 15, fontWeight: cantJugadoresCrear === n ? 900 : 400,
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {n} jugadores
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {esTorneoCrear ? (
+            <div style={{ background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.25)", borderRadius: 12, padding: "12px 14px", fontSize: 13, color: "#fbbf24", lineHeight: 1.7 }}>
+              Premio {formatPesos(apuestaCrear * cantJugadoresCrear)}. Jugarás a {puntosCrear} puntos. Comisión {rakeTorneoPct}% del total.
+            </div>
+          ) : apuestaCrear > 0 ? (
             <div style={{ background: "rgba(74,222,128,0.04)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 12, padding: "12px 14px", fontSize: 13, color: "#4ade80", lineHeight: 1.7 }}>
               <span style={{ fontWeight: 700 }}>Apostando {formatPesos(apuestaCrear)}</span>
               {" · "}Comisión {rakePct}%: −{formatPesos(rakeAmount)}
@@ -757,7 +890,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
               opacity: creandoSala ? 0.6 : 1, transition: "opacity 0.15s",
             }}
           >
-            {creandoSala ? "Creando..." : "+ Crear sala"}
+            {creandoSala ? "Creando..." : esTorneoCrear ? "¡Crear torneo!" : "+ Crear sala"}
           </button>
 
         </div>
@@ -819,6 +952,23 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
           s.estado === "esperando"
             ? <CardEsperando key={s.id} sala={s} onUnirse={unirse} uniendose={uniendose} perfil={perfil} />
             : <CardJugando key={s.id} sala={s} />
+        )}
+
+        {errorTorneo && (
+          <div style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.3)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#f87171" }}>
+            {errorTorneo}
+          </div>
+        )}
+
+        {torneosAbiertos.map(t =>
+          <CardTorneo
+            key={`torneo-${t.id}`}
+            torneo={t}
+            onUnirse={unirseTorneo}
+            uniendose={uniendose}
+            perfil={perfil}
+            yaInscripto={t.yaInscripto}
+          />
         )}
 
         {!cargando && !mySala && (

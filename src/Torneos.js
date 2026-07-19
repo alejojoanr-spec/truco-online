@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
+import { crearTorneo as crearTorneoApi, unirseATorneo as unirseATorneoApi } from "./torneosApi";
 
-export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo }) {
+export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo, torneoInicialId }) {
   const [torneos, setTorneos] = useState([]);
   const [pantalla, setPantalla] = useState("lista"); // lista | crear | detalle
   const [torneoSeleccionado, setTorneoSeleccionado] = useState(null);
@@ -14,6 +15,18 @@ export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo }) 
   const navegadoRef = useRef(false);
 
   useEffect(() => { cargarTorneos(); }, []);
+
+  useEffect(() => {
+    if (!torneoInicialId) return;
+    (async () => {
+      const { data: torneo } = await supabase.from("torneos").select("*").eq("id", torneoInicialId).single();
+      if (!torneo) return;
+      setTorneoSeleccionado(torneo);
+      const { data: jugadores } = await supabase.from("torneo_jugadores").select("*").eq("torneo_id", torneoInicialId).order("posicion");
+      if (jugadores) setJugadoresTorneo(jugadores);
+      setPantalla("detalle");
+    })();
+  }, [torneoInicialId]);
 
   useEffect(() => {
     if (!torneoSeleccionado?.id) return;
@@ -55,41 +68,16 @@ export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo }) 
   }
 
   async function crearTorneo() {
-    if (!nombre.trim()) return;
-    const { data, error } = await supabase.from("torneos").insert({
-      nombre: nombre.trim(),
-      estado: "abierto",
-      max_jugadores: maxJugadores,
-      jugadores_actuales: 0,
-      entrada: entrada,
-      premio: 0,
-      creado_por: user.id,
-    }).select().single();
-    if (error) { alert("Error al crear torneo"); return; }
-    await unirseATorneo(data);
+    const { error } = await crearTorneoApi({ user, perfil, nombre, maxJugadores, entrada });
+    if (error) { alert(error); return; }
     setNombre(""); setMaxJugadores(8); setEntrada(0);
     cargarTorneos();
     setPantalla("lista");
   }
 
   async function unirseATorneo(torneo) {
-    const yaInscripto = jugadoresTorneo.find(j => j.jugador_id === user.id);
-    if (yaInscripto) { alert("Ya estás inscripto"); return; }
-    if (torneo.jugadores_actuales >= torneo.max_jugadores) { alert("El torneo está lleno"); return; }
-
-    await supabase.from("torneo_jugadores").insert({
-      torneo_id: torneo.id,
-      jugador_id: user.id,
-      nombre_jugador: perfil?.nombre || user.email?.split("@")[0] || "Jugador",
-      posicion: 0,
-      eliminado: false,
-    });
-
-    await supabase.from("torneos").update({
-      jugadores_actuales: torneo.jugadores_actuales + 1,
-      premio: (torneo.jugadores_actuales + 1) * torneo.entrada,
-    }).eq("id", torneo.id);
-
+    const { error } = await unirseATorneoApi({ user, perfil, torneo });
+    if (error) { alert(error); return; }
     cargarTorneos();
   }
 
