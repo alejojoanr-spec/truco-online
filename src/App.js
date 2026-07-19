@@ -170,6 +170,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [estadoEnvido, setEstadoEnvido] = useState(null);
   const [globoJugadorTexto, setGloboJugadorTexto] = useState(null);
   const [globoRivalTexto, setGloboRivalTexto] = useState(null);
+  const [globoCentroTexto, setGloboCentroTexto] = useState(null);
   const [trucoCantadoPor, setTrucoCantadoPor] = useState(null);
   const [ptsTrucoApostados, setPtsTrucoApostados] = useState(0);
   const [nivelTrucoAceptado, setNivelTrucoAceptado] = useState(0);
@@ -198,7 +199,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const puntosRivalRef = useRef(0);
   const [envidoCantadoPor, setEnvidoCantadoPor] = useState(null);
   const [envidoMonto, setEnvidoMonto] = useState({ quiero: 0, noquiero: 0 });
-  const [envidoGlobos, setEnvidoGlobos] = useState(null);
   const esperandoRespuestaEnvido = envidoCantadoPor === "rival" && !!estadoEnvido && !["quiero","noquiero"].includes(estadoEnvido);
   const envidoPropioPendiente = envidoCantadoPor === "jugador" && !!estadoEnvido && !["quiero","noquiero"].includes(estadoEnvido);
   const [, setLog] = useState([]);
@@ -209,11 +209,6 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     setCambiarAvatar(false);
   }
 
-  function mostrarGlobosEnvido(textoJugador, textoRival) {
-    setEnvidoGlobos({ jugador: textoJugador, rival: textoRival, visible: true });
-    setTimeout(() => setEnvidoGlobos(g => g ? { ...g, visible: false } : null), 2000);
-    setTimeout(() => setEnvidoGlobos(null), 2500);
-  }
   const addLog = useCallback((msg) => setLog(prev => [...prev.slice(-6), msg]), []);
 
 
@@ -263,7 +258,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     setFasePartida("jugando"); setGanadorPartida(null);
     setCartaSeleccionada(null);
     setEnvidoCantadoPor(null); setEnvidoMonto({ quiero: 0, noquiero: 0 });
-    setEnvidoGlobos(null);
+    setGloboJugadorTexto(null); setGloboRivalTexto(null);
     pendingJugarRivalRef.current = null; rivalFueAlMazoRef.current = false;
     reproducirSonidoRepartir();
   }
@@ -485,7 +480,8 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   function mostrarGlobo(lado, tag) {
     const texto = GLOBO_TEXTOS[tag] || tag;
     if (lado === "jugador") { setGloboJugadorTexto(texto); setTimeout(() => setGloboJugadorTexto(null), 2500); }
-    else { setGloboRivalTexto(texto); setTimeout(() => setGloboRivalTexto(null), 2500); }
+    else if (lado === "rival") { setGloboRivalTexto(texto); setTimeout(() => setGloboRivalTexto(null), 2500); }
+    else { setGloboCentroTexto(texto); setTimeout(() => setGloboCentroTexto(null), 2500); }
   }
 
   function cantarTruco() {
@@ -664,7 +660,8 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
           if (jugadorGana) { addLog(`✅ Ganaste envido (+${ptsEnv})`); setPuntosJugador(p => p + ptsEnv); reproducirSonidoPunto(); }
           else { addLog(`❌ Rival ganó envido (+${ptsEnv})`); setPuntosRival(p => p + ptsEnv); reproducirSonidoPunto(); }
         }
-        mostrarGlobosEnvido(jugadorGana ? `¡Son ${envJ}!` : "Son buenas", jugadorGana ? "Son buenas" : `¡Son ${envidoRival}!`);
+        mostrarGlobo("jugador", jugadorGana ? `¡Son ${envJ}!` : "Son buenas");
+        mostrarGlobo("rival", jugadorGana ? "Son buenas" : `¡Son ${envidoRival}!`);
       } else {
         const ptsNoQ = tipo === "envido-envido" ? 2 : 1;
         addLog(`✅ Ganaste ${ptsNoQ} punto${ptsNoQ > 1 ? "s" : ""} por envido`);
@@ -731,7 +728,8 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
       if (jugadorGana) { addLog(`✅ Ganaste envido (+${monto.quiero})`); setPuntosJugador(p => p + monto.quiero); }
       else { addLog(`❌ Rival ganó envido (+${monto.quiero})`); setPuntosRival(p => p + monto.quiero); }
       reproducirSonidoPunto();
-      mostrarGlobosEnvido(jugadorGana ? `¡Son ${envJ}!` : "Son buenas", jugadorGana ? "Son buenas" : `¡Son ${envidoRival}!`);
+      mostrarGlobo("jugador", jugadorGana ? `¡Son ${envJ}!` : "Son buenas");
+      mostrarGlobo("rival", jugadorGana ? "Son buenas" : `¡Son ${envidoRival}!`);
       setEstadoEnvido("quiero");
     } else {
       reproducirVoz('no_quiero');
@@ -767,7 +765,8 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         const jugadorGana = envJ >= envidoRival;
         if (jugadorGana) { addLog(`✅ Ganaste (+${siQuiero})`); setPuntosJugador(p => p + siQuiero); }
         else { addLog(`❌ Rival ganó (+${siQuiero})`); setPuntosRival(p => p + siQuiero); }
-        mostrarGlobosEnvido(jugadorGana ? `¡Son ${envJ}!` : "Son buenas", jugadorGana ? "Son buenas" : `¡Son ${envidoRival}!`);
+        mostrarGlobo("jugador", jugadorGana ? `¡Son ${envJ}!` : "Son buenas");
+        mostrarGlobo("rival", jugadorGana ? "Son buenas" : `¡Son ${envidoRival}!`);
       } else {
         addLog(`Ganás ${siNo} punto${siNo > 1 ? "s" : ""}`);
         setPuntosJugador(p => p + siNo);
@@ -804,6 +803,12 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const estaEsperandoRival = !hayAccionMia && !globoRivalTexto;
   const winRate = perfil && perfil.partidas_jugadas > 0 ? Math.round((perfil.partidas_ganadas/perfil.partidas_jugadas)*100) : 0;
   const nombreJugador = perfil?.nombre || user.email?.split("@")[0] || "Vos";
+
+  const puedeJugarPrevRef = useRef(puedeJugar);
+  useEffect(() => {
+    if (!puedeJugarPrevRef.current && puedeJugar) mostrarGlobo("centro", "¡Tu turno!");
+    puedeJugarPrevRef.current = puedeJugar;
+  }, [puedeJugar]);
 
   esperandoRespuestaEnvidoRef.current = esperandoRespuestaEnvido;
   envidoPropioPendienteRef.current = envidoPropioPendiente;
@@ -868,6 +873,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         log={null}
         globoJugador={globoJugadorTexto}
         globoRival={globoRivalTexto}
+        globoCentro={globoCentroTexto}
         botonesSlot={<>
           {trucoDisponible && <button onClick={cantarTruco} style={{ ...btnStyle("#b45309","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>Truco!</button>}
           {puedoEscalarDiferido && (
@@ -910,25 +916,12 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
             <button onClick={irseAlMazo} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>Ir al mazo</button>
           )}
           {estaEsperandoRival && (
-            <div style={{ padding:"7px 14px", borderRadius:8, background:"rgba(0,0,0,0.35)", border:"1px solid rgba(45,106,79,0.4)", color:"#9ca3af", fontSize:12, fontFamily:"'Lato',sans-serif", letterSpacing:0.5, pointerEvents:"none" }}>
+            <div style={{ padding:"9px 18px", borderRadius:10, background:"rgba(0,0,0,0.35)", border:"1px solid rgba(45,106,79,0.4)", color:"#9ca3af", fontSize:16, fontFamily:"'Lato',sans-serif", letterSpacing:0.65, pointerEvents:"none" }}>
               ⏳ Esperando a tu rival…
             </div>
           )}
         </>}
       />
-
-      {envidoGlobos && (
-        <div style={{ position:"fixed",inset:0,zIndex:15,pointerEvents:"none",display:"flex",flexDirection:"column",justifyContent:"space-between",padding:"70px 24px 90px" }}>
-          <div style={{ opacity:envidoGlobos.visible?1:0,transition:"opacity 0.5s",alignSelf:"center",position:"relative",background:"#fff",borderRadius:10,padding:"7px 14px",fontWeight:900,fontSize:15,color:"#111",boxShadow:"2px 2px 0 #111",whiteSpace:"nowrap" }}>
-            {envidoGlobos.rival}
-            <div style={{ position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",borderBottom:"8px solid #fff" }}/>
-          </div>
-          <div style={{ opacity:envidoGlobos.visible?1:0,transition:"opacity 0.5s",alignSelf:"center",position:"relative",background:"#fff",borderRadius:10,padding:"7px 14px",fontWeight:900,fontSize:15,color:"#111",boxShadow:"2px 2px 0 #111",whiteSpace:"nowrap" }}>
-            {envidoGlobos.jugador}
-            <div style={{ position:"absolute",bottom:-8,left:"50%",transform:"translateX(-50%)",width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",borderTop:"8px solid #fff" }}/>
-          </div>
-        </div>
-      )}
 
       {mostrarPerfil&&(
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20,padding:"16px" }}>
@@ -1238,7 +1231,16 @@ export default function App() {
   if (verPrivacidad) return <Privacidad onVolver={()=>setVerPrivacidad(false)} />;
   if (verTorneos) return (
     <>
-      <Torneos user={user} perfil={perfil} onVolver={()=>setVerTorneos(false)} />
+      <Torneos
+        user={user}
+        perfil={perfil}
+        onVolver={()=>setVerTorneos(false)}
+        onIrAPartidaTorneo={(codigo) => {
+          setCodigoRejoin(codigo);
+          setModoJuego("multi");
+          setVerTorneos(false);
+        }}
+      />
       <BotonSoporte perfil={perfil} />
     </>
   );

@@ -79,6 +79,7 @@ export function MesaJuego({
   esMiTurno = true,
   globoJugador = "Quiero",   // TEMPORAL: valor de prueba, sacar cuando conectemos App.js/Multijugador.js
   globoRival = "¡Truco!",    // TEMPORAL: valor de prueba, sacar cuando conectemos App.js/Multijugador.js
+  globoCentro = null,
 }) {
   const esMobile = useEsMobile();
   const { escala, alturaLienzo } = useEscalaPantalla();
@@ -105,18 +106,7 @@ export function MesaJuego({
 
       {/* Marcador */}
       <div style={{ display:"flex", gap:12, alignItems:"flex-start", flexShrink:0, width:"100%", maxWidth:640, margin:"0 auto", boxSizing:"border-box" }}>
-        <div style={{ flex:1 }}>
-          <div style={{ display:"inline-flex", flexDirection:"column", alignItems:"center" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:5, maxWidth:128, overflow:"hidden" }}>
-              <img src={avatarJugador && avatarJugador.startsWith("/avatars/") ? avatarJugador : "/avatars/avatar_01.png"} alt="" style={{ width:22, height:22, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
-              <span style={{ fontSize:13, color:"#ffffff", letterSpacing:0.5, fontFamily:"'Lato',sans-serif", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{nombreJugador}</span>
-            </div>
-            <div style={{ border:"1px solid #2d6a4f", borderRadius:8, padding:"4px 8px", display:"inline-block" }}>
-              <PalitosPuntaje puntos={puntosJugador} total={limitePuntos} />
-            </div>
-          </div>
-        </div>
-        <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"flex-end" }}>
+        <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
           <div style={{ display:"inline-flex", flexDirection:"column", alignItems:"center" }}>
             <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:5, maxWidth:128, overflow:"hidden" }}>
               <img src={avatarRival && avatarRival.startsWith("/avatars/") ? avatarRival : "/avatars/avatar_01.png"} alt="" style={{ width:22, height:22, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
@@ -127,10 +117,21 @@ export function MesaJuego({
             </div>
           </div>
         </div>
+        <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"flex-end" }}>
+          <div style={{ display:"inline-flex", flexDirection:"column", alignItems:"center" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:5, maxWidth:128, overflow:"hidden" }}>
+              <img src={avatarJugador && avatarJugador.startsWith("/avatars/") ? avatarJugador : "/avatars/avatar_01.png"} alt="" style={{ width:22, height:22, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
+              <span style={{ fontSize:13, color:"#ffffff", letterSpacing:0.5, fontFamily:"'Lato',sans-serif", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{nombreJugador}</span>
+            </div>
+            <div style={{ border:"1px solid #2d6a4f", borderRadius:8, padding:"4px 8px", display:"inline-block" }}>
+              <PalitosPuntaje puntos={puntosJugador} total={limitePuntos} />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Globos de diálogo — canto rival/jugador */}
-      {(globoRival || globoJugador) && (
+      {(globoRival || globoJugador || globoCentro) && (
         <div style={{ position:"relative", width:"100%", maxWidth:640, height:0 }}>
           <div style={{ position:"absolute", top:0, left:0, width:"100%", display:"flex", justifyContent:"space-between", padding:"0 8px", boxSizing:"border-box", zIndex:50, pointerEvents:"none" }}>
             {globoRival ? (
@@ -146,6 +147,13 @@ export function MesaJuego({
               </div>
             ) : <div/>}
           </div>
+          {globoCentro && (
+            <div style={{ position:"absolute", top:0, left:"50%", transform:"translateX(-50%)", zIndex:51, pointerEvents:"none" }}>
+              <div style={{ background:"#fff", borderRadius:10, padding:"7px 14px", fontWeight:900, fontSize:15, color:"#111", boxShadow:"2px 2px 0 #111", whiteSpace:"nowrap" }}>
+                {globoCentro}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

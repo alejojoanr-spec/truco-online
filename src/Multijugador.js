@@ -4,7 +4,7 @@ import { supabase } from "./supabase";
 import { avatarSrc } from "./avatares";
 import { leerConfig } from "./Configuracion";
 import { sumarPuntosRanking } from "./ranking";
-import { btnStyle } from "./GameComponents";
+import { btnStyle, GLOBO_TEXTOS } from "./GameComponents";
 import { MesaJuego } from "./MesaJuego";
 
 const _vozQueue = [];
@@ -171,12 +171,13 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const [copiado, setCopiado] = useState(false);
   const [resolviendoMano, setResolviendoMano] = useState(false);
   const [mostrarConfirmSalir, setMostrarConfirmSalir] = useState(false);
-  const [envidoGlobos, setEnvidoGlobos] = useState(null);
+  const [globoJugadorTexto, setGloboJugadorTexto] = useState(null);
+  const [globoRivalTexto, setGloboRivalTexto] = useState(null);
 
-  function mostrarGlobosEnvido(textoJugador, textoRival) {
-    setEnvidoGlobos({ jugador: textoJugador, rival: textoRival, visible: true });
-    setTimeout(() => setEnvidoGlobos(g => g ? { ...g, visible: false } : null), 2000);
-    setTimeout(() => setEnvidoGlobos(null), 2500);
+  function mostrarGlobo(lado, tag) {
+    const texto = GLOBO_TEXTOS[tag] || tag;
+    if (lado === "jugador") { setGloboJugadorTexto(texto); setTimeout(() => setGloboJugadorTexto(null), 2500); }
+    else { setGloboRivalTexto(texto); setTimeout(() => setGloboRivalTexto(null), 2500); }
   }
 
   const addLog = () => {};
@@ -197,6 +198,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const timerAutoFiredRef = useRef(null);
   const irseAlMazoRef = useRef(null);
   const noQuieroRef = useRef(null);
+  const ultimoCantoMostradoRef = useRef(null);
   const resolviendoManoRef = useRef(false);
   const refetchPartidaRef = useRef(null);
   const reconectarRef = useRef(null);
@@ -336,6 +338,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         setSoyJugador1(false);
         setMiMano(JSON.parse(data.mano_jugador2));
         setManoRival(JSON.parse(data.mano_jugador1));
+        ultimoCantoMostradoRef.current = data.ultimo_canto?.ts ?? null;
         setPartida({ ...data, jugador2_id: user.id, estado: "jugando" });
         setPantalla("jugando");
         addLog("¡Partida iniciada!");
@@ -349,6 +352,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         setSoyJugador1(true);
         setMiMano(JSON.parse(data.mano_jugador1));
         setManoRival(JSON.parse(data.mano_jugador2));
+        ultimoCantoMostradoRef.current = data.ultimo_canto?.ts ?? null;
         setPartida(data);
         setPantalla("jugando");
         addLog("¡Partida iniciada!");
@@ -367,6 +371,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         setSoyJugador1(esJ1);
         setMiMano(JSON.parse(esJ1 ? data.mano_jugador1 : data.mano_jugador2));
         setManoRival(JSON.parse(esJ1 ? data.mano_jugador2 : data.mano_jugador1));
+        ultimoCantoMostradoRef.current = data.ultimo_canto?.ts ?? null;
         setPartida(data);
         setPantalla("jugando");
         addLog("🔄 Reconectado a la partida");
@@ -419,7 +424,13 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       if (p.envido_resultado && !partidaRef.current?.envido_resultado) {
         const textoJugador = soyJugador1 ? p.envido_resultado.texto_j1 : p.envido_resultado.texto_j2;
         const textoRival   = soyJugador1 ? p.envido_resultado.texto_j2 : p.envido_resultado.texto_j1;
-        mostrarGlobosEnvido(textoJugador, textoRival);
+        mostrarGlobo("jugador", textoJugador);
+        mostrarGlobo("rival", textoRival);
+      }
+      // Globo de canto/respuesta: un solo punto reactivo, sirve para jugador y rival por igual
+      if (p.ultimo_canto && p.ultimo_canto.ts !== ultimoCantoMostradoRef.current) {
+        ultimoCantoMostradoRef.current = p.ultimo_canto.ts;
+        mostrarGlobo(p.ultimo_canto.por === user.id ? "jugador" : "rival", p.ultimo_canto.tag);
       }
     }
 
@@ -586,7 +597,32 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codigo]);
 
+  async function tieneTorneoActivo() {
+    const { data: inscripciones } = await supabase
+      .from("torneo_jugadores")
+      .select("torneo_id")
+      .eq("jugador_id", user.id);
+    const torneoIds = [...new Set((inscripciones || []).map(i => i.torneo_id))];
+    if (torneoIds.length === 0) return false;
+    const { data: torneosActivos } = await supabase
+      .from("torneos")
+      .select("id")
+      .in("id", torneoIds)
+      .in("estado", ["abierto", "en_curso"])
+      .limit(1);
+    return (torneosActivos?.length || 0) > 0;
+  }
+
   async function crearSala() {
+    if (await tieneTorneoActivo()) { setError("Estás anotado en un torneo en curso. No podés crear partidas 1vs1 hasta que termine."); return; }
+    const { data: activasCrear } = await supabase
+      .from("partidas")
+      .select("id")
+      .in("estado", ["esperando", "jugando"])
+      .or(`jugador1_id.eq.${user.id},jugador2_id.eq.${user.id}`)
+      .limit(1);
+    if (activasCrear?.length > 0) { setError("Ya tenés una partida activa. Finalizala antes de crear otra."); return; }
+
     // Eliminar salas propias previas en espera (evita acumulación y reemplaza la anterior)
     const { data: salasPrevias, error: errPrevias } = await supabase
       .from("partidas")
@@ -670,6 +706,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const { data, error: err } = await supabase.from("partidas").select("*").eq("codigo", cod).single();
     if (err || !data) { setError("Sala no encontrada"); return; }
     if (data.estado !== "esperando") { setError("La sala ya está en juego"); return; }
+    if (await tieneTorneoActivo()) { setError("Estás anotado en un torneo en curso. No podés unirte a partidas 1vs1 hasta que termine."); return; }
     // Verificar que el usuario no tenga ya una partida activa
     const { data: activas } = await supabase
       .from("partidas")
@@ -882,6 +919,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       accion_pendiente: { tipo: 'truco', nivel: 1, cantado_por: user.id, si_quiero: 2, si_no: 1 },
       truco_jugado: true,
       turno_inicio: new Date().toISOString(),
+      ultimo_canto: { tag: "truco", por: user.id, ts: Date.now() },
     }).eq("codigo", codigo);
     addLog("¡Truco!");
   }
@@ -895,6 +933,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     await supabase.from("partidas").update({
       accion_pendiente: { tipo: 'truco', nivel: nuevoNivel, cantado_por: user.id, si_quiero: nuevoNivel + 1, si_no: nuevoNivel },
       turno_inicio: new Date().toISOString(),
+      ultimo_canto: { tag: nuevoNivel === 2 ? "retruco" : "vale_cuatro", por: user.id, ts: Date.now() },
     }).eq("codigo", codigo);
     addLog(`¡${labels[nuevoNivel]}!`);
   }
@@ -913,6 +952,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     await supabase.from("partidas").update({
       accion_pendiente: { tipo: 'truco', nivel: nuevoNivel, cantado_por: user.id, si_quiero: nuevoNivel + 1, si_no: nuevoNivel },
       turno_inicio: new Date().toISOString(),
+      ultimo_canto: { tag: nuevoNivel === 2 ? "retruco" : "vale_cuatro", por: user.id, ts: Date.now() },
     }).eq("codigo", codigo);
     addLog(`¡${labels[nuevoNivel]}!`);
   }
@@ -932,6 +972,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       },
       envido_jugado: true,
       turno_inicio: new Date().toISOString(),
+      ultimo_canto: { tag: subtipo, por: user.id, ts: Date.now() },
     }).eq("codigo", codigo);
     addLog(`¡${LABEL_ENV[subtipo]}!`);
   }
@@ -953,6 +994,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       },
       envido_jugado: true,
       turno_inicio: new Date().toISOString(),
+      ultimo_canto: { tag: subtipo, por: user.id, ts: Date.now() },
     }).eq("codigo", codigo);
     addLog(`¡${LABEL_ENV[subtipo]}! (el Truco queda en pausa)`);
   }
@@ -984,6 +1026,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         si_no: accFresh.si_quiero,
       },
       turno_inicio: new Date().toISOString(),
+      ultimo_canto: { tag: subtipo, por: user.id, ts: Date.now() },
     }).eq("codigo", codigo);
     addLog(`¡${nuevaCadena.map(s => LABEL_ENV[s]).join(' + ')}!`);
   }
@@ -1001,6 +1044,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         truco_nivel: acc.nivel,
         truco_derecho_de: user.id,
         turno_inicio: new Date().toISOString(),
+        ultimo_canto: { tag: "quiero", por: user.id, ts: Date.now() },
       }).eq("codigo", codigo);
       addLog(`Quiero. Mano vale ${acc.si_quiero} pt${acc.si_quiero > 1 ? 's' : ''}.`);
       return;
@@ -1028,10 +1072,10 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const np2 = (partida.puntos2 || 0) + (ganadorEnv === partida.jugador2_id ? ptosEnvido : 0);
     if (np1 >= puntosObj || np2 >= puntosObj) {
       const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
-      const { error } = await supabase.from("partidas").update({ accion_pendiente: null, truco_en_pausa: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", envido_resultado: envidoRes, finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null }).eq("codigo", codigo);
+      const { error } = await supabase.from("partidas").update({ accion_pendiente: null, truco_en_pausa: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", envido_resultado: envidoRes, finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null, ultimo_canto: { tag: "quiero", por: user.id, ts: Date.now() } }).eq("codigo", codigo);
       if (error) console.error("quiero envido gameOver:", error);
     } else {
-      const { error } = await supabase.from("partidas").update({ accion_pendiente: partida.truco_en_pausa || null, truco_en_pausa: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString(), envido_resultado: envidoRes }).eq("codigo", codigo);
+      const { error } = await supabase.from("partidas").update({ accion_pendiente: partida.truco_en_pausa || null, truco_en_pausa: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString(), envido_resultado: envidoRes, ultimo_canto: { tag: "quiero", por: user.id, ts: Date.now() } }).eq("codigo", codigo);
       if (error) console.error("quiero envido:", error);
       // Limpiar envido_resultado después de que ambos clientes alcancen a mostrarlo (2.5s display + margen de red)
       setTimeout(async () => {
@@ -1056,10 +1100,10 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
     if (acc.tipo === 'envido') {
       if (gameOver) {
-        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, truco_en_pausa: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null }).eq("codigo", codigo);
+        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, truco_en_pausa: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null, ultimo_canto: { tag: "no_quiero", por: user.id, ts: Date.now() } }).eq("codigo", codigo);
         if (error) console.error("noQuiero envido gameOver:", error);
       } else {
-        const { error } = await supabase.from("partidas").update({ accion_pendiente: partida.truco_en_pausa || null, truco_en_pausa: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString() }).eq("codigo", codigo);
+        const { error } = await supabase.from("partidas").update({ accion_pendiente: partida.truco_en_pausa || null, truco_en_pausa: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString(), ultimo_canto: { tag: "no_quiero", por: user.id, ts: Date.now() } }).eq("codigo", codigo);
         if (error) console.error("noQuiero envido:", error);
       }
       return;
@@ -1067,7 +1111,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
     // Truco rechazado: termina la mano
     if (gameOver) {
-      const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1, ganador_id: ganadorId, estado: "terminada", finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null }).eq("codigo", codigo);
+      const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1, ganador_id: ganadorId, estado: "terminada", finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null, ultimo_canto: { tag: "no_quiero", por: user.id, ts: Date.now() } }).eq("codigo", codigo);
       if (error) console.error("noQuiero truco gameOver:", error);
     } else {
       const nuevoMazo = mezclar(MAZO);
@@ -1085,6 +1129,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         turno: siguienteManoNQ,
         mano_id: siguienteManoNQ,
         turno_inicio: new Date().toISOString(),
+        ultimo_canto: { tag: "no_quiero", por: user.id, ts: Date.now() },
       }).eq("codigo", codigo);
       if (error) console.error("noQuiero truco:", error);
     }
@@ -1118,6 +1163,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         accion_pendiente: null, puntos1: np1, puntos2: np2,
         puntos_mano: 1, ganador_id: ganadorId, estado: "terminada",
         finalizado_en: new Date().toISOString(), motivo_fin: motivoFin, debia_jugada_id: debiaJugadaId,
+        ultimo_canto: { tag: "me_voy_al_mazo", por: user.id, ts: Date.now() },
       }).eq("codigo", codigo);
       if (error) console.error("irseAlMazo gameOver:", error);
     } else {
@@ -1128,6 +1174,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         envido_jugado: false, truco_jugado: false,
         truco_nivel: null, truco_derecho_de: null, truco_en_pausa: null,
         turno: user.id,
+        ultimo_canto: { tag: "me_voy_al_mazo", por: user.id, ts: Date.now() },
       }).eq("codigo", codigo);
       if (err1) { console.error("irseAlMazo paso1:", err1); setResolviendoMano(false); return; }
       // Paso 2: tras la misma pausa que jugarCarta, repartir nueva mano
@@ -1465,12 +1512,14 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             ? (partida.accion_pendiente.cantado_por !== user.id
                 ? (elEnvidoPrimero && partida.accion_pendiente.tipo === 'truco' && partida.accion_pendiente.nivel === 1
                     ? "🃏 Elegí qué envido cantar"
-                    : `El rival cantó ¡${getCantoLabel(partida.accion_pendiente)}!`)
+                    : "")
                 : "⏳ Canto pendiente...")
             : miTurno ? "👆 Tu turno — tocá una carta" : estaEsperandoRival ? "" : "⏳ Turno del rival..."
         }
         onSalir={() => setMostrarConfirmSalir(true)}
         log={null}
+        globoJugador={globoJugadorTexto}
+        globoRival={globoRivalTexto}
         botonesSlot={<>
           {!partida?.accion_pendiente && (
             <>
@@ -1540,25 +1589,12 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             <button onClick={() => irseAlMazo()} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>Ir al mazo</button>
           )}
           {estaEsperandoRival && (
-            <div style={{ padding:"7px 14px", borderRadius:8, background:"rgba(0,0,0,0.35)", border:"1px solid rgba(45,106,79,0.4)", color:"#9ca3af", fontSize:12, fontFamily:"'Lato',sans-serif", letterSpacing:0.5, pointerEvents:"none" }}>
+            <div style={{ padding:"9px 18px", borderRadius:10, background:"rgba(0,0,0,0.35)", border:"1px solid rgba(45,106,79,0.4)", color:"#9ca3af", fontSize:16, fontFamily:"'Lato',sans-serif", letterSpacing:0.65, pointerEvents:"none" }}>
               ⏳ Esperando a tu rival…
             </div>
           )}
         </>}
       />
-
-      {envidoGlobos && (
-        <div style={{ position:"fixed",inset:0,zIndex:15,pointerEvents:"none",display:"flex",flexDirection:"column",justifyContent:"space-between",padding:"70px 24px 90px" }}>
-          <div style={{ opacity:envidoGlobos.visible?1:0,transition:"opacity 0.5s",alignSelf:"center",position:"relative",background:"#fff",borderRadius:10,padding:"7px 14px",fontWeight:900,fontSize:15,color:"#111",boxShadow:"2px 2px 0 #111",whiteSpace:"nowrap" }}>
-            {envidoGlobos.rival}
-            <div style={{ position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",borderBottom:"8px solid #fff" }}/>
-          </div>
-          <div style={{ opacity:envidoGlobos.visible?1:0,transition:"opacity 0.5s",alignSelf:"center",position:"relative",background:"#fff",borderRadius:10,padding:"7px 14px",fontWeight:900,fontSize:15,color:"#111",boxShadow:"2px 2px 0 #111",whiteSpace:"nowrap" }}>
-            {envidoGlobos.jugador}
-            <div style={{ position:"absolute",bottom:-8,left:"50%",transform:"translateX(-50%)",width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",borderTop:"8px solid #fff" }}/>
-          </div>
-        </div>
-      )}
 
       {mostrarConfirmSalir && (
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:30 }}>

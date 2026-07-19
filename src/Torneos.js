@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 
-export default function Torneos({ user, perfil, onVolver }) {
+export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo }) {
   const [torneos, setTorneos] = useState([]);
   const [pantalla, setPantalla] = useState("lista"); // lista | crear | detalle
   const [torneoSeleccionado, setTorneoSeleccionado] = useState(null);
@@ -10,8 +10,42 @@ export default function Torneos({ user, perfil, onVolver }) {
   const [nombre, setNombre] = useState("");
   const [maxJugadores, setMaxJugadores] = useState(8);
   const [entrada, setEntrada] = useState(0);
+  const channelRef = useRef(null);
+  const navegadoRef = useRef(false);
 
   useEffect(() => { cargarTorneos(); }, []);
+
+  useEffect(() => {
+    if (!torneoSeleccionado?.id) return;
+    navegadoRef.current = false;
+
+    const ch = supabase.channel(`torneo-${torneoSeleccionado.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "torneos", filter: `id=eq.${torneoSeleccionado.id}` },
+        (payload) => {
+          if (navegadoRef.current) return;
+          if (payload.new.estado === "en_curso" && payload.new.bracket) {
+            const parRonda1 = (payload.new.bracket.ronda1 || []).find(
+              p => p.jugador1 === user.id || p.jugador2 === user.id
+            );
+            if (parRonda1) { navegadoRef.current = true; onIrAPartidaTorneo(parRonda1.codigo_partida); return; }
+
+            const final = payload.new.bracket.final;
+            if (final && (final.jugador1 === user.id || final.jugador2 === user.id) && final.codigo_partida) {
+              navegadoRef.current = true;
+              onIrAPartidaTorneo(final.codigo_partida);
+            }
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED")
+          console.warn("[Realtime] Canal caído:", status);
+      });
+    channelRef.current = ch;
+
+    return () => { if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null; } };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [torneoSeleccionado?.id]);
 
   async function cargarTorneos() {
     setCargando(true);
