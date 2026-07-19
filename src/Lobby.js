@@ -261,7 +261,7 @@ function CardJugando({ sala }) {
   );
 }
 
-function CardTorneo({ torneo, onUnirse, uniendose, perfil, yaInscripto }) {
+function CardTorneo({ torneo, onUnirse, uniendose, perfil, yaInscripto, user, onCancelar, cancelando }) {
   const cargando = uniendose === `torneo-${torneo.id}`;
   return (
     <div style={{
@@ -301,6 +301,21 @@ function CardTorneo({ torneo, onUnirse, uniendose, perfil, yaInscripto }) {
         >
           {cargando ? "..." : yaInscripto ? "Anotado ✓" : "Unirse"}
         </button>
+        {torneo.creado_por === user.id && torneo.estado === "abierto" && (
+          <button
+            onClick={() => !cancelando && onCancelar(torneo)}
+            disabled={cancelando}
+            style={{
+              padding: "5px 11px", borderRadius: 8,
+              cursor: cancelando ? "not-allowed" : "pointer",
+              background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.35)",
+              color: "#f87171", fontFamily: "'Lato',sans-serif", fontSize: 11, fontWeight: 700,
+              opacity: cancelando ? 0.5 : 1, transition: "opacity 0.15s",
+            }}
+          >
+            {cancelando ? "..." : "Cancelar"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -401,6 +416,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
     return () => supabase.removeChannel(canal);
   }, []);
   const [uniendose, setUniendose] = useState(null);
+  const [cancelandoTorneo, setCancelandoTorneo] = useState(null);
   const [errorTorneo, setErrorTorneo] = useState("");
   const [pantalla, setPantalla] = useState("lobby");
 
@@ -533,7 +549,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
   async function cargarTorneos() {
     const { data: torneos } = await supabase
       .from("torneos")
-      .select("id, nombre, estado, max_jugadores, jugadores_actuales, entrada, premio, puntos")
+      .select("id, nombre, estado, max_jugadores, jugadores_actuales, entrada, premio, puntos, creado_por")
       .eq("estado", "abierto")
       .order("id", { ascending: false })
       .limit(50);
@@ -736,6 +752,16 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
     const { error } = await unirseATorneoApi({ user, perfil, torneo });
     setUniendose(null);
     if (error) { setErrorTorneo(error); return; }
+    cargarTorneos();
+  }
+
+  async function cancelarTorneo(torneo) {
+    if (!window.confirm("¿Cancelar el torneo? Se reembolsará a todos los inscriptos.")) return;
+    setErrorTorneo("");
+    setCancelandoTorneo(torneo.id);
+    const { error } = await supabase.rpc("cancelar_torneo", { p_torneo_id: torneo.id });
+    setCancelandoTorneo(null);
+    if (error) { setErrorTorneo(error.message || "Error al cancelar el torneo."); return; }
     cargarTorneos();
   }
 
@@ -968,6 +994,9 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
             uniendose={uniendose}
             perfil={perfil}
             yaInscripto={t.yaInscripto}
+            user={user}
+            onCancelar={cancelarTorneo}
+            cancelando={cancelandoTorneo === t.id}
           />
         )}
 
