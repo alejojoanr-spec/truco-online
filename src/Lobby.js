@@ -946,6 +946,20 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
 
         <CardIA onJugar={onJugarIA} />
 
+        {!cargando && !mySala && (
+          <button
+            onClick={() => setPantalla("crear")}
+            style={{
+              marginTop: hayJugadores ? 6 : 0,
+              width: "100%", padding: "14px", borderRadius: 12, cursor: "pointer",
+              background: "rgba(167,139,250,0.07)", border: "1px solid rgba(167,139,250,0.4)",
+              color: "#a78bfa", fontFamily: "'Lato',sans-serif", fontSize: 14, fontWeight: 700,
+            }}
+          >
+            + Crear sala pública
+          </button>
+        )}
+
         {mySala && (
           <CardMiSala sala={mySala} onEliminar={eliminarSala} eliminando={eliminandoSala} />
         )}
@@ -998,20 +1012,6 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
             onCancelar={cancelarTorneo}
             cancelando={cancelandoTorneo === t.id}
           />
-        )}
-
-        {!cargando && !mySala && (
-          <button
-            onClick={() => setPantalla("crear")}
-            style={{
-              marginTop: hayJugadores ? 6 : 0,
-              width: "100%", padding: "14px", borderRadius: 12, cursor: "pointer",
-              background: "rgba(167,139,250,0.07)", border: "1px solid rgba(167,139,250,0.4)",
-              color: "#a78bfa", fontFamily: "'Lato',sans-serif", fontSize: 14, fontWeight: 700,
-            }}
-          >
-            + Crear sala pública
-          </button>
         )}
 
       </div>
