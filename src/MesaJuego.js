@@ -158,7 +158,7 @@ export function MesaJuego({
       )}
 
       {/* Mesa — 3 slots fijos */}
-      <div style={{ position:"relative", background:"#12584d", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth: esMobile ? 340 : 420, margin:"0 auto", marginTop:PANO_MARGIN_TOP, flexGrow:1, minHeight:226 }}>
+      <div style={{ position:"relative", boxSizing:"border-box", background:"#12584d", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth: esMobile ? 340 : 420, margin:"0 auto", marginTop:PANO_MARGIN_TOP, flexGrow:1, minHeight:226 }}>
         <div style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%", border:"1px solid #2d6a4f", background:"rgba(0,0,0,0.3)", color:"#ffffff", fontSize:12, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
           {limitePuntos}
         </div>
