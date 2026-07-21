@@ -175,6 +175,17 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   const [ptsTrucoApostados, setPtsTrucoApostados] = useState(0);
   const [nivelTrucoAceptado, setNivelTrucoAceptado] = useState(0);
   const [derechoTrucoDe, setDerechoTrucoDe] = useState(null);
+  const [trucoEnPausa, setTrucoEnPausa] = useState(null);
+  // En App.js, elEnvidoPrimero=true significa "hay una interjección de envido pendiente
+  // de que la IA decida" (todavía no eligió nada) — a diferencia de Multijugador.js, donde
+  // significa "el rival ya eligió cantar el envido primero" (un clic explícito). No confundir
+  // el significado entre los dos archivos.
+  const [elEnvidoPrimero, setElEnvidoPrimero] = useState(false);
+  // elEnvidoPrimeroJugador es el lado inverso: acá SÍ es una elección explícita del jugador
+  // (mismo significado que en Multijugador.js), cuando la IA cantó Truco y el jugador decide
+  // interponer su propio Envido antes de responder. Variable separada de elEnvidoPrimero
+  // a propósito, para no mezclar las dos semánticas distintas.
+  const [elEnvidoPrimeroJugador, setElEnvidoPrimeroJugador] = useState(false);
   const [rondaActual, setRondaActual] = useState(1);
   const [ganadoresRondas, setGanadoresRondas] = useState([]);
   const [fasePartida, setFasePartida] = useState("jugando");
@@ -219,6 +230,50 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   }
 
   useEffect(() => { if (!eligiendo) iniciarPartida(); }, [eligiendo]); // eslint-disable-line
+
+  // Resetea "el envido está primero" cada vez que cambia la identidad del truco pendiente
+  useEffect(() => {
+    setElEnvidoPrimero(false);
+  }, [estadoTruco, trucoCantadoPor]);
+
+  useEffect(() => {
+    setElEnvidoPrimeroJugador(false);
+  }, [estadoTruco, trucoCantadoPor]);
+
+  // Decisión de la IA cuando el jugador cantó Truco con el envido todavía vivo (elEnvidoPrimero)
+  useEffect(() => {
+    if (!elEnvidoPrimero) return;
+    setTimeout(() => {
+      const envRival = calcularEnvido(manoRival);
+      const debeInterponer = envRival > 25 && Math.random() < 0.65;
+      if (debeInterponer) {
+        const tipo = envRival > 28 ? "realenvido" : "envido";
+        reproducirVoz(tipo === "realenvido" ? 'real_envido' : 'envido');
+        mostrarGlobo("rival", tipo === "realenvido" ? "real_envido" : "envido");
+        setEstadoEnvido(tipo);
+        setEnvidoCantadoPor("rival");
+        setEnvidoMonto({ quiero: tipo === "realenvido" ? 3 : 2, noquiero: 1 });
+        addLog(`Rival: ¡${tipo === "realenvido" ? "REAL ENVIDO" : "ENVIDO"}! (interpuesto sobre el Truco)`);
+        // trucoEnPausa/elEnvidoPrimero quedan sin tocar acá — los limpia el efecto de abajo,
+        // cuando estadoEnvido llegue a un valor terminal.
+      } else {
+        setTrucoEnPausa(null);
+        setElEnvidoPrimero(false);
+        resolverTrucoIA();
+      }
+    }, 1000);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elEnvidoPrimero]);
+
+  // Retoma el Truco pausado en cuanto el envido interpuesto termina de resolverse
+  useEffect(() => {
+    if (!trucoEnPausa) return;
+    if (!["quiero", "noquiero"].includes(estadoEnvido)) return;
+    setTrucoEnPausa(null);
+    setElEnvidoPrimero(false);
+    resolverTrucoIA();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estadoEnvido, trucoEnPausa]);
 
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -484,11 +539,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     else { setGloboCentroTexto(texto); setTimeout(() => setGloboCentroTexto(null), 2500); }
   }
 
-  function cantarTruco() {
-    if (!trucoDisponible) return;
-    reproducirVoz('truco');
-    mostrarGlobo("jugador", "truco");
-    setEstadoTruco("truco"); setTrucoCantadoPor("jugador"); addLog("Vos: ¡TRUCO!");
+  function resolverTrucoIA() {
     setTimeout(() => {
       const rand = Math.random();
       if (rand < 0.3) {
@@ -509,6 +560,22 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
         addLog("Rival: ¡Quiero!");
       }
     }, 1000);
+  }
+
+  function cantarTruco() {
+    if (!trucoDisponible) return;
+    reproducirVoz('truco');
+    mostrarGlobo("jugador", "truco");
+    setEstadoTruco("truco"); setTrucoCantadoPor("jugador"); addLog("Vos: ¡TRUCO!");
+
+    const envidoAunVivo = !estadoEnvido && rondaActual === 1;
+    if (envidoAunVivo) {
+      setTrucoEnPausa({ nivel: 1, cantadoPor: "jugador", siQuiero: 2, siNo: 1 });
+      setElEnvidoPrimero(true);
+      return; // pausado: el useEffect de decisión de la IA resuelve si interpone envido o sigue con el truco normal
+    }
+
+    resolverTrucoIA();
   }
 
   function responderRetruco(respuesta) {
@@ -670,6 +737,69 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
     }, 1000);
   }
 
+  // Réplica manual de la porción relevante de cantarEnvido() (cantar + resolución de la IA),
+  // sin el guard turno!=="jugador" (no aplica: la IA cantó el Truco durante SU turno) ni
+  // estadoEnvido (ya lo chequeamos con envidoVivoParaInterponer antes de mostrar el botón).
+  // NO toca estadoTruco/trucoCantadoPor/turno en ningún momento.
+  function cantarEnvidoInterpuesto(tipo) {
+    const vozEnv = tipo === 'realenvido' ? 'real_envido' : tipo === 'faltaenvido' ? 'falta_envido' : 'envido';
+    reproducirVoz(vozEnv);
+    mostrarGlobo("jugador", vozEnv);
+    setEstadoEnvido(tipo); addLog(`Vos: ¡${tipo.toUpperCase()}! (interpuesto sobre el Truco)`);
+    setEnvidoCantadoPor("jugador");
+    setEnvidoMonto({
+      quiero: tipo === "faltaenvido" ? calcularFalta(limitePuntos, puntosJugador, puntosRival) : tipo === "realenvido" ? 3 : 2,
+      noquiero: 1,
+    });
+    setElEnvidoPrimeroJugador(false);
+    const ptsJ = puntosJugador;
+    const ptsR = puntosRival;
+    setTimeout(() => {
+      const envidoRival = calcularEnvido(manoRival);
+
+      // Feature 3: IA escala el envido del jugador (mismo criterio que cantarEnvido())
+      if (tipo === "envido") {
+        const debeEscalar = envidoRival > 28 || (envidoRival >= 25 && Math.random() < 0.5);
+        if (debeEscalar) {
+          const escTipo = envidoRival > 30 ? "realenvido" : "envido";
+          reproducirVoz(escTipo === "realenvido" ? 'real_envido' : 'envido');
+          mostrarGlobo("rival", escTipo === "realenvido" ? "real_envido" : "envido");
+          const ptsQ = escTipo === "realenvido" ? 5 : 4;
+          setEstadoEnvido("escalado");
+          setEnvidoCantadoPor("rival");
+          setEnvidoMonto({ quiero: ptsQ, noquiero: 2 });
+          addLog(`Rival: ¡${escTipo === "realenvido" ? "REAL ENVIDO" : "ENVIDO"}! (${ptsQ} pts si querés)`);
+          return;
+        }
+      }
+
+      const r = envidoRival >= 25 || Math.random() > 0.5 ? "quiero" : "noquiero";
+      reproducirVoz(r === 'quiero' ? 'quiero' : 'no_quiero');
+      mostrarGlobo("rival", r === 'quiero' ? "quiero" : "no_quiero");
+      setEstadoEnvido(r); addLog(`Rival: ${r === "quiero" ? "¡Quiero!" : "No quiero"}`);
+      setEnvidoCantadoPor(null);
+      if (r === "quiero") {
+        const envJ = calcularEnvido(manoJugador);
+        addLog(`Vos: ${envJ} - Rival: ${envidoRival}`);
+        const jugadorGana = envJ >= envidoRival;
+        if (tipo === "faltaenvido") {
+          const pts = calcularFalta(limitePuntos, ptsJ, ptsR);
+          if (jugadorGana) { addLog(`✅ Ganaste Falta Envido (+${pts})`); setPuntosJugador(p => p + pts); reproducirSonidoPunto(); }
+          else { addLog(`❌ Rival ganó Falta Envido (+${pts})`); setPuntosRival(p => p + pts); reproducirSonidoPunto(); }
+        } else {
+          const ptsEnv = tipo === "realenvido" ? 3 : 2;
+          if (jugadorGana) { addLog(`✅ Ganaste envido (+${ptsEnv})`); setPuntosJugador(p => p + ptsEnv); reproducirSonidoPunto(); }
+          else { addLog(`❌ Rival ganó envido (+${ptsEnv})`); setPuntosRival(p => p + ptsEnv); reproducirSonidoPunto(); }
+        }
+        mostrarGlobo("jugador", jugadorGana ? `¡Son ${envJ}!` : "Son buenas");
+        mostrarGlobo("rival", jugadorGana ? "Son buenas" : `¡Son ${envidoRival}!`);
+      } else {
+        addLog(`✅ Ganaste 1 punto por envido`);
+        setPuntosJugador(p => p + 1); reproducirSonidoPunto();
+      }
+    }, 1000);
+  }
+
   function responderTruco(respuesta) {
     const pending = pendingJugarRivalRef.current || { jugadasJ: jugadasJugador, mesaJ: mesaJugador, jugadasR: jugadasRival };
     pendingJugarRivalRef.current = null;
@@ -792,6 +922,7 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
 
   const esManoDeLasAceites = puntosJugador >= limitePuntos - 1 || puntosRival >= limitePuntos - 1;
   const envidoDisponible = !estadoEnvido && rondaActual === 1 && jugadasJugador.length === 0;
+  const envidoVivoParaInterponer = !estadoEnvido && rondaActual === 1;
   const trucoDisponible = !estadoTruco && turno === "jugador" && fasePartida === "jugando" && !esManoDeLasAceites && !envidoPropioPendiente;
   const esperandoRespuestaRetruco = estadoTruco === "retruco" && trucoCantadoPor === "rival";
   const esperandoRespuestaTruco = estadoTruco === "truco" && trucoCantadoPor === "rival";
@@ -886,11 +1017,25 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
             <button onClick={()=>responderRetruco("noquiero")} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>No quiero</button>
             {!esManoDeLasAceites && <button onClick={()=>responderRetruco("valecuatro")} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>Vale Cuatro</button>}
           </>}
-          {esperandoRespuestaTruco && <>
-            <button onClick={()=>responderTruco("quiero")} style={{ ...btnStyle("#065f46","#4ade80"), flex:"0 1 30%", minWidth:100 }}>Quiero</button>
-            <button onClick={()=>responderTruco("noquiero")} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>No quiero</button>
-            {!esManoDeLasAceites && <button onClick={()=>responderTruco("retruco")} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>Retruco</button>}
-          </>}
+          {esperandoRespuestaTruco && !envidoPropioPendiente && (
+            elEnvidoPrimeroJugador ? (
+              <>
+                <button onClick={()=>cantarEnvidoInterpuesto("envido")} style={{ ...btnStyle("#1d4ed8","#60a5fa"), flex:"0 1 30%", minWidth:100 }}>Envido</button>
+                <button onClick={()=>cantarEnvidoInterpuesto("realenvido")} style={{ ...btnStyle("#5b21b6","#a78bfa"), flex:"0 1 30%", minWidth:100 }}>Real Envido</button>
+                <button onClick={()=>cantarEnvidoInterpuesto("faltaenvido")} style={{ ...btnStyle("#065f46","#34d399"), flex:"0 1 30%", minWidth:100 }}>Falta Envido!</button>
+                <button onClick={()=>setElEnvidoPrimeroJugador(false)} style={{ ...btnStyle("#374151","#9ca3af"), flex:"0 1 30%", minWidth:100 }}>‹ Volver</button>
+              </>
+            ) : (
+              <>
+                <button onClick={()=>responderTruco("quiero")} style={{ ...btnStyle("#065f46","#4ade80"), flex:"0 1 30%", minWidth:100 }}>Quiero</button>
+                <button onClick={()=>responderTruco("noquiero")} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>No quiero</button>
+                {!esManoDeLasAceites && <button onClick={()=>responderTruco("retruco")} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>Retruco</button>}
+                {envidoVivoParaInterponer && (
+                  <button onClick={()=>setElEnvidoPrimeroJugador(true)} style={{ ...btnStyle("#1d4ed8","#60a5fa"), flex:"0 1 30%", minWidth:100 }}>El envido está primero</button>
+                )}
+              </>
+            )
+          )}
           {esperandoRespuestaValeCuatro && <>
             <button onClick={()=>responderValeCuatro("quiero")} style={{ ...btnStyle("#065f46","#4ade80"), flex:"0 1 30%", minWidth:100 }}>Quiero</button>
             <button onClick={()=>responderValeCuatro("noquiero")} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>No quiero</button>
