@@ -6,6 +6,7 @@ import { leerConfig } from "./Configuracion";
 import { sumarPuntosRanking } from "./ranking";
 import { btnStyle, GLOBO_TEXTOS } from "./GameComponents";
 import { MesaJuego } from "./MesaJuego";
+import { tienePartidaActiva } from "./partidasApi";
 
 const _vozQueue = [];
 let _vozPlaying = false;
@@ -615,13 +616,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   async function crearSala() {
     if (await tieneTorneoActivo()) { setError("Estás anotado en un torneo en curso. No podés crear partidas 1vs1 hasta que termine."); return; }
-    const { data: activasCrear } = await supabase
-      .from("partidas")
-      .select("id")
-      .in("estado", ["esperando", "jugando"])
-      .or(`jugador1_id.eq.${user.id},jugador2_id.eq.${user.id}`)
-      .limit(1);
-    if (activasCrear?.length > 0) { setError("Ya tenés una partida activa. Finalizala antes de crear otra."); return; }
+    if (await tienePartidaActiva(user.id)) { setError("Ya tenés una partida activa. Finalizala antes de crear otra."); return; }
 
     // Eliminar salas propias previas en espera (evita acumulación y reemplaza la anterior)
     const { data: salasPrevias, error: errPrevias } = await supabase
@@ -708,13 +703,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (data.estado !== "esperando") { setError("La sala ya está en juego"); return; }
     if (await tieneTorneoActivo()) { setError("Estás anotado en un torneo en curso. No podés unirte a partidas 1vs1 hasta que termine."); return; }
     // Verificar que el usuario no tenga ya una partida activa
-    const { data: activas } = await supabase
-      .from("partidas")
-      .select("id")
-      .in("estado", ["esperando", "jugando"])
-      .or(`jugador1_id.eq.${user.id},jugador2_id.eq.${user.id}`)
-      .limit(1);
-    if (activas?.length > 0) { setError("Ya tenés una partida activa. Finalizala antes de unirte a otra."); return; }
+    if (await tienePartidaActiva(user.id)) { setError("Ya tenés una partida activa. Finalizala antes de unirte a otra."); return; }
     const montoSala = data.apuesta || 0;
     let saldoActual = 0;
     if (montoSala > 0) {

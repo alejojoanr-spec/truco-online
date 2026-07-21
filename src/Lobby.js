@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import { crearTorneo as crearTorneoApi, unirseATorneo as unirseATorneoApi } from "./torneosApi";
+import { tienePartidaActiva } from "./partidasApi";
 import { AVATARES_MASC, AVATARES_FEM, avatarSrc } from "./avatares";
 
 function formatPesos(n) {
@@ -131,7 +132,7 @@ function CardIA({ onJugar }) {
     }}>
       <div style={{ fontSize: 38, flexShrink: 0, lineHeight: 1 }}>🤖</div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 15, fontWeight: 900, color: "#4ade80" }}>Jugar contra la IA</div>
+        <div style={{ fontSize: 15, fontWeight: 900, color: "#ffffff" }}>Jugar contra la IA</div>
         <div style={{ fontSize: 12, color: "#6b9", marginTop: 3 }}>Sin espera · Instantáneo</div>
       </div>
       <button
@@ -230,12 +231,12 @@ function CardJugando({ sala }) {
       <div style={{ fontSize: 11, color: "#374151", fontWeight: 900, flexShrink: 0 }}>VS</div>
       <img src={sala.jugador2_avatar && sala.jugador2_avatar.startsWith("/avatars/") ? sala.jugador2_avatar : "/avatars/avatar_01.png"} alt="" style={{ width:32, height:32, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
       <div style={{ flex: 1, minWidth: 0, paddingLeft: 4 }}>
-        <div style={{ fontSize: 12, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div style={{ fontSize: 12, color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {sala.jugador1_nombre || "Jugador 1"} vs {sala.jugador2_nombre || "Jugador 2"}
         </div>
         <div style={{ display: "flex", gap: 6, marginTop: 2, alignItems: "center", flexWrap: "wrap" }}>
           {sala.apuesta > 0 && (
-            <span style={{ fontSize: 11, color: "#6b7280" }}>{formatPesos(sala.apuesta)} en juego</span>
+            <span style={{ fontSize: 11, color: "#ffffff" }}>{formatPesos(sala.apuesta)} en juego</span>
           )}
           {sala.puntos && <span style={{ fontSize: 10, color: "#60a5fa" }}>· {sala.puntos} pts</span>}
           {sala.es_torneo && <span style={{ fontSize: 10, color: "#fbbf24" }}>· 🏆</span>}
@@ -650,13 +651,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
     }
 
     // 0. Verificar que el usuario no tenga ya una partida activa
-    const { data: activas } = await supabase
-      .from("partidas")
-      .select("id")
-      .in("estado", ["esperando", "jugando"])
-      .or(`jugador1_id.eq.${user.id},jugador2_id.eq.${user.id}`)
-      .limit(1);
-    if (activas?.length > 0) {
+    if (await tienePartidaActiva(user.id)) {
       setErrorCrear("Ya tenés una partida activa. Finalizala antes de crear una nueva.");
       setCreandoSala(false);
       return;
@@ -754,6 +749,14 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
     setUniendose(null);
     if (error) { setErrorTorneo(error); return; }
     cargarTorneos();
+  }
+
+  async function jugarContraIA() {
+    if (await tienePartidaActiva(user.id)) {
+      setErrorTorneo("Ya tenés una partida activa. Finalizala antes de jugar contra la IA.");
+      return;
+    }
+    onJugarIA();
   }
 
   async function cancelarTorneo(torneo) {
@@ -945,7 +948,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "14px 16px 48px", display: "flex", flexDirection: "column", gap: 8 }}>
 
-        <CardIA onJugar={onJugarIA} />
+        <CardIA onJugar={jugarContraIA} />
 
         {!cargando && !mySala && (
           <button
