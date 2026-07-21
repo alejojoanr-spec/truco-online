@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Carta, PalitosPuntaje } from "./GameComponents";
 
 const MESA_E = 0.91;
@@ -85,6 +85,25 @@ export function MesaJuego({
   const { escala, alturaLienzo } = useEscalaPantalla();
   const valorTimer = esMiTurno ? timerSegundos : rivalTimerSegundos;
   const colorTimer = esMiTurno ? "#4ade80" : "#f87171";
+  const [alturaSellada, setAlturaSellada] = useState(null);
+  const panoRef = useRef(null);
+
+  // Resetea el sello si cambia la geometría del lienzo (ej. rotación de pantalla)
+  useEffect(() => {
+    setAlturaSellada(null);
+  }, [alturaLienzo]);
+
+  useLayoutEffect(() => {
+    if (alturaSellada !== null) return;
+    const cartasVisibles = manoJugador.filter((_, idx) => !jugadasJugador.includes(idx)).length;
+    if (cartasVisibles === 0) return;
+    const hayGloboActivo = !!(globoJugador || globoRival || globoCentro);
+    if (hayGloboActivo) return;
+    if (panoRef.current) {
+      const altoReal = panoRef.current.getBoundingClientRect().height;
+      setAlturaSellada(altoReal / escala);
+    }
+  }, [alturaSellada, manoJugador, globoJugador, globoRival, globoCentro, jugadasJugador, escala]);
 
   return (
     <div style={{ height:"100dvh", width:"100%", background:"#101010", display:"flex", justifyContent:"center", alignItems:"center", overflow:"hidden", boxSizing:"border-box" }}>
@@ -158,7 +177,7 @@ export function MesaJuego({
       )}
 
       {/* Mesa — 3 slots fijos */}
-      <div style={{ position:"relative", boxSizing:"border-box", background:"#12584d", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth: esMobile ? 340 : 420, margin:"0 auto", marginTop:PANO_MARGIN_TOP, flexGrow:1, minHeight:226, maxHeight:226 }}>
+      <div ref={panoRef} style={{ position:"relative", boxSizing:"border-box", background:"#12584d", border:"1px solid rgba(45,106,79,0.4)", borderRadius:16, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:14, width:"100%", maxWidth: esMobile ? 340 : 420, margin:"0 auto", marginTop:PANO_MARGIN_TOP, flexGrow: alturaSellada === null ? 1 : 0, minHeight: alturaSellada === null ? 226 : undefined, height: alturaSellada === null ? undefined : alturaSellada }}>
         <div style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%", border:"1px solid #2d6a4f", background:"rgba(0,0,0,0.3)", color:"#ffffff", fontSize:12, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
           {limitePuntos}
         </div>
