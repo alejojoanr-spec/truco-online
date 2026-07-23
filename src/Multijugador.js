@@ -175,10 +175,10 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const [globoJugadorTexto, setGloboJugadorTexto] = useState(null);
   const [globoRivalTexto, setGloboRivalTexto] = useState(null);
 
-  function mostrarGlobo(lado, tag) {
+  function mostrarGlobo(lado, tag, duracion = 2500) {
     const texto = GLOBO_TEXTOS[tag] || tag;
-    if (lado === "jugador") { setGloboJugadorTexto(texto); setTimeout(() => setGloboJugadorTexto(null), 2500); }
-    else { setGloboRivalTexto(texto); setTimeout(() => setGloboRivalTexto(null), 2500); }
+    if (lado === "jugador") { setGloboJugadorTexto(texto); setTimeout(() => setGloboJugadorTexto(null), duracion); }
+    else { setGloboRivalTexto(texto); setTimeout(() => setGloboRivalTexto(null), duracion); }
   }
 
   const addLog = () => {};
@@ -431,7 +431,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       // Globo de canto/respuesta: un solo punto reactivo, sirve para jugador y rival por igual
       if (p.ultimo_canto && p.ultimo_canto.ts !== ultimoCantoMostradoRef.current) {
         ultimoCantoMostradoRef.current = p.ultimo_canto.ts;
-        mostrarGlobo(p.ultimo_canto.por === user.id ? "jugador" : "rival", p.ultimo_canto.tag);
+        const ladoCanto = p.ultimo_canto.por === user.id ? "jugador" : "rival";
+        mostrarGlobo(ladoCanto, p.ultimo_canto.tag, ladoCanto === "rival" ? 4000 : undefined);
       }
     }
 
@@ -1569,11 +1570,6 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
               </>
             );
           })()}
-          {partida?.accion_pendiente?.cantado_por === user.id && (
-            <div style={{ padding:"6px 14px",borderRadius:8,background:"rgba(251,191,36,0.15)",border:"1px solid rgba(251,191,36,0.5)",color:"#fbbf24",fontSize:12,fontWeight:700,fontFamily:"'Lato',sans-serif" }}>
-              {getCantoLabel(partida.accion_pendiente)} — Esperando respuesta...
-            </div>
-          )}
           {!resolviendoMano && (miTurno || partida?.accion_pendiente?.cantado_por === user.id) && (
             <button onClick={() => irseAlMazo()} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>Ir al mazo</button>
           )}
