@@ -1080,15 +1080,14 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (!acc || acc.cantado_por === user.id) return;
     reproducirVoz('no_quiero');
     const puntosObj = partida.puntos || 15;
-    const callerEsJ1 = acc.cantado_por === partida.jugador1_id;
-    const np1 = (partida.puntos1 || 0) + (callerEsJ1 ? acc.si_no : 0);
-    const np2 = (partida.puntos2 || 0) + (!callerEsJ1 ? acc.si_no : 0);
-    addLog(`No quiero. El rival suma ${acc.si_no} pt${acc.si_no > 1 ? 's' : ''}.`);
-
-    const gameOver = np1 >= puntosObj || np2 >= puntosObj;
-    const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
 
     if (acc.tipo === 'envido') {
+      const callerEsJ1 = acc.cantado_por === partida.jugador1_id;
+      const np1 = (partida.puntos1 || 0) + (callerEsJ1 ? acc.si_no : 0);
+      const np2 = (partida.puntos2 || 0) + (!callerEsJ1 ? acc.si_no : 0);
+      addLog(`No quiero. El rival suma ${acc.si_no} pt${acc.si_no > 1 ? 's' : ''}.`);
+      const gameOver = np1 >= puntosObj || np2 >= puntosObj;
+      const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
       if (gameOver) {
         const { error } = await supabase.from("partidas").update({ accion_pendiente: null, truco_en_pausa: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null, ultimo_canto: { tag: "no_quiero", por: user.id, ts: Date.now() } }).eq("codigo", codigo);
         if (error) console.error("noQuiero envido gameOver:", error);
@@ -1100,6 +1099,20 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     }
 
     // Truco rechazado: termina la mano
+    const { data: freshPartida, error: errFresh } = await supabase
+      .from("partidas")
+      .select("accion_pendiente, puntos1, puntos2")
+      .eq("codigo", codigo)
+      .single();
+    if (errFresh || !freshPartida?.accion_pendiente) { console.error("noQuiero truco fetch fresco:", errFresh); return; }
+    const accFresh = freshPartida.accion_pendiente;
+    if (accFresh.cantado_por === user.id) return;
+    const callerEsJ1 = accFresh.cantado_por === partida.jugador1_id;
+    const np1 = (freshPartida.puntos1 || 0) + (callerEsJ1 ? accFresh.si_no : 0);
+    const np2 = (freshPartida.puntos2 || 0) + (!callerEsJ1 ? accFresh.si_no : 0);
+    addLog(`No quiero. El rival suma ${accFresh.si_no} pt${accFresh.si_no > 1 ? 's' : ''}.`);
+    const gameOver = np1 >= puntosObj || np2 >= puntosObj;
+    const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
     if (gameOver) {
       const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1, ganador_id: ganadorId, estado: "terminada", finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null, ultimo_canto: { tag: "no_quiero", por: user.id, ts: Date.now() } }).eq("codigo", codigo);
       if (error) console.error("noQuiero truco gameOver:", error);
