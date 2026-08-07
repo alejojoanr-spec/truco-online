@@ -951,8 +951,17 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (!partida || partida.accion_pendiente || partida.envido_jugado) return;
     if (partida.turno !== user.id) return;
     if (JSON.parse(partida.mesa || "[]").length >= 2) return;
+    const { data: freshPartida, error: errFresh } = await supabase
+      .from("partidas")
+      .select("accion_pendiente, envido_jugado, turno, mesa, puntos1, puntos2")
+      .eq("codigo", codigo)
+      .single();
+    if (errFresh || !freshPartida) { console.error("cantarEnvido fetch fresco:", errFresh); return; }
+    if (freshPartida.accion_pendiente || freshPartida.envido_jugado) return;
+    if (freshPartida.turno !== user.id) return;
+    if (JSON.parse(freshPartida.mesa || "[]").length >= 2) return;
     const puntosObj = partida.puntos || 15;
-    const falta = calcularFalta(puntosObj, partida.puntos1 || 0, partida.puntos2 || 0);
+    const falta = calcularFalta(puntosObj, freshPartida.puntos1 || 0, freshPartida.puntos2 || 0);
     const VALS = { envido: 2, real_envido: 3, falta_envido: falta };
     reproducirVoz(VOZ_ENV[subtipo] || 'envido');
     await supabase.from("partidas").update({
@@ -972,12 +981,22 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (!acc || acc.tipo !== 'truco' || acc.nivel !== 1 || acc.cantado_por === user.id) return;
     if (partida.envido_jugado) return;
     if (JSON.parse(partida.mesa || "[]").length >= 2) return;
+    const { data: freshPartida, error: errFresh } = await supabase
+      .from("partidas")
+      .select("accion_pendiente, envido_jugado, mesa, puntos1, puntos2")
+      .eq("codigo", codigo)
+      .single();
+    if (errFresh || !freshPartida) { console.error("cantarEnvidoSobreTruco fetch fresco:", errFresh); return; }
+    const accFresh = freshPartida.accion_pendiente;
+    if (!accFresh || accFresh.tipo !== 'truco' || accFresh.nivel !== 1 || accFresh.cantado_por === user.id) return;
+    if (freshPartida.envido_jugado) return;
+    if (JSON.parse(freshPartida.mesa || "[]").length >= 2) return;
     const puntosObj = partida.puntos || 15;
-    const falta = calcularFalta(puntosObj, partida.puntos1 || 0, partida.puntos2 || 0);
+    const falta = calcularFalta(puntosObj, freshPartida.puntos1 || 0, freshPartida.puntos2 || 0);
     const VALS = { envido: 2, real_envido: 3, falta_envido: falta };
     reproducirVoz(VOZ_ENV[subtipo] || 'envido');
     await supabase.from("partidas").update({
-      truco_en_pausa: acc,
+      truco_en_pausa: accFresh,
       accion_pendiente: {
         tipo: 'envido', subtipo, cadena: [subtipo],
         cantado_por: user.id, si_quiero: VALS[subtipo], si_no: 1,
@@ -994,7 +1013,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (!acc || acc.tipo !== 'envido' || acc.cantado_por === user.id) return;
     const { data: freshPartida, error: errFresh } = await supabase
       .from("partidas")
-      .select("accion_pendiente")
+      .select("accion_pendiente, puntos1, puntos2")
       .eq("codigo", codigo)
       .single();
     if (errFresh || !freshPartida?.accion_pendiente) { console.error("escalarEnvido fetch fresco:", errFresh); return; }
@@ -1004,7 +1023,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const vecesEnvido = (accFresh.cadena || []).filter(s => s === 'envido').length;
     if (subtipo === 'envido' && vecesEnvido >= 2) return;
     const puntosObj = partida.puntos || 15;
-    const falta = calcularFalta(puntosObj, partida.puntos1 || 0, partida.puntos2 || 0);
+    const falta = calcularFalta(puntosObj, freshPartida.puntos1 || 0, freshPartida.puntos2 || 0);
     const VALS = { envido: 2, real_envido: 3, falta_envido: falta };
     const nuevaCadena = [...(accFresh.cadena || [accFresh.subtipo]), subtipo];
     reproducirVoz(VOZ_ENV[subtipo] || 'envido');
@@ -1040,6 +1059,16 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       return;
     }
 
+    // Envido: fetch fresco antes de comparar y sumar
+    const { data: freshPartida, error: errFresh } = await supabase
+      .from("partidas")
+      .select("accion_pendiente, puntos1, puntos2")
+      .eq("codigo", codigo)
+      .single();
+    if (errFresh || !freshPartida?.accion_pendiente) { console.error("quiero envido fetch fresco:", errFresh); return; }
+    const accFresh = freshPartida.accion_pendiente;
+    if (accFresh.cantado_por === user.id) return;
+
     // Envido: comparar valores
     const mano1 = JSON.parse(partida.mano_original_j1 || partida.mano_jugador1);
     const mano2 = JSON.parse(partida.mano_original_j2 || partida.mano_jugador2);
@@ -1047,7 +1076,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const ganadorEnv = v1 > v2 ? partida.jugador1_id : v2 > v1 ? partida.jugador2_id : partida.jugador1_id;
     const miVal = soyJugador1 ? v1 : v2, rivalVal = soyJugador1 ? v2 : v1;
 
-    const ptosEnvido = acc.si_quiero;
+    const ptosEnvido = accFresh.si_quiero;
 
     addLog(`Quiero. Vos: ${miVal} | Rival: ${rivalVal}. +${ptosEnvido} para ${ganadorEnv === user.id ? 'vos' : 'rival'}`);
 
@@ -1058,8 +1087,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       texto_j2: j1GanaEnv ? "Son buenas" : `¡Son ${v2}!`,
     };
 
-    const np1 = (partida.puntos1 || 0) + (ganadorEnv === partida.jugador1_id ? ptosEnvido : 0);
-    const np2 = (partida.puntos2 || 0) + (ganadorEnv === partida.jugador2_id ? ptosEnvido : 0);
+    const np1 = (freshPartida.puntos1 || 0) + (ganadorEnv === partida.jugador1_id ? ptosEnvido : 0);
+    const np2 = (freshPartida.puntos2 || 0) + (ganadorEnv === partida.jugador2_id ? ptosEnvido : 0);
     if (np1 >= puntosObj || np2 >= puntosObj) {
       const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
       const { error } = await supabase.from("partidas").update({ accion_pendiente: null, truco_en_pausa: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", envido_resultado: envidoRes, finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null, ultimo_canto: { tag: "quiero", por: user.id, ts: Date.now() } }).eq("codigo", codigo);
