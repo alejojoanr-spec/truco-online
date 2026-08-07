@@ -579,17 +579,21 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   }
 
   function responderRetruco(respuesta) {
+    const pending = pendingJugarRivalRef.current || { jugadasJ: jugadasJugador, mesaJ: mesaJugador, jugadasR: jugadasRival };
+    pendingJugarRivalRef.current = null;
     if (respuesta === "quiero") {
       reproducirVoz('quiero');
       mostrarGlobo("jugador", "quiero");
       setEstadoTruco("quiero"); setPtsTrucoApostados(3);
       setNivelTrucoAceptado(2); setDerechoTrucoDe("jugador");
       addLog("Vos: ¡Quiero!");
+      setTimeout(() => jugarRival(pending.jugadasJ, pending.mesaJ, pending.jugadasR), 700);
     } else if (respuesta === "noquiero") {
       reproducirVoz('no_quiero');
       mostrarGlobo("jugador", "no_quiero");
       setEstadoTruco("noquiero"); addLog("Vos: No quiero");
       addLog("❌ Rival gana 2 puntos"); setPuntosRival(p => p + 2); reproducirSonidoPunto();
+      setTimeout(() => jugarRival(pending.jugadasJ, pending.mesaJ, pending.jugadasR), 700);
     } else {
       reproducirVoz('vale_cuatro');
       mostrarGlobo("jugador", "vale_cuatro");
@@ -601,12 +605,14 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
           setEstadoTruco("quiero"); setPtsTrucoApostados(4);
           setNivelTrucoAceptado(3); setDerechoTrucoDe("rival");
           addLog("Rival: ¡Quiero!");
+          setTimeout(() => jugarRival(pending.jugadasJ, pending.mesaJ, pending.jugadasR), 700);
         } else {
           reproducirVoz('no_quiero');
           mostrarGlobo("rival", "me_voy_al_mazo");
           rivalFueAlMazoRef.current = true;
           setEstadoTruco("noquiero"); addLog("Rival: No quiero");
           addLog("✅ Ganaste 3 puntos"); setPuntosJugador(p => p + 3); reproducirSonidoPunto();
+          setTimeout(() => jugarRival(pending.jugadasJ, pending.mesaJ, pending.jugadasR), 700);
         }
       }, 1000);
     }
