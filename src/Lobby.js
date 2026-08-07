@@ -439,6 +439,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
   const salaAbiertaRef = useRef(null);
   const timerSalaRef = useRef(null);
   const cargandoRef = useRef(false);
+  const reconexionLobbyTimerRef = useRef(null);
 
   useEffect(() => {
     cargar();
@@ -455,14 +456,52 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
       disparar();
     };
     const dispararTorneos = () => { cargarTorneos(); };
-    const canal = supabase.channel("truco-lobby")
-      .on("postgres_changes", { event: "*", schema: "public", table: "partidas" }, disparPartidasDebug)
-      .on("postgres_changes", { event: "*", schema: "public", table: "torneos" }, dispararTorneos)
-      // Broadcast como fallback para INSERT/DELETE (postgres_changes requiere ALTER PUBLICATION)
-      .on("broadcast", { event: "sala_actualizada" }, disparar)
-      .subscribe();
-    canalRef.current = canal;
-    return () => { supabase.removeChannel(canal); canalRef.current = null; };
+    // "montado" se apaga en el cleanup ANTES de desmontar el canal activo, para que un
+    // CLOSED disparado por ese removeChannel del unmount no programe un reintento después
+    // de que el efecto ya se limpió (canal huérfano que nadie volvería a remover).
+    let montado = true;
+
+    function crearCanalLobby() {
+      // "vigente" se apaga ANTES de llamar removeChannel() en el reintento, para que
+      // un CLOSED disparado por ese mismo removeChannel (sea sync o async) no reprograme
+      // otro reintento ni termine removiendo el canal nuevo recién creado.
+      let vigente = true;
+      const canal = supabase.channel("truco-lobby")
+        .on("postgres_changes", { event: "*", schema: "public", table: "partidas" }, disparPartidasDebug)
+        .on("postgres_changes", { event: "*", schema: "public", table: "torneos" }, dispararTorneos)
+        // Broadcast como fallback para INSERT/DELETE (postgres_changes requiere ALTER PUBLICATION)
+        .on("broadcast", { event: "sala_actualizada" }, disparar)
+        .subscribe((status) => {
+          if (!vigente || !montado) return;
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            console.warn("[Realtime] Canal caído:", status);
+            if (reconexionLobbyTimerRef.current) return; // ya hay un reintento programado
+            reconexionLobbyTimerRef.current = setTimeout(() => {
+              reconexionLobbyTimerRef.current = null;
+              vigente = false;
+              supabase.removeChannel(canal);
+              canalRef.current = crearCanalLobby();
+            }, 1500);
+          }
+        });
+      return canal;
+    }
+
+    canalRef.current = crearCanalLobby();
+
+    // Red de seguridad: al volver a la pestaña, refetch manual sin depender del canal
+    function onVisible() {
+      if (!document.hidden) cargar();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      montado = false;
+      if (reconexionLobbyTimerRef.current) clearTimeout(reconexionLobbyTimerRef.current);
+      document.removeEventListener("visibilitychange", onVisible);
+      if (canalRef.current) supabase.removeChannel(canalRef.current);
+      canalRef.current = null;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
