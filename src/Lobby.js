@@ -495,9 +495,18 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
     }
     document.addEventListener("visibilitychange", onVisible);
 
+    // Red de seguridad por polling: Supabase Realtime no reproduce eventos perdidos
+    // durante una desconexión, así que ni el canal ni su reconexión garantizan que
+    // el creador se entere de que un rival se unió. Mientras haya una sala propia
+    // esperando, refetch cada 5s sin depender en absoluto del estado del canal.
+    const pollingSalaPropia = setInterval(() => {
+      if (salaAbiertaRef.current) disparar();
+    }, 5000);
+
     return () => {
       montado = false;
       if (reconexionLobbyTimerRef.current) clearTimeout(reconexionLobbyTimerRef.current);
+      clearInterval(pollingSalaPropia);
       document.removeEventListener("visibilitychange", onVisible);
       if (canalRef.current) supabase.removeChannel(canalRef.current);
       canalRef.current = null;
