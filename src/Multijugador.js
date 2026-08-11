@@ -208,9 +208,9 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   useEffect(() => { partidaRef.current = partida; }, [partida]);
 
-  // Persistir partida activa en sessionStorage para sobrevivir recargas
+  // Persistir partida activa en localStorage para sobrevivir recargas y cierres de pestaña
   useEffect(() => {
-    if (codigo) sessionStorage.setItem(`truco_partida_${user.id}`, codigo);
+    if (codigo) localStorage.setItem(`truco_partida_${user.id}`, codigo);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codigo]);
   // Cleanup de sala fantasma: si el componente se desmonta mientras hay sala en espera (cierre de pestaña, back del browser), la borra
@@ -232,7 +232,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   async function procesarFinPartida(p) {
     if (pagoProcesadoRef.current) return;
     pagoProcesadoRef.current = true;
-    sessionStorage.removeItem(`truco_partida_${user.id}`);
+    localStorage.removeItem(`truco_partida_${user.id}`);
     const apuestaPartida = p.apuesta || 0;
     const pot = apuestaPartida * 2;
 
@@ -363,7 +363,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         const cod = codigoRejoin.toUpperCase().trim();
         const { data, error: err } = await supabase.from("partidas").select("*").eq("codigo", cod).single();
         if (err || !data || data.estado !== "jugando") {
-          sessionStorage.removeItem(`truco_partida_${user.id}`);
+          localStorage.removeItem(`truco_partida_${user.id}`);
           setError("La partida ya no está activa");
           return;
         }
@@ -598,6 +598,42 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codigo]);
+
+  // Heartbeat de actividad propia (cada 20s) + detección de abandono del rival por
+  // inactividad (>90s sin heartbeat suyo). Efecto separado del timer Anti-injusticia:
+  // ese depende de "activo" (se detiene mientras espero respuesta a mi propio canto),
+  // acá necesitamos cobertura continua en todo momento de la partida.
+  useEffect(() => {
+    if (!codigo) return;
+    let abandonoDetectado = false;
+    const miColumna = soyJugador1 ? "ultima_actividad_j1" : "ultima_actividad_j2";
+    const rivalColumna = soyJugador1 ? "ultima_actividad_j2" : "ultima_actividad_j1";
+    async function tick() {
+      const p = partidaRef.current;
+      if (!p || p.estado !== "jugando") return;
+      await supabase.from("partidas").update({ [miColumna]: new Date().toISOString() }).eq("codigo", codigo);
+
+      if (abandonoDetectado) return;
+      const ultimaRival = p[rivalColumna];
+      if (!ultimaRival) return;
+      const segundosSinActividad = (Date.now() - new Date(ultimaRival).getTime()) / 1000;
+      if (segundosSinActividad > 90) {
+        abandonoDetectado = true;
+        const { error } = await supabase.from("partidas").update({
+          ganador_id: user.id,
+          estado: "terminada",
+          finalizado_en: new Date().toISOString(),
+          motivo_fin: "abandono",
+          debia_jugada_id: null,
+        }).eq("codigo", codigo);
+        if (error) console.error("abandono por inactividad:", error);
+      }
+    }
+    tick();
+    const intervalo = setInterval(tick, 20000);
+    return () => clearInterval(intervalo);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [codigo, soyJugador1]);
 
   async function tieneTorneoActivo() {
     const { data: inscripciones } = await supabase
@@ -878,7 +914,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function salirDePartida() {
-    sessionStorage.removeItem(`truco_partida_${user.id}`);
+    localStorage.removeItem(`truco_partida_${user.id}`);
     if (pantalla === "esperando" && codigo) {
       // Sala sin rival: borrarla y devolver apuesta si la hay
       salaEnEsperaRef.current = null; // evitar doble-delete en unmount

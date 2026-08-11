@@ -776,7 +776,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
       });
     }
     setMiCodigoSala(cod);
-    sessionStorage.setItem(`truco_partida_${user.id}`, cod);
+    localStorage.setItem(`truco_partida_${user.id}`, cod);
     setCreandoSala(false);
     setPantalla("lobby");
     cargar();

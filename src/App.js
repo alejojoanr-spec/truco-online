@@ -1287,8 +1287,8 @@ export default function App() {
       if ((esAdminUser || esAsesorUser) && sessionStorage.getItem('truco_panel') === '1') {
         setVerAdmin(true);
       }
-      // Verificar si hay una partida activa guardada (para recuperar tras recarga)
-      const savedCodigo = sessionStorage.getItem(`truco_partida_${u.id}`);
+      // Verificar si hay una partida activa guardada (para recuperar tras recarga o cierre de pestaña)
+      const savedCodigo = localStorage.getItem(`truco_partida_${u.id}`);
       if (savedCodigo) {
         const { data: p } = await supabase
           .from("partidas")
@@ -1300,7 +1300,7 @@ export default function App() {
           setCodigoRejoin(savedCodigo);
           setModoJuego("multi");
         } else {
-          sessionStorage.removeItem(`truco_partida_${u.id}`);
+          localStorage.removeItem(`truco_partida_${u.id}`);
         }
       }
     } else {
