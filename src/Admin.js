@@ -1461,6 +1461,15 @@ function TabFinanzas({ rol = 'admin' }) {
 const ESTADO_COLOR_S = { abierto: "#fbbf24", en_curso: "#60a5fa", resuelto: "#4ade80" };
 const ESTADO_LABEL_S = { abierto: "Abierto", en_curso: "En curso", resuelto: "Resuelto" };
 
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
 function TabSoporte({ ejecutadoPor, usuarioId }) {
   const [casos, setCasos] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -1471,9 +1480,46 @@ function TabSoporte({ ejecutadoPor, usuarioId }) {
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
+  const [activandoNotif, setActivandoNotif] = useState(false);
+  const [notifActivas, setNotifActivas] = useState(false);
+  const [errorNotif, setErrorNotif] = useState("");
   const bottomRef = useRef(null);
 
   useEffect(() => { cargar(); }, []);
+
+  async function activarNotificaciones() {
+    if (activandoNotif || notifActivas) return;
+    setActivandoNotif(true); setErrorNotif("");
+    try {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+        setErrorNotif("Este navegador no soporta notificaciones push.");
+        return;
+      }
+      const registration = await navigator.serviceWorker.register("/sw.js");
+      const permiso = await Notification.requestPermission();
+      if (permiso !== "granted") {
+        setErrorNotif("Permiso de notificaciones denegado.");
+        return;
+      }
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(process.env.REACT_APP_VAPID_PUBLIC_KEY),
+      });
+      const { endpoint, keys } = subscription.toJSON();
+      const { error } = await supabase.from("push_subscriptions").upsert({
+        usuario_id: usuarioId,
+        endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+      }, { onConflict: "usuario_id,endpoint" });
+      if (error) { setErrorNotif("No se pudo guardar la suscripción."); return; }
+      setNotifActivas(true);
+    } catch (e) {
+      setErrorNotif("No se pudieron activar las notificaciones.");
+    } finally {
+      setActivandoNotif(false);
+    }
+  }
 
   useEffect(() => {
     if (bottomRef.current) bottomRef.current.scrollIntoView({ behavior: "smooth" });
@@ -1723,6 +1769,17 @@ function TabSoporte({ ejecutadoPor, usuarioId }) {
           onClick={() => setFiltro(f => f === "en_curso" ? "todos" : "en_curso")} activo={filtro === "en_curso"} />
         <StatCard label="Resueltos" valor={stats.resueltos} color="#4ade80"
           onClick={() => setFiltro(f => f === "resuelto" ? "todos" : "resuelto")} activo={filtro === "resuelto"} />
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <button onClick={activarNotificaciones} disabled={activandoNotif || notifActivas} style={{
+          ...BTN_SM("#4ade80"),
+          opacity: activandoNotif || notifActivas ? 0.6 : 1,
+          cursor: activandoNotif || notifActivas ? "default" : "pointer",
+        }}>
+          {notifActivas ? "✓ Notificaciones activadas" : activandoNotif ? "Activando..." : "Activar notificaciones"}
+        </button>
+        {errorNotif && <div style={{ fontSize: 12, color: "#f87171", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 8, padding: "8px 12px", marginTop: 8 }}>{errorNotif}</div>}
       </div>
 
       {filtrados.length === 0 ? (
