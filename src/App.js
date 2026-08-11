@@ -1222,12 +1222,6 @@ export default function App() {
     setModoJuego("lobby");
   }
 
-  function irAIA() {
-    setMostrarBannerHorario(false);
-    setBannerHorarioCerrado(true);
-    setModoJuego("single");
-  }
-
   useEffect(() => {
     if (!cargando && !splashOculto) {
       setSplashSaliendo(true);
@@ -1482,13 +1476,9 @@ export default function App() {
             </div>
             <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
               <button
-                onClick={irAIA}
-                style={{ width:"100%",padding:"12px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}
-              >Jugar contra la IA</button>
-              <button
                 onClick={irAlLobby}
                 style={{ width:"100%",padding:"12px",borderRadius:12,cursor:"pointer",background:"rgba(255,255,255,0.04)",border:"1px solid #374151",color:"#9ca3af",fontFamily:"'Lato',sans-serif",fontSize:14 }}
-              >Entendido, ir al 1vs1</button>
+              >Entendido</button>
             </div>
           </div>
         </div>

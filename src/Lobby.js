@@ -127,21 +127,21 @@ function CardIA({ onJugar }) {
   return (
     <div style={{
       background: "linear-gradient(135deg,#1a472a,#0f2d1a)",
-      border: "1px solid #4ade80", borderRadius: 16,
-      padding: "16px 18px", display: "flex", alignItems: "center", gap: 14,
+      border: "1px solid #4ade80", borderRadius: 14,
+      padding: "11px 14px", display: "flex", alignItems: "center", gap: 10,
     }}>
-      <div style={{ fontSize: 38, flexShrink: 0, lineHeight: 1 }}>🤖</div>
+      <div style={{ fontSize: 26, flexShrink: 0, lineHeight: 1 }}>🤖</div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 15, fontWeight: 900, color: "#ffffff" }}>Jugar contra la IA</div>
-        <div style={{ fontSize: 12, color: "#6b9", marginTop: 3 }}>Sin espera · Instantáneo</div>
+        <div style={{ fontSize: 13, fontWeight: 900, color: "#ffffff" }}>Jugar contra la IA</div>
+        <div style={{ fontSize: 10, color: "#6b9", marginTop: 2 }}>Sin espera · Instantáneo</div>
       </div>
       <button
         onClick={onJugar}
         style={{
-          padding: "9px 18px", borderRadius: 10, cursor: "pointer",
+          padding: "6px 13px", borderRadius: 9, cursor: "pointer",
           background: "linear-gradient(135deg,#1a472a,#2d6a4f)",
           border: "1px solid #4ade80", color: "#4ade80",
-          fontFamily: "'Lato',sans-serif", fontSize: 13, fontWeight: 700, flexShrink: 0,
+          fontFamily: "'Lato',sans-serif", fontSize: 11, fontWeight: 700, flexShrink: 0,
         }}
       >
         Jugar
@@ -831,7 +831,6 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
   const simuladasVisibles = marketingActivo ? simuladas.slice(0, marketingCantidad) : [];
   const jugandoTotal = mezclarLobby([...jugando, ...simuladasVisibles]);
   const lista = [...disponibles, ...jugandoTotal];
-  const hayJugadores = lista.length > 0;
 
   if (pantalla === "crear") {
     const pot = apuestaCrear * 2;
@@ -1003,21 +1002,20 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "14px 16px 48px", display: "flex", flexDirection: "column", gap: 8 }}>
 
-        <CardIA onJugar={jugarContraIA} />
-
         {!cargando && !mySala && (
           <button
             onClick={() => setPantalla("crear")}
             style={{
-              marginTop: hayJugadores ? 6 : 0,
-              width: "100%", padding: "14px", borderRadius: 12, cursor: "pointer",
+              width: "100%", padding: "18px", borderRadius: 14, cursor: "pointer",
               background: "rgba(167,139,250,0.07)", border: "1px solid rgba(167,139,250,0.4)",
-              color: "#a78bfa", fontFamily: "'Lato',sans-serif", fontSize: 14, fontWeight: 700,
+              color: "#a78bfa", fontFamily: "'Lato',sans-serif", fontSize: 17, fontWeight: 800,
             }}
           >
             + Crear sala pública
           </button>
         )}
+
+        <CardIA onJugar={jugarContraIA} />
 
         {mySala && (
           <CardMiSala sala={mySala} onEliminar={eliminarSala} eliminando={eliminandoSala} />
