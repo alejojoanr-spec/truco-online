@@ -195,7 +195,7 @@ export function MesaJuego({
 
       {/* Mano del jugador */}
       <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0, marginTop:-86, minHeight:185 }}>
-        <div style={{ position:"relative", display:"inline-flex", alignItems:"flex-end" }}>
+        <div style={{ position:"relative", display:"inline-flex", alignItems:"flex-end", justifyContent:"center", minWidth:220 }}>
           {valorTimer != null && valorTimer > 0 && (
             <svg width="44" height="44" style={{ position:"absolute", right:"100%", bottom:0, marginRight:16, zIndex:300, transform:"scale(1.05)", filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.7))" }}>
               <circle cx="22" cy="22" r="17" fill="rgba(0,0,0,0.75)" stroke="rgba(255,255,255,0.06)" strokeWidth="3"/>
