@@ -959,7 +959,15 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   async function subirTruco() {
     const acc = partida?.accion_pendiente;
     if (!acc || acc.tipo !== 'truco' || acc.cantado_por === user.id || acc.nivel >= 3) return;
-    const nuevoNivel = acc.nivel + 1;
+    const { data: freshPartida, error: errFresh } = await supabase
+      .from("partidas")
+      .select("accion_pendiente")
+      .eq("codigo", codigo)
+      .single();
+    if (errFresh || !freshPartida?.accion_pendiente) { console.error("subirTruco fetch fresco:", errFresh); return; }
+    const accFresh = freshPartida.accion_pendiente;
+    if (accFresh.tipo !== 'truco' || accFresh.cantado_por === user.id || accFresh.nivel >= 3) return;
+    const nuevoNivel = accFresh.nivel + 1;
     const labels = { 2: 'Retruco', 3: 'Vale cuatro' };
     reproducirVoz(nuevoNivel === 2 ? 'retruco' : 'vale_cuatro');
     await supabase.from("partidas").update({
@@ -976,7 +984,16 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (!partida || partida.accion_pendiente) return;
     if (partida.turno !== user.id) return;
     if (partida.truco_derecho_de !== user.id) return;
-    const nivelActual = partida.truco_nivel || 0;
+    const { data: freshPartida, error: errFresh } = await supabase
+      .from("partidas")
+      .select("accion_pendiente, turno, truco_derecho_de, truco_nivel")
+      .eq("codigo", codigo)
+      .single();
+    if (errFresh || !freshPartida) { console.error("escalarTrucoDiferido fetch fresco:", errFresh); return; }
+    if (freshPartida.accion_pendiente) return;
+    if (freshPartida.turno !== user.id) return;
+    if (freshPartida.truco_derecho_de !== user.id) return;
+    const nivelActual = freshPartida.truco_nivel || 0;
     if (nivelActual >= 3) return;
     const nuevoNivel = nivelActual + 1;
     const labels = { 2: 'Retruco', 3: 'Vale cuatro' };
