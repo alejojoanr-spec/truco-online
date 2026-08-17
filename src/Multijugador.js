@@ -1226,6 +1226,16 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const envidoVivo = !freshPartida.envido_jugado && mesaLen < 2;
     const puntoEnvido = envidoVivo ? 1 : 0;
     const ptsParaRival = (freshPartida.puntos_mano || 1) + puntoEnvido;
+    // ⚠️ TEMPORAL — DEBUG: sacar antes de la siguiente limpieza de logs
+    console.log("[DEBUG irseAlMazo]", {
+      codigo, origen,
+      mesa: freshPartida.mesa,
+      mesaLen,
+      envido_jugado: freshPartida.envido_jugado,
+      puntos_mano: freshPartida.puntos_mano,
+      truco_nivel: freshPartida.truco_nivel,
+      envidoVivo, puntoEnvido, ptsParaRival,
+    });
     const np1 = (partida.puntos1 || 0) + (rivalEsJ1 ? ptsParaRival : 0);
     const np2 = (partida.puntos2 || 0) + (!rivalEsJ1 ? ptsParaRival : 0);
     addLog(`Te fuiste al mazo. Rival suma ${ptsParaRival} pt${ptsParaRival > 1 ? 's' : ''}${puntoEnvido ? ' (incl. envido)' : ''}.`);
