@@ -1106,15 +1106,23 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const puntosObj = partida.puntos || 15;
 
     if (acc.tipo === 'truco') {
+      const { data: freshPartida, error: errFresh } = await supabase
+        .from("partidas")
+        .select("accion_pendiente")
+        .eq("codigo", codigo)
+        .single();
+      if (errFresh || !freshPartida?.accion_pendiente) { console.error("quiero truco fetch fresco:", errFresh); return; }
+      const accFresh = freshPartida.accion_pendiente;
+      if (accFresh.cantado_por === user.id) return;
       await supabase.from("partidas").update({
         accion_pendiente: null,
-        puntos_mano: acc.si_quiero,
-        truco_nivel: acc.nivel,
+        puntos_mano: accFresh.si_quiero,
+        truco_nivel: accFresh.nivel,
         truco_derecho_de: user.id,
         turno_inicio: new Date().toISOString(),
         ultimo_canto: { tag: "quiero", por: user.id, ts: Date.now() },
       }).eq("codigo", codigo);
-      addLog(`Quiero. Mano vale ${acc.si_quiero} pt${acc.si_quiero > 1 ? 's' : ''}.`);
+      addLog(`Quiero. Mano vale ${accFresh.si_quiero} pt${accFresh.si_quiero > 1 ? 's' : ''}.`);
       return;
     }
 
@@ -1170,10 +1178,18 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const puntosObj = partida.puntos || 15;
 
     if (acc.tipo === 'envido') {
-      const callerEsJ1 = acc.cantado_por === partida.jugador1_id;
-      const np1 = (partida.puntos1 || 0) + (callerEsJ1 ? acc.si_no : 0);
-      const np2 = (partida.puntos2 || 0) + (!callerEsJ1 ? acc.si_no : 0);
-      addLog(`No quiero. El rival suma ${acc.si_no} pt${acc.si_no > 1 ? 's' : ''}.`);
+      const { data: freshPartida, error: errFresh } = await supabase
+        .from("partidas")
+        .select("accion_pendiente, puntos1, puntos2")
+        .eq("codigo", codigo)
+        .single();
+      if (errFresh || !freshPartida?.accion_pendiente) { console.error("noQuiero envido fetch fresco:", errFresh); return; }
+      const accFresh = freshPartida.accion_pendiente;
+      if (accFresh.cantado_por === user.id) return;
+      const callerEsJ1 = accFresh.cantado_por === partida.jugador1_id;
+      const np1 = (freshPartida.puntos1 || 0) + (callerEsJ1 ? accFresh.si_no : 0);
+      const np2 = (freshPartida.puntos2 || 0) + (!callerEsJ1 ? accFresh.si_no : 0);
+      addLog(`No quiero. El rival suma ${accFresh.si_no} pt${accFresh.si_no > 1 ? 's' : ''}.`);
       const gameOver = np1 >= puntosObj || np2 >= puntosObj;
       const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
       if (gameOver) {
@@ -1230,7 +1246,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (!partida || resolviendoMano || partida.accion_pendiente) return;
     const { data: freshPartida, error: errFresh } = await supabase
       .from("partidas")
-      .select("puntos_mano, envido_jugado, mesa, truco_nivel")
+      .select("puntos_mano, envido_jugado, mesa, truco_nivel, puntos1, puntos2")
       .eq("codigo", codigo)
       .single();
     if (errFresh) { console.error("irseAlMazo fetch fresco:", errFresh); return; }
@@ -1253,8 +1269,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       truco_nivel: freshPartida.truco_nivel,
       envidoVivo, puntoEnvido, ptsParaRival,
     });
-    const np1 = (partida.puntos1 || 0) + (rivalEsJ1 ? ptsParaRival : 0);
-    const np2 = (partida.puntos2 || 0) + (!rivalEsJ1 ? ptsParaRival : 0);
+    const np1 = (freshPartida.puntos1 || 0) + (rivalEsJ1 ? ptsParaRival : 0);
+    const np2 = (freshPartida.puntos2 || 0) + (!rivalEsJ1 ? ptsParaRival : 0);
     addLog(`Te fuiste al mazo. Rival suma ${ptsParaRival} pt${ptsParaRival > 1 ? 's' : ''}${puntoEnvido ? ' (incl. envido)' : ''}.`);
     reproducirVoz('me_voy_al_mazo');
     const gameOver = np1 >= puntosObj || np2 >= puntosObj;
