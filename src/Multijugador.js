@@ -859,9 +859,15 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       const ganadorMano = res === "A" ? j1 : res === "B" ? j2 : null;
 
       if (ganadorMano) {
-        const puntosMano = partida.puntos_mano || 1;
-        const nuevoPuntos1 = (partida.puntos1 || 0) + (ganadorMano === partida.jugador1_id ? puntosMano : 0);
-        const nuevoPuntos2 = (partida.puntos2 || 0) + (ganadorMano === partida.jugador2_id ? puntosMano : 0);
+        const { data: freshMano, error: errFreshMano } = await supabase
+          .from("partidas")
+          .select("puntos_mano, puntos1, puntos2")
+          .eq("codigo", codigo)
+          .single();
+        if (errFreshMano || !freshMano) { console.error("jugarCarta fetch fresco mano:", errFreshMano); return; }
+        const puntosMano = freshMano.puntos_mano || 1;
+        const nuevoPuntos1 = (freshMano.puntos1 || 0) + (ganadorMano === partida.jugador1_id ? puntosMano : 0);
+        const nuevoPuntos2 = (freshMano.puntos2 || 0) + (ganadorMano === partida.jugador2_id ? puntosMano : 0);
         const puntosObjetivo = partida.puntos || 15;
         addLog(`¡${ganadorMano === user.id ? 'Ganaste' : 'Perdiste'} la mano! (+${puntosMano} pt${puntosMano > 1 ? 's' : ''})`);
 
