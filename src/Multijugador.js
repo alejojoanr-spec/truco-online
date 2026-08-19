@@ -199,6 +199,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const timerAutoFiredRef = useRef(null);
   const irseAlMazoRef = useRef(null);
   const noQuieroRef = useRef(null);
+  const irseAlMazoEjecutandoRef = useRef(false); // guard síncrono anti doble-ejecución (click + timeout)
+  const [irseAlMazoBloqueado, setIrseAlMazoBloqueado] = useState(false); // espejo para disabled del botón
   const ultimoCantoMostradoRef = useRef(null);
   const resolviendoManoRef = useRef(false);
   const refetchPartidaRef = useRef(null);
@@ -890,6 +892,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             truco_derecho_de: null,
             truco_en_pausa: null,
             accion_pendiente: null,
+            envido_resultado: null,
             turno: user.id,
           }).eq("codigo", codigo);
           // Step 2: after delay, clear mesa and deal new hand
@@ -1114,7 +1117,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       if (errFresh || !freshPartida?.accion_pendiente) { console.error("quiero truco fetch fresco:", errFresh); return; }
       const accFresh = freshPartida.accion_pendiente;
       if (accFresh.cantado_por === user.id) return;
-      await supabase.from("partidas").update({
+      const { error: errQuieroTruco } = await supabase.from("partidas").update({
         accion_pendiente: null,
         puntos_mano: accFresh.si_quiero,
         truco_nivel: accFresh.nivel,
@@ -1122,7 +1125,11 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         turno_inicio: new Date().toISOString(),
         ultimo_canto: { tag: "quiero", por: user.id, ts: Date.now() },
       }).eq("codigo", codigo);
-      addLog(`Quiero. Mano vale ${accFresh.si_quiero} pt${accFresh.si_quiero > 1 ? 's' : ''}.`);
+      if (errQuieroTruco) {
+        console.error("[quiero truco] UPDATE falló:", errQuieroTruco);
+      } else {
+        addLog(`Quiero. Mano vale ${accFresh.si_quiero} pt${accFresh.si_quiero > 1 ? 's' : ''}.`);
+      }
       return;
     }
 
@@ -1228,6 +1235,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1,
         envido_jugado: false, truco_jugado: false,
         truco_nivel: null, truco_derecho_de: null, truco_en_pausa: null,
+        envido_resultado: null,
         mesa: JSON.stringify([]),
         mano_jugador1: JSON.stringify(nuevoMazo.slice(0, 3)),
         mano_jugador2: JSON.stringify(nuevoMazo.slice(3, 6)),
@@ -1243,13 +1251,16 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function irseAlMazo(origen = "manual") {
+    if (irseAlMazoEjecutandoRef.current) return;
     if (!partida || resolviendoMano || partida.accion_pendiente) return;
+    irseAlMazoEjecutandoRef.current = true;
+    setIrseAlMazoBloqueado(true);
     const { data: freshPartida, error: errFresh } = await supabase
       .from("partidas")
       .select("puntos_mano, envido_jugado, mesa, truco_nivel, puntos1, puntos2")
       .eq("codigo", codigo)
       .single();
-    if (errFresh) { console.error("irseAlMazo fetch fresco:", errFresh); return; }
+    if (errFresh) { console.error("irseAlMazo fetch fresco:", errFresh); irseAlMazoEjecutandoRef.current = false; setIrseAlMazoBloqueado(false); return; }
     const motivoFin = origen === "timeout" ? "timeout" : "abandono";
     const debiaJugadaId = origen === "timeout" ? partida.turno : null;
     const puntosObj = partida.puntos || 15;
@@ -1283,6 +1294,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         ultimo_canto: { tag: "me_voy_al_mazo", por: user.id, ts: Date.now() },
       }).eq("codigo", codigo);
       if (error) console.error("irseAlMazo gameOver:", error);
+      irseAlMazoEjecutandoRef.current = false;
+      setIrseAlMazoBloqueado(false);
     } else {
       // Paso 1: publicar puntaje — la suscripción lo muestra en ambos clientes
       setResolviendoMano(true);
@@ -1290,10 +1303,11 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1,
         envido_jugado: false, truco_jugado: false,
         truco_nivel: null, truco_derecho_de: null, truco_en_pausa: null,
+        envido_resultado: null,
         turno: user.id,
         ultimo_canto: { tag: "me_voy_al_mazo", por: user.id, ts: Date.now() },
       }).eq("codigo", codigo);
-      if (err1) { console.error("irseAlMazo paso1:", err1); setResolviendoMano(false); return; }
+      if (err1) { console.error("irseAlMazo paso1:", err1); setResolviendoMano(false); irseAlMazoEjecutandoRef.current = false; setIrseAlMazoBloqueado(false); return; }
       // Paso 2: tras la misma pausa que jugarCarta, repartir nueva mano
       await new Promise(resolve => setTimeout(resolve, 1500));
       const nuevoMazo = mezclar(MAZO);
@@ -1311,6 +1325,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       }).eq("codigo", codigo);
       if (err2) console.error("irseAlMazo paso2:", err2);
       setResolviendoMano(false);
+      irseAlMazoEjecutandoRef.current = false;
+      setIrseAlMazoBloqueado(false);
     }
   }
 
@@ -1698,7 +1714,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             );
           })()}
           {!resolviendoMano && (miTurno || partida?.accion_pendiente?.cantado_por === user.id) && (
-            <button onClick={() => irseAlMazo()} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>Ir al mazo</button>
+            <button disabled={irseAlMazoBloqueado} onClick={() => irseAlMazo()} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100, opacity: irseAlMazoBloqueado ? 0.5 : 1, cursor: irseAlMazoBloqueado ? "not-allowed" : "pointer" }}>Ir al mazo</button>
           )}
           {estaEsperandoRival && (
             <div style={{ padding:"9px 18px", borderRadius:10, background:"rgba(0,0,0,0.35)", border:"1px solid rgba(45,106,79,0.4)", color:"#9ca3af", fontSize:16, fontFamily:"'Lato',sans-serif", letterSpacing:0.65, pointerEvents:"none" }}>

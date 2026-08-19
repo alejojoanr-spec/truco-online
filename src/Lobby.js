@@ -125,28 +125,19 @@ function generarPartidasSimuladas() {
 
 function CardIA({ onJugar }) {
   return (
-    <div style={{
-      background: "linear-gradient(135deg,#1a472a,#0f2d1a)",
-      border: "1px solid #4ade80", borderRadius: 14,
-      padding: "11px 14px", display: "flex", alignItems: "center", gap: 10,
-    }}>
+    <button
+      onClick={onJugar}
+      style={{
+        width: "100%", cursor: "pointer",
+        background: "linear-gradient(135deg,#1a472a,#0f2d1a)",
+        border: "1px solid #4ade80", borderRadius: 14,
+        padding: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+        fontFamily: "'Lato',sans-serif",
+      }}
+    >
       <div style={{ fontSize: 26, flexShrink: 0, lineHeight: 1 }}>🤖</div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 900, color: "#ffffff" }}>Jugar contra la IA</div>
-        <div style={{ fontSize: 10, color: "#6b9", marginTop: 2 }}>Sin espera · Instantáneo</div>
-      </div>
-      <button
-        onClick={onJugar}
-        style={{
-          padding: "6px 13px", borderRadius: 9, cursor: "pointer",
-          background: "linear-gradient(135deg,#1a472a,#2d6a4f)",
-          border: "1px solid #4ade80", color: "#4ade80",
-          fontFamily: "'Lato',sans-serif", fontSize: 11, fontWeight: 700, flexShrink: 0,
-        }}
-      >
-        Jugar
-      </button>
-    </div>
+      <div style={{ fontSize: 16, fontWeight: 900, color: "#ffffff" }}>Jugar contra la IA</div>
+    </button>
   );
 }
 
@@ -1008,7 +999,7 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
             style={{
               width: "100%", padding: "18px", borderRadius: 14, cursor: "pointer",
               background: "rgba(167,139,250,0.07)", border: "1px solid rgba(167,139,250,0.4)",
-              color: "#a78bfa", fontFamily: "'Lato',sans-serif", fontSize: 17, fontWeight: 800,
+              color: "#ffffff", fontFamily: "'Lato',sans-serif", fontSize: 17, fontWeight: 800,
             }}
           >
             + Crear sala pública
