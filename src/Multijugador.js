@@ -191,6 +191,14 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const [debugPanelAbierto, setDebugPanelAbierto] = useState(false);
   const debugPanelAbiertoRef = useRef(false);
   useEffect(() => { debugPanelAbiertoRef.current = debugPanelAbierto; }, [debugPanelAbierto]);
+  const [debugDetalleAbierto, setDebugDetalleAbierto] = useState(new Set());
+  const toggleDebugDetalle = (id) => {
+    setDebugDetalleAbierto(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
   // === FIN declaración estado DEBUG TEMPORAL ===
 
   // revancha
@@ -401,18 +409,35 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       if (partidaRef.current) {
         const prev = partidaRef.current;
         const ts = new Date().toLocaleTimeString('es-AR', { hour12: false });
-        const quien = p.ultimo_canto?.por === user.id ? "vos" : p.ultimo_canto?.por ? "rival" : "?";
-        const registrar = (campo, anterior, nuevo) => {
-          setDebugLog(prevLog => [...prevLog.slice(-39), { ts, campo, anterior, nuevo, quien }]);
+        const miNombre = perfil?.nombre || user.email?.split("@")[0] || "Vos";
+        const rivalNombre = (soyJugador1 ? p.jugador2_nombre : p.jugador1_nombre) || "Rival";
+        const disparadoPorMi = p.ultimo_canto?.por === user.id;
+        const quien = p.ultimo_canto?.por ? (disparadoPorMi ? miNombre : rivalNombre) : "?";
+        const registrar = (campo, anterior, nuevo, frase) => {
+          setDebugLog(prevLog => [...prevLog.slice(-39), { id: Date.now() + Math.random(), ts, campo, anterior, nuevo, quien, disparadoPorMi, frase }]);
         };
-        if (prev.puntos1 !== p.puntos1) registrar("puntos1", prev.puntos1, p.puntos1);
-        if (prev.puntos2 !== p.puntos2) registrar("puntos2", prev.puntos2, p.puntos2);
-        if (prev.puntos_mano !== p.puntos_mano) registrar("puntos_mano", prev.puntos_mano, p.puntos_mano);
-        if (JSON.stringify(prev.accion_pendiente || null) !== JSON.stringify(p.accion_pendiente || null)) {
-          registrar("accion_pendiente", prev.accion_pendiente || null, p.accion_pendiente || null);
+        if (prev.puntos1 !== p.puntos1) {
+          const delta = (p.puntos1 || 0) - (prev.puntos1 || 0);
+          const nombreJ1 = soyJugador1 ? miNombre : rivalNombre;
+          registrar("puntos1", prev.puntos1, p.puntos1, `${delta >= 0 ? '+' : ''}${delta} pts para ${nombreJ1}`);
         }
-        if (JSON.stringify(prev.envido_resultado || null) !== JSON.stringify(p.envido_resultado || null)) {
-          registrar("envido_resultado", prev.envido_resultado || null, p.envido_resultado || null);
+        if (prev.puntos2 !== p.puntos2) {
+          const delta = (p.puntos2 || 0) - (prev.puntos2 || 0);
+          const nombreJ2 = soyJugador1 ? rivalNombre : miNombre;
+          registrar("puntos2", prev.puntos2, p.puntos2, `${delta >= 0 ? '+' : ''}${delta} pts para ${nombreJ2}`);
+        }
+        if (prev.puntos_mano !== p.puntos_mano) {
+          registrar("puntos_mano", prev.puntos_mano, p.puntos_mano, `La mano ahora vale ${p.puntos_mano} pt${p.puntos_mano === 1 ? '' : 's'}`);
+        }
+        if (JSON.stringify(prev.accion_pendiente || null) !== JSON.stringify(p.accion_pendiente || null) && p.accion_pendiente) {
+          const acc = p.accion_pendiente;
+          const nombreCantor = acc.cantado_por === user.id ? miNombre : rivalNombre;
+          registrar("accion_pendiente", prev.accion_pendiente || null, p.accion_pendiente, `${nombreCantor} cantó ${getCantoLabel(acc)}`);
+        }
+        if (JSON.stringify(prev.envido_resultado || null) !== JSON.stringify(p.envido_resultado || null) && p.envido_resultado) {
+          const nombreJ1 = soyJugador1 ? miNombre : rivalNombre;
+          const nombreJ2 = soyJugador1 ? rivalNombre : miNombre;
+          registrar("envido_resultado", prev.envido_resultado || null, p.envido_resultado, `${nombreJ1}: ${p.envido_resultado.texto_j1} | ${nombreJ2}: ${p.envido_resultado.texto_j2}`);
         }
       }
       // === FIN log de transiciones DEBUG TEMPORAL ===
@@ -1806,18 +1831,29 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
               {debugLog.length === 0 && (
                 <div style={{ color:"#6b7280", fontSize:13, textAlign:"center", padding:"20px 0" }}>Todavía no hay transiciones registradas.</div>
               )}
-              {debugLog.map((entry, i) => (
-                <div key={i} style={{ background:"rgba(255,255,255,0.04)", border:"1px solid #374151", borderRadius:8, padding:"6px 9px", fontSize:11, color:"#e5e7eb" }}>
+              {debugLog.map((entry) => (
+                <div key={entry.id} style={{ background:"rgba(255,255,255,0.04)", border:"1px solid #374151", borderRadius:8, padding:"6px 9px", fontSize:11, color:"#e5e7eb" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", color:"#9ca3af", marginBottom:2 }}>
                     <span>{entry.ts}</span>
-                    <span>{entry.quien === "vos" ? "🟢 vos" : entry.quien === "rival" ? "🔴 rival" : "❔ ?"}</span>
+                    <span>{entry.quien === "?" ? "❔ ?" : (entry.disparadoPorMi ? "🟢 " : "🔴 ") + entry.quien}</span>
                   </div>
-                  <div><strong style={{ color:"#fbbf24" }}>{entry.campo}</strong></div>
-                  <div style={{ wordBreak:"break-all" }}>
-                    {typeof entry.anterior === "object" ? JSON.stringify(entry.anterior) : String(entry.anterior)}
-                    {" → "}
-                    {typeof entry.nuevo === "object" ? JSON.stringify(entry.nuevo) : String(entry.nuevo)}
-                  </div>
+                  <div style={{ fontSize:12, fontWeight:700, color:"#fbbf24" }}>{entry.frase}</div>
+                  <button
+                    onClick={() => toggleDebugDetalle(entry.id)}
+                    style={{ background:"transparent", border:"none", color:"#6b7280", fontSize:10, cursor:"pointer", padding:0, marginTop:3 }}
+                  >
+                    {debugDetalleAbierto.has(entry.id) ? "▲ ocultar detalle técnico" : "▼ ver detalle técnico"}
+                  </button>
+                  {debugDetalleAbierto.has(entry.id) && (
+                    <div style={{ marginTop:4, fontSize:10, color:"#9ca3af", wordBreak:"break-all" }}>
+                      <div>campo: {entry.campo}</div>
+                      <div>
+                        {typeof entry.anterior === "object" ? JSON.stringify(entry.anterior) : String(entry.anterior)}
+                        {" → "}
+                        {typeof entry.nuevo === "object" ? JSON.stringify(entry.nuevo) : String(entry.nuevo)}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
