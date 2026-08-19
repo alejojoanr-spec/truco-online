@@ -186,6 +186,13 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const pagoProcesadoRef = useRef(false);
   const accionLogueadaRef = useRef(null);
 
+  // === PANEL DEBUG TEMPORAL — SACAR DESPUÉS ===
+  const [debugLog, setDebugLog] = useState([]);
+  const [debugPanelAbierto, setDebugPanelAbierto] = useState(false);
+  const debugPanelAbiertoRef = useRef(false);
+  useEffect(() => { debugPanelAbiertoRef.current = debugPanelAbierto; }, [debugPanelAbierto]);
+  // === FIN declaración estado DEBUG TEMPORAL ===
+
   // revancha
   const [revanchaEstado, setRevanchaEstado] = useState(null);
   // null | 'esperando_rival' | 'rival_pide' | 'procesando' | 'rechazada' | 'cancelada'
@@ -390,6 +397,25 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
     function procesarCambio(p) {
       if (!p) return;
+      // === PANEL DEBUG TEMPORAL — SACAR DESPUÉS (log de transiciones) ===
+      if (partidaRef.current) {
+        const prev = partidaRef.current;
+        const ts = new Date().toLocaleTimeString('es-AR', { hour12: false });
+        const quien = p.ultimo_canto?.por === user.id ? "vos" : p.ultimo_canto?.por ? "rival" : "?";
+        const registrar = (campo, anterior, nuevo) => {
+          setDebugLog(prevLog => [...prevLog.slice(-39), { ts, campo, anterior, nuevo, quien }]);
+        };
+        if (prev.puntos1 !== p.puntos1) registrar("puntos1", prev.puntos1, p.puntos1);
+        if (prev.puntos2 !== p.puntos2) registrar("puntos2", prev.puntos2, p.puntos2);
+        if (prev.puntos_mano !== p.puntos_mano) registrar("puntos_mano", prev.puntos_mano, p.puntos_mano);
+        if (JSON.stringify(prev.accion_pendiente || null) !== JSON.stringify(p.accion_pendiente || null)) {
+          registrar("accion_pendiente", prev.accion_pendiente || null, p.accion_pendiente || null);
+        }
+        if (JSON.stringify(prev.envido_resultado || null) !== JSON.stringify(p.envido_resultado || null)) {
+          registrar("envido_resultado", prev.envido_resultado || null, p.envido_resultado || null);
+        }
+      }
+      // === FIN log de transiciones DEBUG TEMPORAL ===
       if (p.ganador_id) { procesarFinPartida(p); return; }
       if (p.estado === "jugando") { setPantalla("jugando"); salaEnEsperaRef.current = null; }
       // Detect a card added by the rival (only plays sound for cards the rival adds, not our own)
@@ -521,7 +547,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (displayTimerIntervalRef.current) clearInterval(displayTimerIntervalRef.current);
     const acc = partida?.accion_pendiente;
     const cantoPendienteParaMi = acc && acc.cantado_por !== user.id;
-    const activo = (cantoPendienteParaMi || (!acc && partida?.turno_inicio)) && !resolviendoMano;
+    const activo = (cantoPendienteParaMi || (!acc && partida?.turno_inicio)) && !resolviendoMano && !debugPanelAbierto; // DEBUG TEMPORAL
     if (!activo) { setDisplayTimer(null); return; }
     function tick() {
       const p = partidaRef.current;
@@ -550,7 +576,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     displayTimerIntervalRef.current = setInterval(tick, 1000);
     return () => clearInterval(displayTimerIntervalRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partida?.turno, partida?.turno_inicio, partida?.accion_pendiente?.cantado_por, resolviendoMano]);
+  }, [partida?.turno, partida?.turno_inicio, partida?.accion_pendiente?.cantado_por, resolviendoMano, debugPanelAbierto]); // DEBUG TEMPORAL
 
   // Anti-injusticia: al volver a primer plano, re-verificar contra Supabase antes de auto-actuar
   useEffect(() => {
@@ -558,7 +584,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     function onVisible() {
       if (document.hidden) return;
       const p = partidaRef.current;
-      if (!p || p.turno !== user.id || p.accion_pendiente || !p.turno_inicio || resolviendoManoRef.current) return;
+      if (!p || p.turno !== user.id || p.accion_pendiente || !p.turno_inicio || resolviendoManoRef.current || debugPanelAbiertoRef.current) return; // DEBUG TEMPORAL
       const elapsed = (Date.now() - new Date(p.turno_inicio).getTime()) / 1000;
       if (elapsed >= 15 && timerAutoFiredRef.current !== p.turno_inicio) {
         supabase.from("partidas").select("turno, turno_inicio").eq("codigo", codigo).single()
@@ -807,6 +833,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function jugarCarta(idx) {
+    if (debugPanelAbierto) return; // DEBUG TEMPORAL
     if (!partida) return;
     if (resolviendoMano) return;
     if (partida.accion_pendiente) { setCartaSeleccionada(null); return; }
@@ -947,6 +974,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function cantarTruco() {
+    if (debugPanelAbierto) return; // DEBUG TEMPORAL
     if (!partida || partida.accion_pendiente || partida.truco_jugado) return;
     if (partida.turno !== user.id) return;
     reproducirVoz('truco');
@@ -960,6 +988,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function subirTruco() {
+    if (debugPanelAbierto) return; // DEBUG TEMPORAL
     const acc = partida?.accion_pendiente;
     if (!acc || acc.tipo !== 'truco' || acc.cantado_por === user.id || acc.nivel >= 3) return;
     const { data: freshPartida, error: errFresh } = await supabase
@@ -984,6 +1013,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   // Escalada DIFERIDA: el que tiene el derecho (aceptó el último nivel) la ejerce
   // en su propio turno, sin que haya un canto del rival pendiente en este momento.
   async function escalarTrucoDiferido() {
+    if (debugPanelAbierto) return; // DEBUG TEMPORAL
     if (!partida || partida.accion_pendiente) return;
     if (partida.turno !== user.id) return;
     if (partida.truco_derecho_de !== user.id) return;
@@ -1010,6 +1040,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function cantarEnvido(subtipo) {
+    if (debugPanelAbierto) return; // DEBUG TEMPORAL
     if (!partida || partida.accion_pendiente || partida.envido_jugado) return;
     if (partida.turno !== user.id) return;
     if (JSON.parse(partida.mesa || "[]").length >= 2) return;
@@ -1039,6 +1070,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function cantarEnvidoSobreTruco(subtipo) {
+    if (debugPanelAbierto) return; // DEBUG TEMPORAL
     const acc = partida?.accion_pendiente;
     if (!acc || acc.tipo !== 'truco' || acc.nivel !== 1 || acc.cantado_por === user.id) return;
     if (partida.envido_jugado) return;
@@ -1071,6 +1103,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function escalarEnvido(subtipo) {
+    if (debugPanelAbierto) return; // DEBUG TEMPORAL
     const acc = partida?.accion_pendiente;
     if (!acc || acc.tipo !== 'envido' || acc.cantado_por === user.id) return;
     const { data: freshPartida, error: errFresh } = await supabase
@@ -1103,6 +1136,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function quiero() {
+    if (debugPanelAbierto) return; // DEBUG TEMPORAL
     const acc = partida?.accion_pendiente;
     if (!acc || acc.cantado_por === user.id) return;
     reproducirVoz('quiero');
@@ -1179,6 +1213,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function noQuiero() {
+    if (debugPanelAbierto) return; // DEBUG TEMPORAL
     const acc = partida?.accion_pendiente;
     if (!acc || acc.cantado_por === user.id) return;
     reproducirVoz('no_quiero');
@@ -1252,6 +1287,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   async function irseAlMazo(origen = "manual") {
     if (irseAlMazoEjecutandoRef.current) return;
+    if (debugPanelAbierto) return; // DEBUG TEMPORAL
     if (!partida || resolviendoMano || partida.accion_pendiente) return;
     irseAlMazoEjecutandoRef.current = true;
     setIrseAlMazoBloqueado(true);
@@ -1636,7 +1672,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         manoJugador={miMano}
         jugadasJugador={[]}
         cartaSeleccionada={cartaSeleccionada}
-        esMiTurno={puedoActuar}
+        esMiTurno={puedoActuar && !debugPanelAbierto}
         onClickCarta={(i) => jugarCarta(i)}
         timerSegundos={miTurno && !partida?.accion_pendiente && !resolviendoMano ? displayTimer : null}
         rivalTimerSegundos={!miTurno && !partida?.accion_pendiente && !resolviendoMano ? displayTimer : null}
@@ -1653,7 +1689,21 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         log={null}
         globoJugador={globoJugadorTexto}
         globoRival={globoRivalTexto}
-        botonesSlot={<>
+        // DEBUG TEMPORAL: botón que abre el panel de debug
+        debugSlot={
+          <div style={{ position:"absolute", left:"100%", bottom:0, marginLeft:12, zIndex:300 }}>
+            <button
+              onClick={() => setDebugPanelAbierto(v => !v)}
+              title="Panel de debug (temporal)"
+              style={{ width:36, height:36, borderRadius:"50%", cursor:"pointer", background: debugPanelAbierto ? "#f59e0b" : "rgba(0,0,0,0.6)", border:"1px solid #f59e0b", fontSize:18, lineHeight:1 }}
+            >🐛</button>
+          </div>
+        }
+        botonesSlot={debugPanelAbierto ? (
+          <div style={{ padding:"9px 18px", borderRadius:10, background:"rgba(245,158,11,0.1)", border:"1px solid rgba(245,158,11,0.4)", color:"#fbbf24", fontSize:14, fontFamily:"'Lato',sans-serif", textAlign:"center" }}>
+            🐛 Panel de debug abierto — cerralo para poder jugar
+          </div>
+        ) : <>
           {!partida?.accion_pendiente && (
             <>
               {miTurno && mesaActual.length < 2 && !partida?.envido_jugado && (
@@ -1742,6 +1792,39 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           </div>
         </div>
       )}
+
+      {/* === PANEL DEBUG TEMPORAL — SACAR DESPUÉS === */}
+      {debugPanelAbierto && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.88)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:40 }}>
+          <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)", border:"1px solid #f59e0b", borderRadius:20, padding:"20px 18px", maxWidth:420, width:"92%", maxHeight:"78vh", display:"flex", flexDirection:"column", fontFamily:"'Lato',sans-serif" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+              <div style={{ fontSize:16, color:"#fbbf24", fontWeight:900 }}>🐛 Debug — transiciones de puntaje</div>
+              <button onClick={() => setDebugPanelAbierto(false)} style={{ background:"transparent", border:"none", color:"#9ca3af", fontSize:22, cursor:"pointer", lineHeight:1 }}>×</button>
+            </div>
+            <div style={{ fontSize:11, color:"#6b9", marginBottom:10 }}>Tus acciones están bloqueadas mientras este panel esté abierto.</div>
+            <div style={{ overflowY:"auto", display:"flex", flexDirection:"column-reverse", gap:6 }}>
+              {debugLog.length === 0 && (
+                <div style={{ color:"#6b7280", fontSize:13, textAlign:"center", padding:"20px 0" }}>Todavía no hay transiciones registradas.</div>
+              )}
+              {debugLog.map((entry, i) => (
+                <div key={i} style={{ background:"rgba(255,255,255,0.04)", border:"1px solid #374151", borderRadius:8, padding:"6px 9px", fontSize:11, color:"#e5e7eb" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", color:"#9ca3af", marginBottom:2 }}>
+                    <span>{entry.ts}</span>
+                    <span>{entry.quien === "vos" ? "🟢 vos" : entry.quien === "rival" ? "🔴 rival" : "❔ ?"}</span>
+                  </div>
+                  <div><strong style={{ color:"#fbbf24" }}>{entry.campo}</strong></div>
+                  <div style={{ wordBreak:"break-all" }}>
+                    {typeof entry.anterior === "object" ? JSON.stringify(entry.anterior) : String(entry.anterior)}
+                    {" → "}
+                    {typeof entry.nuevo === "object" ? JSON.stringify(entry.nuevo) : String(entry.nuevo)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* === FIN PANEL DEBUG TEMPORAL === */}
     </>
   );
 }

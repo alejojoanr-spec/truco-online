@@ -76,6 +76,7 @@ export function MesaJuego({
   botonesSlot,
   log,
   onSalir,
+  debugSlot = null, // DEBUG TEMPORAL
   esMiTurno = true,
   globoJugador = "Quiero",   // TEMPORAL: valor de prueba, sacar cuando conectemos App.js/Multijugador.js
   globoRival = "¡Truco!",    // TEMPORAL: valor de prueba, sacar cuando conectemos App.js/Multijugador.js
@@ -207,6 +208,7 @@ export function MesaJuego({
               </text>
             </svg>
           )}
+          {debugSlot}
           <div style={{
             display:"inline-flex",
             alignItems:"flex-end",
