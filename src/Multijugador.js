@@ -189,8 +189,19 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   // === PANEL DEBUG TEMPORAL — SACAR DESPUÉS ===
   const [debugLog, setDebugLog] = useState([]);
   const [debugPanelAbierto, setDebugPanelAbierto] = useState(false);
-  const debugPanelAbiertoRef = useRef(false);
-  useEffect(() => { debugPanelAbiertoRef.current = debugPanelAbierto; }, [debugPanelAbierto]);
+  const debugBloqueoRef = useRef(false);
+  // === PANEL DEBUG TEMPORAL — SACAR DESPUÉS (pausa compartida vía DB) ===
+  useEffect(() => {
+    if (!codigo) return;
+    supabase.from("partidas").update(
+      debugPanelAbierto
+        ? { debug_pausada: true, debug_pausada_desde: new Date().toISOString() }
+        : { debug_pausada: false, debug_pausada_desde: null }
+    ).eq("codigo", codigo);
+  }, [debugPanelAbierto, codigo]);
+  const debugBloqueo = debugPanelAbierto || !!partida?.debug_pausada;
+  useEffect(() => { debugBloqueoRef.current = debugBloqueo; }, [debugBloqueo]);
+  // === FIN pausa compartida DEBUG TEMPORAL ===
   const [debugDetalleAbierto, setDebugDetalleAbierto] = useState(new Set());
   const toggleDebugDetalle = (id) => {
     setDebugDetalleAbierto(prev => {
@@ -572,7 +583,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (displayTimerIntervalRef.current) clearInterval(displayTimerIntervalRef.current);
     const acc = partida?.accion_pendiente;
     const cantoPendienteParaMi = acc && acc.cantado_por !== user.id;
-    const activo = (cantoPendienteParaMi || (!acc && partida?.turno_inicio)) && !resolviendoMano && !debugPanelAbierto; // DEBUG TEMPORAL
+    const activo = (cantoPendienteParaMi || (!acc && partida?.turno_inicio)) && !resolviendoMano && !debugBloqueo; // DEBUG TEMPORAL
     if (!activo) { setDisplayTimer(null); return; }
     function tick() {
       const p = partidaRef.current;
@@ -601,7 +612,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     displayTimerIntervalRef.current = setInterval(tick, 1000);
     return () => clearInterval(displayTimerIntervalRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partida?.turno, partida?.turno_inicio, partida?.accion_pendiente?.cantado_por, resolviendoMano, debugPanelAbierto]); // DEBUG TEMPORAL
+  }, [partida?.turno, partida?.turno_inicio, partida?.accion_pendiente?.cantado_por, resolviendoMano, debugBloqueo]); // DEBUG TEMPORAL
 
   // Anti-injusticia: al volver a primer plano, re-verificar contra Supabase antes de auto-actuar
   useEffect(() => {
@@ -609,7 +620,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     function onVisible() {
       if (document.hidden) return;
       const p = partidaRef.current;
-      if (!p || p.turno !== user.id || p.accion_pendiente || !p.turno_inicio || resolviendoManoRef.current || debugPanelAbiertoRef.current) return; // DEBUG TEMPORAL
+      if (!p || p.turno !== user.id || p.accion_pendiente || !p.turno_inicio || resolviendoManoRef.current || debugBloqueoRef.current) return; // DEBUG TEMPORAL
       const elapsed = (Date.now() - new Date(p.turno_inicio).getTime()) / 1000;
       if (elapsed >= 15 && timerAutoFiredRef.current !== p.turno_inicio) {
         supabase.from("partidas").select("turno, turno_inicio").eq("codigo", codigo).single()
@@ -665,6 +676,14 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       const p = partidaRef.current;
       if (!p || p.estado !== "jugando") return;
       await supabase.from("partidas").update({ [miColumna]: new Date().toISOString() }).eq("codigo", codigo);
+
+      // DEBUG TEMPORAL: auto-reset de pausa huérfana si el que la abrió se desconectó (>5 min)
+      if (p.debug_pausada && p.debug_pausada_desde) {
+        const segundosPausada = (Date.now() - new Date(p.debug_pausada_desde).getTime()) / 1000;
+        if (segundosPausada > 300) {
+          supabase.from("partidas").update({ debug_pausada: false, debug_pausada_desde: null }).eq("codigo", codigo);
+        }
+      }
 
       if (abandonoDetectado) return;
       const ultimaRival = p[rivalColumna];
@@ -858,7 +877,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function jugarCarta(idx) {
-    if (debugPanelAbierto) return; // DEBUG TEMPORAL
+    if (debugBloqueo) return; // DEBUG TEMPORAL
     if (!partida) return;
     if (resolviendoMano) return;
     if (partida.accion_pendiente) { setCartaSeleccionada(null); return; }
@@ -999,7 +1018,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function cantarTruco() {
-    if (debugPanelAbierto) return; // DEBUG TEMPORAL
+    if (debugBloqueo) return; // DEBUG TEMPORAL
     if (!partida || partida.accion_pendiente || partida.truco_jugado) return;
     if (partida.turno !== user.id) return;
     reproducirVoz('truco');
@@ -1013,7 +1032,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function subirTruco() {
-    if (debugPanelAbierto) return; // DEBUG TEMPORAL
+    if (debugBloqueo) return; // DEBUG TEMPORAL
     const acc = partida?.accion_pendiente;
     if (!acc || acc.tipo !== 'truco' || acc.cantado_por === user.id || acc.nivel >= 3) return;
     const { data: freshPartida, error: errFresh } = await supabase
@@ -1038,7 +1057,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   // Escalada DIFERIDA: el que tiene el derecho (aceptó el último nivel) la ejerce
   // en su propio turno, sin que haya un canto del rival pendiente en este momento.
   async function escalarTrucoDiferido() {
-    if (debugPanelAbierto) return; // DEBUG TEMPORAL
+    if (debugBloqueo) return; // DEBUG TEMPORAL
     if (!partida || partida.accion_pendiente) return;
     if (partida.turno !== user.id) return;
     if (partida.truco_derecho_de !== user.id) return;
@@ -1065,7 +1084,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function cantarEnvido(subtipo) {
-    if (debugPanelAbierto) return; // DEBUG TEMPORAL
+    if (debugBloqueo) return; // DEBUG TEMPORAL
     if (!partida || partida.accion_pendiente || partida.envido_jugado) return;
     if (partida.turno !== user.id) return;
     if (JSON.parse(partida.mesa || "[]").length >= 2) return;
@@ -1095,7 +1114,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function cantarEnvidoSobreTruco(subtipo) {
-    if (debugPanelAbierto) return; // DEBUG TEMPORAL
+    if (debugBloqueo) return; // DEBUG TEMPORAL
     const acc = partida?.accion_pendiente;
     if (!acc || acc.tipo !== 'truco' || acc.nivel !== 1 || acc.cantado_por === user.id) return;
     if (partida.envido_jugado) return;
@@ -1128,7 +1147,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function escalarEnvido(subtipo) {
-    if (debugPanelAbierto) return; // DEBUG TEMPORAL
+    if (debugBloqueo) return; // DEBUG TEMPORAL
     const acc = partida?.accion_pendiente;
     if (!acc || acc.tipo !== 'envido' || acc.cantado_por === user.id) return;
     const { data: freshPartida, error: errFresh } = await supabase
@@ -1161,7 +1180,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function quiero() {
-    if (debugPanelAbierto) return; // DEBUG TEMPORAL
+    if (debugBloqueo) return; // DEBUG TEMPORAL
     const acc = partida?.accion_pendiente;
     if (!acc || acc.cantado_por === user.id) return;
     reproducirVoz('quiero');
@@ -1238,7 +1257,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function noQuiero() {
-    if (debugPanelAbierto) return; // DEBUG TEMPORAL
+    if (debugBloqueo) return; // DEBUG TEMPORAL
     const acc = partida?.accion_pendiente;
     if (!acc || acc.cantado_por === user.id) return;
     reproducirVoz('no_quiero');
@@ -1312,7 +1331,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   async function irseAlMazo(origen = "manual") {
     if (irseAlMazoEjecutandoRef.current) return;
-    if (debugPanelAbierto) return; // DEBUG TEMPORAL
+    if (debugBloqueo) return; // DEBUG TEMPORAL
     if (!partida || resolviendoMano || partida.accion_pendiente) return;
     irseAlMazoEjecutandoRef.current = true;
     setIrseAlMazoBloqueado(true);
@@ -1697,7 +1716,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         manoJugador={miMano}
         jugadasJugador={[]}
         cartaSeleccionada={cartaSeleccionada}
-        esMiTurno={puedoActuar && !debugPanelAbierto}
+        esMiTurno={puedoActuar && !debugBloqueo}
         onClickCarta={(i) => jugarCarta(i)}
         timerSegundos={miTurno && !partida?.accion_pendiente && !resolviendoMano ? displayTimer : null}
         rivalTimerSegundos={!miTurno && !partida?.accion_pendiente && !resolviendoMano ? displayTimer : null}
@@ -1727,6 +1746,10 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         botonesSlot={debugPanelAbierto ? (
           <div style={{ padding:"9px 18px", borderRadius:10, background:"rgba(245,158,11,0.1)", border:"1px solid rgba(245,158,11,0.4)", color:"#fbbf24", fontSize:14, fontFamily:"'Lato',sans-serif", textAlign:"center" }}>
             🐛 Panel de debug abierto — cerralo para poder jugar
+          </div>
+        ) : partida?.debug_pausada ? (
+          <div style={{ padding:"9px 18px", borderRadius:10, background:"rgba(245,158,11,0.1)", border:"1px solid rgba(245,158,11,0.4)", color:"#fbbf24", fontSize:14, fontFamily:"'Lato',sans-serif", textAlign:"center" }}>
+            🐛 Partida en pausa — el otro jugador está revisando algo
           </div>
         ) : <>
           {!partida?.accion_pendiente && (
@@ -1819,6 +1842,17 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       )}
 
       {/* === PANEL DEBUG TEMPORAL — SACAR DESPUÉS === */}
+      {/* === PANEL DEBUG TEMPORAL — SACAR DESPUÉS (overlay de pausa para el rival) === */}
+      {!debugPanelAbierto && partida?.debug_pausada && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:50, padding:20 }}>
+          <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)", border:"1px solid #f59e0b", borderRadius:20, padding:"32px 28px", maxWidth:320, textAlign:"center", fontFamily:"'Lato',sans-serif" }}>
+            <div style={{ fontSize:40, marginBottom:12 }}>🐛</div>
+            <div style={{ fontSize:16, color:"#fbbf24", fontWeight:900, lineHeight:1.4 }}>Partida en pausa temporal</div>
+            <div style={{ fontSize:13, color:"#9ca3af", marginTop:8, lineHeight:1.4 }}>El otro jugador está revisando algo, ya vuelve.</div>
+          </div>
+        </div>
+      )}
+      {/* === FIN overlay de pausa DEBUG TEMPORAL === */}
       {debugPanelAbierto && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.88)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:40 }}>
           <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)", border:"1px solid #f59e0b", borderRadius:20, padding:"20px 18px", maxWidth:420, width:"92%", maxHeight:"78vh", display:"flex", flexDirection:"column", fontFamily:"'Lato',sans-serif" }}>
