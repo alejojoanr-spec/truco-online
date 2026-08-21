@@ -549,9 +549,9 @@ export default function Home({ user, perfil, onJugar, onCrearSalaPrivada, onUnir
               ["🃏", "El mazo", "Se juega con 40 cartas españolas. Cada jugador recibe 3 cartas por mano."],
               ["🏆", "Objetivo", "Llegar a 30 puntos antes que el rival ganando manos y cantando envido o truco."],
               ["⚔️", "El Truco", "Truco vale 2 pts (1 si no querido). Retruco vale 3 pts (2 si no querido). Vale Cuatro vale 4 pts (3 si no querido). En la última mano (alguien con 29 pts) no se puede cantar Truco ni Vale Cuatro."],
-              ["🎯", "El Envido", "Se juega en la primera ronda. Opciones: Envido (2 pts), Envido Envido (4 pts, 2 si no querido), Real Envido (2 pts) y Falta Envido (los puntos que le faltan al rival para llegar a 30). Gana quien tenga más puntos de envido (máx. 33)."],
+              ["🎯", "El Envido", "Se juega en la primera ronda. Opciones: Envido (2 pts), Envido Envido (4 pts, 2 si no querido), Real Envido (3 pts) y Falta Envido (lo que le falta al que va ganando —el puntero— para llegar al objetivo de la partida, que puede ser 15 o 30 según la sala). Gana quien tenga más puntos de envido (máx. 33)."],
               ["📊", "Jerarquía", "1♠ > 1♣ > 7♠ > 7♦ > 3 > 2 > 1 > 12 > 11 > 10 > 7 > 6 > 5 > 4"],
-              ["🤝", "Empate", "Si hay empate en una ronda, gana quien jugó primero. En empate total, es mano empatada."],
+              ["🤝", "Empate", "Si empatan una baza (es \"parda\"), no la gana nadie — pero el que jugó primero en esa baza vuelve a jugar primero en la siguiente. Para llevarse la mano hay que ganar 2 bazas reales; si una de las 3 queda parda, alcanza con ganar 1 baza real (y si cada uno ganó una y la tercera fue parda, se la lleva quien ganó la primera). Si las 3 bazas son pardas, gana quien es mano."],
             ].map(([icono, titulo, texto]) => (
               <div key={titulo} style={{ marginBottom: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>

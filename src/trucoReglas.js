@@ -41,11 +41,8 @@ function resolverGanadorMano(bazas, manoEs) {
 }
 
 /**
- * Calcula cuánto vale un Falta Envido según la regla oficial de malas/buenas.
- * Si el puntero (el que va ganando la partida) está en la primera mitad
- * ("malas"), la apuesta es lo que le falta para ENTRAR a la segunda mitad
- * ("buenas"). Si el puntero ya está en buenas, la apuesta es lo que le falta
- * para GANAR la partida.
+ * Calcula cuánto vale un Falta Envido: siempre lo que le falta al puntero
+ * (el jugador que va ganando la partida) para llegar al objetivo total.
  *
  * @param {number} puntosObjetivo - puntos para ganar la partida (15 o 30)
  * @param {number} puntosA - puntaje actual de un jugador
@@ -53,11 +50,8 @@ function resolverGanadorMano(bazas, manoEs) {
  * @returns {number} puntos en juego si se quiere el Falta Envido
  */
 function calcularFalta(puntosObjetivo, puntosA, puntosB) {
-  const mitad = Math.ceil(puntosObjetivo / 2);
   const puntero = Math.max(puntosA, puntosB);
-  return puntero < mitad
-    ? Math.max(1, mitad - puntero)
-    : Math.max(1, puntosObjetivo - puntero);
+  return Math.max(1, puntosObjetivo - puntero);
 }
 
 module.exports = { resolverGanadorMano, calcularFalta };
