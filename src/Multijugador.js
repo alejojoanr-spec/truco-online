@@ -440,10 +440,17 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         if (prev.puntos_mano !== p.puntos_mano) {
           registrar("puntos_mano", prev.puntos_mano, p.puntos_mano, `La mano ahora vale ${p.puntos_mano} pt${p.puntos_mano === 1 ? '' : 's'}`);
         }
-        if (JSON.stringify(prev.accion_pendiente || null) !== JSON.stringify(p.accion_pendiente || null) && p.accion_pendiente) {
-          const acc = p.accion_pendiente;
-          const nombreCantor = acc.cantado_por === user.id ? miNombre : rivalNombre;
-          registrar("accion_pendiente", prev.accion_pendiente || null, p.accion_pendiente, `${nombreCantor} cantó ${getCantoLabel(acc)}`);
+        const esNuevoUltimoCanto = p.ultimo_canto && p.ultimo_canto.ts !== prev.ultimo_canto?.ts;
+        if (esNuevoUltimoCanto) {
+          const nombreQuien = p.ultimo_canto.por === user.id ? miNombre : rivalNombre;
+          const tag = p.ultimo_canto.tag;
+          if (tag === 'quiero' || tag === 'no_quiero') {
+            const veredicto = tag === 'quiero' ? 'QUIERO' : 'NO QUIERO';
+            const labelCantoResuelto = prev.accion_pendiente ? getCantoLabel(prev.accion_pendiente) : '';
+            registrar("accion_pendiente", prev.accion_pendiente || null, p.accion_pendiente || null, `${nombreQuien} dijo ${veredicto}${labelCantoResuelto ? ` (${labelCantoResuelto})` : ''}`);
+          } else if (p.accion_pendiente && ['truco','retruco','vale_cuatro','envido','real_envido','falta_envido'].includes(tag)) {
+            registrar("accion_pendiente", prev.accion_pendiente || null, p.accion_pendiente, `${nombreQuien} cantó ${getCantoLabel(p.accion_pendiente)}`);
+          }
         }
         if (JSON.stringify(prev.envido_resultado || null) !== JSON.stringify(p.envido_resultado || null) && p.envido_resultado) {
           const nombreJ1 = soyJugador1 ? miNombre : rivalNombre;
