@@ -159,7 +159,9 @@ function valorEnvido(mano) {
 
 
 export default function Multijugador({ user, perfil, onVolver, codigoInicial, autoCrear, apuesta, puntos, esTorneo, codigoYaCreado, codigoRejoin }) {
-  const [pantalla, setPantalla] = useState("menu");
+  const [pantalla, setPantalla] = useState(
+    (codigoInicial || autoCrear || codigoYaCreado || codigoRejoin) ? "redirigiendo" : "menu"
+  );
   const [codigo, setCodigo] = useState("");
   const [codigoInput, setCodigoInput] = useState("");
   const [partida, setPartida] = useState(null);
@@ -331,18 +333,18 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       (async () => {
         const cod = codigoInicial.toUpperCase().trim();
         const { data, error: err } = await supabase.from("partidas").select("*").eq("codigo", cod).single();
-        if (err || !data) { setError("Sala no encontrada"); return; }
-        if (data.estado !== "esperando") { setError("La sala ya no está disponible"); return; }
+        if (err || !data) { setError("Sala no encontrada"); setPantalla("menu"); return; }
+        if (data.estado !== "esperando") { setError("La sala ya no está disponible"); setPantalla("menu"); return; }
         const montoSalaLobby = data.apuesta || 0;
         let saldoAntesLobby = 0;
         if (montoSalaLobby > 0) {
           const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
           const saldoActual = fresh?.saldo || 0;
-          if (saldoActual < montoSalaLobby) { setError("Saldo insuficiente para unirte a esta partida."); return; }
+          if (saldoActual < montoSalaLobby) { setError("Saldo insuficiente para unirte a esta partida."); setPantalla("menu"); return; }
           const { error: saldoErr } = await supabase.from("perfiles")
             .update({ saldo: saldoActual - montoSalaLobby })
             .eq("usuario_id", user.id);
-          if (saldoErr) { setError("Error al procesar el saldo."); return; }
+          if (saldoErr) { setError("Error al procesar el saldo."); setPantalla("menu"); return; }
           saldoAntesLobby = saldoActual;
         }
         await supabase.from("partidas").update({
@@ -376,7 +378,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       (async () => {
         const cod = codigoYaCreado.toUpperCase().trim();
         const { data, error: err } = await supabase.from("partidas").select("*").eq("codigo", cod).single();
-        if (err || !data) { setError("No se pudo cargar la partida"); return; }
+        if (err || !data) { setError("No se pudo cargar la partida"); setPantalla("menu"); return; }
         setCodigo(cod);
         setSoyJugador1(true);
         setMiMano(JSON.parse(data.mano_jugador1));
@@ -393,6 +395,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         if (err || !data || data.estado !== "jugando") {
           localStorage.removeItem(`truco_partida_${user.id}`);
           setError("La partida ya no está activa");
+          setPantalla("menu");
           return;
         }
         const esJ1 = data.jugador1_id === user.id;
@@ -731,8 +734,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function crearSala() {
-    if (await tieneTorneoActivo()) { setError("Estás anotado en un torneo en curso. No podés crear partidas 1vs1 hasta que termine."); return; }
-    if (await tienePartidaActiva(user.id)) { setError("Ya tenés una partida activa. Finalizala antes de crear otra."); return; }
+    if (await tieneTorneoActivo()) { setError("Estás anotado en un torneo en curso. No podés crear partidas 1vs1 hasta que termine."); setPantalla("menu"); return; }
+    if (await tienePartidaActiva(user.id)) { setError("Ya tenés una partida activa. Finalizala antes de crear otra."); setPantalla("menu"); return; }
 
     // Eliminar salas propias previas en espera (evita acumulación y reemplaza la anterior)
     const { data: salasPrevias, error: errPrevias } = await supabase
@@ -758,11 +761,11 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if ((apuesta || 0) > 0) {
       const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
       const saldoActual = fresh?.saldo || 0;
-      if (saldoActual < apuesta) { setError("Saldo insuficiente."); return; }
+      if (saldoActual < apuesta) { setError("Saldo insuficiente."); setPantalla("menu"); return; }
       const { error: saldoErr } = await supabase.from("perfiles")
         .update({ saldo: saldoActual - apuesta })
         .eq("usuario_id", user.id);
-      if (saldoErr) { setError("Error al procesar el saldo."); return; }
+      if (saldoErr) { setError("Error al procesar el saldo."); setPantalla("menu"); return; }
       saldoAntesCrea = saldoActual;
     }
     const cod = generarCodigo();
@@ -791,7 +794,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       puntos: puntos || 30,
       es_torneo: esTorneo || false,
     });
-    if (err) { setError("Error al crear sala"); return; }
+    if (err) { setError("Error al crear sala"); setPantalla("menu"); return; }
     if ((apuesta || 0) > 0) {
       await supabase.from("transacciones").insert({
         usuario_id: user.id,
@@ -1625,6 +1628,13 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           </div>
         </div>
       )}
+    </div>
+  );
+
+  if (pantalla === "redirigiendo") return (
+    <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"Georgia,serif",gap:20 }}>
+      <div style={{ fontSize:48 }}>⏳</div>
+      <div style={{ fontSize:20,color:"#fbbf24",fontWeight:900 }}>Te estamos llevando a la mesa...</div>
     </div>
   );
 
