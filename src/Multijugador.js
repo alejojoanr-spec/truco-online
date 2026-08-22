@@ -426,16 +426,18 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         const rivalNombre = (soyJugador1 ? p.jugador2_nombre : p.jugador1_nombre) || "Rival";
         const disparadoPorMi = p.ultimo_canto?.por === user.id;
         const quien = p.ultimo_canto?.por ? (disparadoPorMi ? miNombre : rivalNombre) : "?";
-        const registrar = (campo, anterior, nuevo, frase) => {
-          setDebugLog(prevLog => [...prevLog.slice(-39), { id: Date.now() + Math.random(), ts, campo, anterior, nuevo, quien, disparadoPorMi, frase }]);
+        const registrar = (campo, anterior, nuevo, frase, marcador) => {
+          setDebugLog(prevLog => [...prevLog.slice(-39), { id: Date.now() + Math.random(), ts, campo, anterior, nuevo, quien, disparadoPorMi, frase, marcador }]);
         };
         for (const ev of eventosPartida) {
           if (ev.campo === "puntos1") {
             const nombreJ1 = soyJugador1 ? miNombre : rivalNombre;
-            registrar("puntos1", ev.anterior, ev.nuevo, `${ev.delta >= 0 ? '+' : ''}${ev.delta} pts para ${nombreJ1}`);
+            const nombreJ2 = soyJugador1 ? rivalNombre : miNombre;
+            registrar("puntos1", ev.anterior, ev.nuevo, `${ev.delta >= 0 ? '+' : ''}${ev.delta} pts para ${nombreJ1}`, { nombreJ1, puntosJ1: p.puntos1, nombreJ2, puntosJ2: p.puntos2 });
           } else if (ev.campo === "puntos2") {
             const nombreJ2 = soyJugador1 ? rivalNombre : miNombre;
-            registrar("puntos2", ev.anterior, ev.nuevo, `${ev.delta >= 0 ? '+' : ''}${ev.delta} pts para ${nombreJ2}`);
+            const nombreJ1 = soyJugador1 ? miNombre : rivalNombre;
+            registrar("puntos2", ev.anterior, ev.nuevo, `${ev.delta >= 0 ? '+' : ''}${ev.delta} pts para ${nombreJ2}`, { nombreJ1, puntosJ1: p.puntos1, nombreJ2, puntosJ2: p.puntos2 });
           } else if (ev.campo === "puntos_mano") {
             registrar("puntos_mano", ev.anterior, ev.nuevo, `La mano ahora vale ${ev.nuevo} pt${ev.nuevo === 1 ? '' : 's'}`);
           } else if (ev.campo === "accion_pendiente") {
@@ -1921,6 +1923,9 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
                         {" → "}
                         {typeof entry.nuevo === "object" ? JSON.stringify(entry.nuevo) : String(entry.nuevo)}
                       </div>
+                      {entry.marcador && (
+                        <div>Marcador: {entry.marcador.nombreJ1} {entry.marcador.puntosJ1} - {entry.marcador.nombreJ2} {entry.marcador.puntosJ2}</div>
+                      )}
                     </div>
                   )}
                 </div>
