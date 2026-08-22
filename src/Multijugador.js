@@ -7,6 +7,8 @@ import { sumarPuntosRanking } from "./ranking";
 import { btnStyle, GLOBO_TEXTOS } from "./GameComponents";
 import { MesaJuego } from "./MesaJuego";
 import { tienePartidaActiva } from "./partidasApi";
+import { derivarEventosPartida, getCantoLabel, LABEL_ENV } from "./derivarEventosPartida";
+import { LogJugadas } from "./LogJugadas";
 
 const _vozQueue = [];
 let _vozPlaying = false;
@@ -132,15 +134,6 @@ function valorTruco(c) {
   return 0; // 4
 }
 
-const LABEL_ENV = { envido: 'Envido', real_envido: 'Real Envido', falta_envido: 'Falta Envido' };
-
-function getCantoLabel(acc) {
-  if (!acc) return '';
-  if (acc.tipo === 'truco') return ['', 'Truco', 'Retruco', 'Vale cuatro'][acc.nivel] || 'Truco';
-  const cadena = acc.cadena || [acc.subtipo];
-  return cadena.map(s => LABEL_ENV[s] || s).join(' + ');
-}
-
 function valorEnvido(mano) {
   const g = {};
   for (const c of mano) {
@@ -187,6 +180,9 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const [resultadoPartida, setResultadoPartida] = useState(null);
   const pagoProcesadoRef = useRef(false);
   const accionLogueadaRef = useRef(null);
+
+  // PERMANENTE — log de jugadas para el panel lateral LogJugadas.js. No es parte del panel de debug temporal.
+  const [jugadasLog, setJugadasLog] = useState([]);
 
   // === PANEL DEBUG TEMPORAL — SACAR DESPUÉS ===
   const [debugLog, setDebugLog] = useState([]);
@@ -419,9 +415,12 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
     function procesarCambio(p) {
       if (!p) return;
+      const eventosPartida = partidaRef.current
+        ? derivarEventosPartida(partidaRef.current, p, { userId: user.id })
+        : [];
+
       // === PANEL DEBUG TEMPORAL — SACAR DESPUÉS (log de transiciones) ===
       if (partidaRef.current) {
-        const prev = partidaRef.current;
         const ts = new Date().toLocaleTimeString('es-AR', { hour12: false });
         const miNombre = perfil?.nombre || user.email?.split("@")[0] || "Vos";
         const rivalNombre = (soyJugador1 ? p.jugador2_nombre : p.jugador1_nombre) || "Rival";
@@ -430,38 +429,56 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         const registrar = (campo, anterior, nuevo, frase) => {
           setDebugLog(prevLog => [...prevLog.slice(-39), { id: Date.now() + Math.random(), ts, campo, anterior, nuevo, quien, disparadoPorMi, frase }]);
         };
-        if (prev.puntos1 !== p.puntos1) {
-          const delta = (p.puntos1 || 0) - (prev.puntos1 || 0);
-          const nombreJ1 = soyJugador1 ? miNombre : rivalNombre;
-          registrar("puntos1", prev.puntos1, p.puntos1, `${delta >= 0 ? '+' : ''}${delta} pts para ${nombreJ1}`);
-        }
-        if (prev.puntos2 !== p.puntos2) {
-          const delta = (p.puntos2 || 0) - (prev.puntos2 || 0);
-          const nombreJ2 = soyJugador1 ? rivalNombre : miNombre;
-          registrar("puntos2", prev.puntos2, p.puntos2, `${delta >= 0 ? '+' : ''}${delta} pts para ${nombreJ2}`);
-        }
-        if (prev.puntos_mano !== p.puntos_mano) {
-          registrar("puntos_mano", prev.puntos_mano, p.puntos_mano, `La mano ahora vale ${p.puntos_mano} pt${p.puntos_mano === 1 ? '' : 's'}`);
-        }
-        const esNuevoUltimoCanto = p.ultimo_canto && p.ultimo_canto.ts !== prev.ultimo_canto?.ts;
-        if (esNuevoUltimoCanto) {
-          const nombreQuien = p.ultimo_canto.por === user.id ? miNombre : rivalNombre;
-          const tag = p.ultimo_canto.tag;
-          if (tag === 'quiero' || tag === 'no_quiero') {
-            const veredicto = tag === 'quiero' ? 'QUIERO' : 'NO QUIERO';
-            const labelCantoResuelto = prev.accion_pendiente ? getCantoLabel(prev.accion_pendiente) : '';
-            registrar("accion_pendiente", prev.accion_pendiente || null, p.accion_pendiente || null, `${nombreQuien} dijo ${veredicto}${labelCantoResuelto ? ` (${labelCantoResuelto})` : ''}`);
-          } else if (p.accion_pendiente && ['truco','retruco','vale_cuatro','envido','real_envido','falta_envido'].includes(tag)) {
-            registrar("accion_pendiente", prev.accion_pendiente || null, p.accion_pendiente, `${nombreQuien} cantó ${getCantoLabel(p.accion_pendiente)}`);
+        for (const ev of eventosPartida) {
+          if (ev.campo === "puntos1") {
+            const nombreJ1 = soyJugador1 ? miNombre : rivalNombre;
+            registrar("puntos1", ev.anterior, ev.nuevo, `${ev.delta >= 0 ? '+' : ''}${ev.delta} pts para ${nombreJ1}`);
+          } else if (ev.campo === "puntos2") {
+            const nombreJ2 = soyJugador1 ? rivalNombre : miNombre;
+            registrar("puntos2", ev.anterior, ev.nuevo, `${ev.delta >= 0 ? '+' : ''}${ev.delta} pts para ${nombreJ2}`);
+          } else if (ev.campo === "puntos_mano") {
+            registrar("puntos_mano", ev.anterior, ev.nuevo, `La mano ahora vale ${ev.nuevo} pt${ev.nuevo === 1 ? '' : 's'}`);
+          } else if (ev.campo === "accion_pendiente") {
+            const nombreQuien = ev.disparadoPorMi ? miNombre : rivalNombre;
+            if (ev.tipoEvento === 'quiero' || ev.tipoEvento === 'no_quiero') {
+              const veredicto = ev.tipoEvento === 'quiero' ? 'QUIERO' : 'NO QUIERO';
+              const esEnvidoQuiero = ev.tipoEvento === 'quiero' && ev.cantoResuelto?.tipo === 'envido';
+              const valia = esEnvidoQuiero ? ` — valía ${ev.cantoResuelto.si_quiero} pts` : '';
+              registrar("accion_pendiente", ev.anterior, ev.nuevo, `${nombreQuien} dijo ${veredicto}${ev.cantoResueltoLabel ? ` (${ev.cantoResueltoLabel})` : ''}${valia}`);
+            } else if (ev.tipoEvento === 'canto') {
+              registrar("accion_pendiente", ev.anterior, ev.nuevo, `${nombreQuien} cantó ${ev.cantoNuevoLabel}`);
+            }
+          } else if (ev.campo === "envido_resultado") {
+            const nombreJ1 = soyJugador1 ? miNombre : rivalNombre;
+            const nombreJ2b = soyJugador1 ? rivalNombre : miNombre;
+            registrar("envido_resultado", ev.anterior, ev.nuevo, `${nombreJ1}: ${ev.nuevo.texto_j1} | ${nombreJ2b}: ${ev.nuevo.texto_j2}`);
           }
-        }
-        if (JSON.stringify(prev.envido_resultado || null) !== JSON.stringify(p.envido_resultado || null) && p.envido_resultado) {
-          const nombreJ1 = soyJugador1 ? miNombre : rivalNombre;
-          const nombreJ2 = soyJugador1 ? rivalNombre : miNombre;
-          registrar("envido_resultado", prev.envido_resultado || null, p.envido_resultado, `${nombreJ1}: ${p.envido_resultado.texto_j1} | ${nombreJ2}: ${p.envido_resultado.texto_j2}`);
         }
       }
       // === FIN log de transiciones DEBUG TEMPORAL ===
+
+      // Log de jugadas permanente (panel lateral desktop) — mismos eventos, formato corto
+      if (eventosPartida.length) {
+        const rivalNombreCorto = (soyJugador1 ? p.jugador2_nombre : p.jugador1_nombre) || "Rival";
+        const agregarJugada = (texto) => {
+          setJugadasLog(prevLog => [...prevLog.slice(-59), { id: Date.now() + Math.random(), texto }]);
+        };
+        for (const ev of eventosPartida) {
+          if (ev.campo === "puntos1" || ev.campo === "puntos2") {
+            const esMio = (ev.campo === "puntos1") === soyJugador1;
+            agregarJugada(`${esMio ? "Vos" : rivalNombreCorto}: ${ev.delta >= 0 ? '+' : ''}${ev.delta}`);
+          } else if (ev.campo === "accion_pendiente") {
+            const nombre = ev.disparadoPorMi ? "Vos" : rivalNombreCorto;
+            if (ev.tipoEvento === 'quiero') agregarJugada(`${nombre}: QUIERO`);
+            else if (ev.tipoEvento === 'no_quiero') agregarJugada(`${nombre}: NO QUIERO`);
+            else if (ev.tipoEvento === 'canto') agregarJugada(`${nombre}: ${ev.cantoNuevoLabel.toUpperCase()}`);
+          } else if (ev.campo === "envido_resultado") {
+            const revelado = ev.nuevo.texto_j1.includes("Son buenas") ? ev.nuevo.texto_j2 : ev.nuevo.texto_j1;
+            agregarJugada(`Envido: ${revelado.replace(/[¡!]/g, '')}`);
+          }
+          // puntos_mano: omitido a propósito, es más técnico que útil de un vistazo
+        }
+      }
       if (p.ganador_id) { procesarFinPartida(p); return; }
       if (p.estado === "jugando") { setPantalla("jugando"); salaEnEsperaRef.current = null; }
       // Detect a card added by the rival (only plays sound for cards the rival adds, not our own)
@@ -1714,6 +1731,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   return (
     <>
+      <LogJugadas entries={jugadasLog} />
       <MesaJuego
         avatarJugador={avatarSrc(perfil?.avatar)}
         nombreJugador={perfil?.nombre || user.email?.split("@")[0] || "Vos"}
