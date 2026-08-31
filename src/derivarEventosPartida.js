@@ -65,3 +65,23 @@ export function derivarEventosPartida(prev, p, { userId }) {
 
   return eventos;
 }
+
+export function textosCortosDeEventos(eventosPartida, { soyJugador1, rivalNombreCorto }) {
+  const textos = [];
+  for (const ev of eventosPartida) {
+    if (ev.campo === "puntos1" || ev.campo === "puntos2") {
+      const esMio = (ev.campo === "puntos1") === soyJugador1;
+      textos.push(`${esMio ? "Vos" : rivalNombreCorto}: ${ev.delta >= 0 ? '+' : ''}${ev.delta}`);
+    } else if (ev.campo === "accion_pendiente") {
+      const nombre = ev.disparadoPorMi ? "Vos" : rivalNombreCorto;
+      if (ev.tipoEvento === 'quiero') textos.push(`${nombre}: QUIERO`);
+      else if (ev.tipoEvento === 'no_quiero') textos.push(`${nombre}: NO QUIERO`);
+      else if (ev.tipoEvento === 'canto') textos.push(`${nombre}: ${ev.cantoNuevoLabel.toUpperCase()}`);
+    } else if (ev.campo === "envido_resultado") {
+      const revelado = ev.nuevo.texto_j1.includes("Son buenas") ? ev.nuevo.texto_j2 : ev.nuevo.texto_j1;
+      textos.push(`Envido: ${revelado.replace(/[¡!]/g, '')}`);
+    }
+    // puntos_mano: omitido a propósito, es más técnico que útil de un vistazo
+  }
+  return textos;
+}

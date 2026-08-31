@@ -7,7 +7,7 @@ import { sumarPuntosRanking } from "./ranking";
 import { btnStyle, GLOBO_TEXTOS } from "./GameComponents";
 import { MesaJuego } from "./MesaJuego";
 import { tienePartidaActiva } from "./partidasApi";
-import { derivarEventosPartida, getCantoLabel, LABEL_ENV } from "./derivarEventosPartida";
+import { derivarEventosPartida, getCantoLabel, LABEL_ENV, textosCortosDeEventos } from "./derivarEventosPartida";
 import { LogJugadas } from "./LogJugadas";
 
 const _vozQueue = [];
@@ -462,23 +462,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       // Log de jugadas permanente (panel lateral desktop) — mismos eventos, formato corto
       if (eventosPartida.length) {
         const rivalNombreCorto = (soyJugador1 ? p.jugador2_nombre : p.jugador1_nombre) || "Rival";
-        const agregarJugada = (texto) => {
+        for (const texto of textosCortosDeEventos(eventosPartida, { soyJugador1, rivalNombreCorto })) {
           setJugadasLog(prevLog => [...prevLog.slice(-59), { id: Date.now() + Math.random(), texto }]);
-        };
-        for (const ev of eventosPartida) {
-          if (ev.campo === "puntos1" || ev.campo === "puntos2") {
-            const esMio = (ev.campo === "puntos1") === soyJugador1;
-            agregarJugada(`${esMio ? "Vos" : rivalNombreCorto}: ${ev.delta >= 0 ? '+' : ''}${ev.delta}`);
-          } else if (ev.campo === "accion_pendiente") {
-            const nombre = ev.disparadoPorMi ? "Vos" : rivalNombreCorto;
-            if (ev.tipoEvento === 'quiero') agregarJugada(`${nombre}: QUIERO`);
-            else if (ev.tipoEvento === 'no_quiero') agregarJugada(`${nombre}: NO QUIERO`);
-            else if (ev.tipoEvento === 'canto') agregarJugada(`${nombre}: ${ev.cantoNuevoLabel.toUpperCase()}`);
-          } else if (ev.campo === "envido_resultado") {
-            const revelado = ev.nuevo.texto_j1.includes("Son buenas") ? ev.nuevo.texto_j2 : ev.nuevo.texto_j1;
-            agregarJugada(`Envido: ${revelado.replace(/[¡!]/g, '')}`);
-          }
-          // puntos_mano: omitido a propósito, es más técnico que útil de un vistazo
         }
       }
       if (p.ganador_id) { procesarFinPartida(p); return; }
@@ -963,7 +948,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       if (ganadorMano) {
         const { data: freshMano, error: errFreshMano } = await supabase
           .from("partidas")
-          .select("puntos_mano, puntos1, puntos2")
+          .select("puntos_mano, puntos1, puntos2, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
           .eq("codigo", codigo)
           .single();
         if (errFreshMano || !freshMano) { console.error("jugarCarta fetch fresco mano:", errFreshMano); return; }
@@ -976,11 +961,22 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         if (nuevoPuntos1 >= puntosObjetivo || nuevoPuntos2 >= puntosObjetivo) {
           const ganadorId = nuevoPuntos1 >= puntosObjetivo ? partida.jugador1_id : partida.jugador2_id;
           updateData = { ...updateData, puntos1: nuevoPuntos1, puntos2: nuevoPuntos2, puntos_mano: 1, accion_pendiente: null, ganador_id: ganadorId, estado: "terminada", finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null };
+          // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+          {
+            const estadoAntesLog = { ...partida, ...freshMano };
+            const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+            const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...updateData }, { userId: user.id });
+            const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+            if (textosLog.length) {
+              updateData.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+            }
+          }
+          // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
         } else {
           // New hand: two-step update so both players see the mesa before it clears
           setResolviendoMano(true);
           // Step 1: keep mesa visible, update scores; turno=user.id blocks both players
-          await supabase.from("partidas").update({
+          const paso1 = {
             mesa: JSON.stringify(nuevaMesa),
             [manoField]: JSON.stringify(nuevaMiMano),
             puntos1: nuevoPuntos1,
@@ -994,7 +990,19 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             accion_pendiente: null,
             envido_resultado: null,
             turno: user.id,
-          }).eq("codigo", codigo);
+          };
+          // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+          {
+            const estadoAntesLog = { ...partida, ...freshMano };
+            const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+            const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...paso1 }, { userId: user.id });
+            const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+            if (textosLog.length) {
+              paso1.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+            }
+          }
+          // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
+          await supabase.from("partidas").update(paso1).eq("codigo", codigo);
           // Step 2: after delay, clear mesa and deal new hand
           await new Promise(resolve => setTimeout(resolve, 1500));
           const nuevoMazo = mezclar(MAZO);
@@ -1051,12 +1059,24 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (!partida || partida.accion_pendiente || partida.truco_jugado) return;
     if (partida.turno !== user.id) return;
     reproducirVoz('truco');
-    await supabase.from("partidas").update({
+    const nuevoEstado = {
       accion_pendiente: { tipo: 'truco', nivel: 1, cantado_por: user.id, si_quiero: 2, si_no: 1 },
       truco_jugado: true,
       turno_inicio: new Date().toISOString(),
       ultimo_canto: { tag: "truco", por: user.id, ts: Date.now() },
-    }).eq("codigo", codigo);
+    };
+    // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+    {
+      const estadoAntesLog = { ...partida };
+      const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+      const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...nuevoEstado }, { userId: user.id });
+      const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+      if (textosLog.length) {
+        nuevoEstado.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+      }
+    }
+    // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
+    await supabase.from("partidas").update(nuevoEstado).eq("codigo", codigo);
     addLog("¡Truco!");
   }
 
@@ -1066,7 +1086,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (!acc || acc.tipo !== 'truco' || acc.cantado_por === user.id || acc.nivel >= 3) return;
     const { data: freshPartida, error: errFresh } = await supabase
       .from("partidas")
-      .select("accion_pendiente")
+      .select("accion_pendiente, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
       .eq("codigo", codigo)
       .single();
     if (errFresh || !freshPartida?.accion_pendiente) { console.error("subirTruco fetch fresco:", errFresh); return; }
@@ -1075,11 +1095,23 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const nuevoNivel = accFresh.nivel + 1;
     const labels = { 2: 'Retruco', 3: 'Vale cuatro' };
     reproducirVoz(nuevoNivel === 2 ? 'retruco' : 'vale_cuatro');
-    await supabase.from("partidas").update({
+    const nuevoEstado = {
       accion_pendiente: { tipo: 'truco', nivel: nuevoNivel, cantado_por: user.id, si_quiero: nuevoNivel + 1, si_no: nuevoNivel },
       turno_inicio: new Date().toISOString(),
       ultimo_canto: { tag: nuevoNivel === 2 ? "retruco" : "vale_cuatro", por: user.id, ts: Date.now() },
-    }).eq("codigo", codigo);
+    };
+    // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+    {
+      const estadoAntesLog = { ...partida, ...freshPartida };
+      const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+      const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...nuevoEstado }, { userId: user.id });
+      const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+      if (textosLog.length) {
+        nuevoEstado.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+      }
+    }
+    // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
+    await supabase.from("partidas").update(nuevoEstado).eq("codigo", codigo);
     addLog(`¡${labels[nuevoNivel]}!`);
   }
 
@@ -1092,7 +1124,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (partida.truco_derecho_de !== user.id) return;
     const { data: freshPartida, error: errFresh } = await supabase
       .from("partidas")
-      .select("accion_pendiente, turno, truco_derecho_de, truco_nivel")
+      .select("accion_pendiente, turno, truco_derecho_de, truco_nivel, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
       .eq("codigo", codigo)
       .single();
     if (errFresh || !freshPartida) { console.error("escalarTrucoDiferido fetch fresco:", errFresh); return; }
@@ -1104,11 +1136,23 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const nuevoNivel = nivelActual + 1;
     const labels = { 2: 'Retruco', 3: 'Vale cuatro' };
     reproducirVoz(nuevoNivel === 2 ? 'retruco' : 'vale_cuatro');
-    await supabase.from("partidas").update({
+    const nuevoEstado = {
       accion_pendiente: { tipo: 'truco', nivel: nuevoNivel, cantado_por: user.id, si_quiero: nuevoNivel + 1, si_no: nuevoNivel },
       turno_inicio: new Date().toISOString(),
       ultimo_canto: { tag: nuevoNivel === 2 ? "retruco" : "vale_cuatro", por: user.id, ts: Date.now() },
-    }).eq("codigo", codigo);
+    };
+    // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+    {
+      const estadoAntesLog = { ...partida, ...freshPartida };
+      const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+      const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...nuevoEstado }, { userId: user.id });
+      const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+      if (textosLog.length) {
+        nuevoEstado.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+      }
+    }
+    // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
+    await supabase.from("partidas").update(nuevoEstado).eq("codigo", codigo);
     addLog(`¡${labels[nuevoNivel]}!`);
   }
 
@@ -1119,7 +1163,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (JSON.parse(partida.mesa || "[]").length >= 2) return;
     const { data: freshPartida, error: errFresh } = await supabase
       .from("partidas")
-      .select("accion_pendiente, envido_jugado, turno, mesa, puntos1, puntos2")
+      .select("accion_pendiente, envido_jugado, turno, mesa, puntos1, puntos2, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
       .eq("codigo", codigo)
       .single();
     if (errFresh || !freshPartida) { console.error("cantarEnvido fetch fresco:", errFresh); return; }
@@ -1130,7 +1174,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const falta = calcularFalta(puntosObj, freshPartida.puntos1 || 0, freshPartida.puntos2 || 0);
     const VALS = { envido: 2, real_envido: 3, falta_envido: falta };
     reproducirVoz(VOZ_ENV[subtipo] || 'envido');
-    await supabase.from("partidas").update({
+    const nuevoEstado = {
       accion_pendiente: {
         tipo: 'envido', subtipo, cadena: [subtipo],
         cantado_por: user.id, si_quiero: VALS[subtipo], si_no: 1,
@@ -1138,7 +1182,19 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       envido_jugado: true,
       turno_inicio: new Date().toISOString(),
       ultimo_canto: { tag: subtipo, por: user.id, ts: Date.now() },
-    }).eq("codigo", codigo);
+    };
+    // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+    {
+      const estadoAntesLog = { ...partida, ...freshPartida };
+      const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+      const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...nuevoEstado }, { userId: user.id });
+      const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+      if (textosLog.length) {
+        nuevoEstado.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+      }
+    }
+    // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
+    await supabase.from("partidas").update(nuevoEstado).eq("codigo", codigo);
     addLog(`¡${LABEL_ENV[subtipo]}!`);
   }
 
@@ -1150,7 +1206,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (JSON.parse(partida.mesa || "[]").length >= 2) return;
     const { data: freshPartida, error: errFresh } = await supabase
       .from("partidas")
-      .select("accion_pendiente, envido_jugado, mesa, puntos1, puntos2")
+      .select("accion_pendiente, envido_jugado, mesa, puntos1, puntos2, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
       .eq("codigo", codigo)
       .single();
     if (errFresh || !freshPartida) { console.error("cantarEnvidoSobreTruco fetch fresco:", errFresh); return; }
@@ -1162,7 +1218,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const falta = calcularFalta(puntosObj, freshPartida.puntos1 || 0, freshPartida.puntos2 || 0);
     const VALS = { envido: 2, real_envido: 3, falta_envido: falta };
     reproducirVoz(VOZ_ENV[subtipo] || 'envido');
-    await supabase.from("partidas").update({
+    const nuevoEstado = {
       truco_en_pausa: accFresh,
       accion_pendiente: {
         tipo: 'envido', subtipo, cadena: [subtipo],
@@ -1171,7 +1227,19 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       envido_jugado: true,
       turno_inicio: new Date().toISOString(),
       ultimo_canto: { tag: subtipo, por: user.id, ts: Date.now() },
-    }).eq("codigo", codigo);
+    };
+    // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+    {
+      const estadoAntesLog = { ...partida, ...freshPartida };
+      const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+      const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...nuevoEstado }, { userId: user.id });
+      const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+      if (textosLog.length) {
+        nuevoEstado.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+      }
+    }
+    // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
+    await supabase.from("partidas").update(nuevoEstado).eq("codigo", codigo);
     addLog(`¡${LABEL_ENV[subtipo]}! (el Truco queda en pausa)`);
   }
 
@@ -1181,7 +1249,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (!acc || acc.tipo !== 'envido' || acc.cantado_por === user.id) return;
     const { data: freshPartida, error: errFresh } = await supabase
       .from("partidas")
-      .select("accion_pendiente, puntos1, puntos2")
+      .select("accion_pendiente, puntos1, puntos2, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
       .eq("codigo", codigo)
       .single();
     if (errFresh || !freshPartida?.accion_pendiente) { console.error("escalarEnvido fetch fresco:", errFresh); return; }
@@ -1195,7 +1263,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const VALS = { envido: 2, real_envido: 3, falta_envido: falta };
     const nuevaCadena = [...(accFresh.cadena || [accFresh.subtipo]), subtipo];
     reproducirVoz(VOZ_ENV[subtipo] || 'envido');
-    await supabase.from("partidas").update({
+    const nuevoEstado = {
       accion_pendiente: {
         tipo: 'envido', subtipo, cadena: nuevaCadena,
         cantado_por: user.id,
@@ -1204,7 +1272,19 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       },
       turno_inicio: new Date().toISOString(),
       ultimo_canto: { tag: subtipo, por: user.id, ts: Date.now() },
-    }).eq("codigo", codigo);
+    };
+    // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+    {
+      const estadoAntesLog = { ...partida, ...freshPartida };
+      const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+      const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...nuevoEstado }, { userId: user.id });
+      const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+      if (textosLog.length) {
+        nuevoEstado.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+      }
+    }
+    // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
+    await supabase.from("partidas").update(nuevoEstado).eq("codigo", codigo);
     addLog(`¡${nuevaCadena.map(s => LABEL_ENV[s]).join(' + ')}!`);
   }
 
@@ -1218,20 +1298,32 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (acc.tipo === 'truco') {
       const { data: freshPartida, error: errFresh } = await supabase
         .from("partidas")
-        .select("accion_pendiente")
+        .select("accion_pendiente, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
         .eq("codigo", codigo)
         .single();
       if (errFresh || !freshPartida?.accion_pendiente) { console.error("quiero truco fetch fresco:", errFresh); return; }
       const accFresh = freshPartida.accion_pendiente;
       if (accFresh.cantado_por === user.id) return;
-      const { error: errQuieroTruco } = await supabase.from("partidas").update({
+      const updateTruco = {
         accion_pendiente: null,
         puntos_mano: accFresh.si_quiero,
         truco_nivel: accFresh.nivel,
         truco_derecho_de: user.id,
         turno_inicio: new Date().toISOString(),
         ultimo_canto: { tag: "quiero", por: user.id, ts: Date.now() },
-      }).eq("codigo", codigo);
+      };
+      // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+      {
+        const estadoAntesLog = { ...partida, ...freshPartida };
+        const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+        const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...updateTruco }, { userId: user.id });
+        const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+        if (textosLog.length) {
+          updateTruco.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+        }
+      }
+      // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
+      const { error: errQuieroTruco } = await supabase.from("partidas").update(updateTruco).eq("codigo", codigo);
       if (errQuieroTruco) {
         console.error("[quiero truco] UPDATE falló:", errQuieroTruco);
       } else {
@@ -1243,7 +1335,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     // Envido: fetch fresco antes de comparar y sumar
     const { data: freshPartida, error: errFresh } = await supabase
       .from("partidas")
-      .select("accion_pendiente, puntos1, puntos2")
+      .select("accion_pendiente, puntos1, puntos2, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
       .eq("codigo", codigo)
       .single();
     if (errFresh || !freshPartida?.accion_pendiente) { console.error("quiero envido fetch fresco:", errFresh); return; }
@@ -1272,10 +1364,34 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const np2 = (freshPartida.puntos2 || 0) + (ganadorEnv === partida.jugador2_id ? ptosEnvido : 0);
     if (np1 >= puntosObj || np2 >= puntosObj) {
       const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
-      const { error } = await supabase.from("partidas").update({ accion_pendiente: null, truco_en_pausa: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", envido_resultado: envidoRes, finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null, ultimo_canto: { tag: "quiero", por: user.id, ts: Date.now() } }).eq("codigo", codigo);
+      const updateGameOver = { accion_pendiente: null, truco_en_pausa: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", envido_resultado: envidoRes, finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null, ultimo_canto: { tag: "quiero", por: user.id, ts: Date.now() } };
+      // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+      {
+        const estadoAntesLog = { ...partida, ...freshPartida };
+        const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+        const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...updateGameOver }, { userId: user.id });
+        const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+        if (textosLog.length) {
+          updateGameOver.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+        }
+      }
+      // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
+      const { error } = await supabase.from("partidas").update(updateGameOver).eq("codigo", codigo);
       if (error) console.error("quiero envido gameOver:", error);
     } else {
-      const { error } = await supabase.from("partidas").update({ accion_pendiente: partida.truco_en_pausa || null, truco_en_pausa: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString(), envido_resultado: envidoRes, ultimo_canto: { tag: "quiero", por: user.id, ts: Date.now() } }).eq("codigo", codigo);
+      const updateContinua = { accion_pendiente: partida.truco_en_pausa || null, truco_en_pausa: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString(), envido_resultado: envidoRes, ultimo_canto: { tag: "quiero", por: user.id, ts: Date.now() } };
+      // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+      {
+        const estadoAntesLog = { ...partida, ...freshPartida };
+        const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+        const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...updateContinua }, { userId: user.id });
+        const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+        if (textosLog.length) {
+          updateContinua.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+        }
+      }
+      // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
+      const { error } = await supabase.from("partidas").update(updateContinua).eq("codigo", codigo);
       if (error) console.error("quiero envido:", error);
       // Limpiar envido_resultado después de que ambos clientes alcancen a mostrarlo (2.5s display + margen de red)
       setTimeout(async () => {
@@ -1295,7 +1411,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     if (acc.tipo === 'envido') {
       const { data: freshPartida, error: errFresh } = await supabase
         .from("partidas")
-        .select("accion_pendiente, puntos1, puntos2")
+        .select("accion_pendiente, puntos1, puntos2, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
         .eq("codigo", codigo)
         .single();
       if (errFresh || !freshPartida?.accion_pendiente) { console.error("noQuiero envido fetch fresco:", errFresh); return; }
@@ -1308,10 +1424,34 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       const gameOver = np1 >= puntosObj || np2 >= puntosObj;
       const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
       if (gameOver) {
-        const { error } = await supabase.from("partidas").update({ accion_pendiente: null, truco_en_pausa: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null, ultimo_canto: { tag: "no_quiero", por: user.id, ts: Date.now() } }).eq("codigo", codigo);
+        const updateGameOver = { accion_pendiente: null, truco_en_pausa: null, puntos1: np1, puntos2: np2, ganador_id: ganadorId, estado: "terminada", finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null, ultimo_canto: { tag: "no_quiero", por: user.id, ts: Date.now() } };
+        // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+        {
+          const estadoAntesLog = { ...partida, ...freshPartida };
+          const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+          const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...updateGameOver }, { userId: user.id });
+          const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+          if (textosLog.length) {
+            updateGameOver.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+          }
+        }
+        // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
+        const { error } = await supabase.from("partidas").update(updateGameOver).eq("codigo", codigo);
         if (error) console.error("noQuiero envido gameOver:", error);
       } else {
-        const { error } = await supabase.from("partidas").update({ accion_pendiente: partida.truco_en_pausa || null, truco_en_pausa: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString(), ultimo_canto: { tag: "no_quiero", por: user.id, ts: Date.now() } }).eq("codigo", codigo);
+        const updateContinua = { accion_pendiente: partida.truco_en_pausa || null, truco_en_pausa: null, puntos1: np1, puntos2: np2, turno_inicio: new Date().toISOString(), ultimo_canto: { tag: "no_quiero", por: user.id, ts: Date.now() } };
+        // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+        {
+          const estadoAntesLog = { ...partida, ...freshPartida };
+          const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+          const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...updateContinua }, { userId: user.id });
+          const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+          if (textosLog.length) {
+            updateContinua.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+          }
+        }
+        // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
+        const { error } = await supabase.from("partidas").update(updateContinua).eq("codigo", codigo);
         if (error) console.error("noQuiero envido:", error);
       }
       return;
@@ -1320,7 +1460,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     // Truco rechazado: termina la mano
     const { data: freshPartida, error: errFresh } = await supabase
       .from("partidas")
-      .select("accion_pendiente, puntos1, puntos2")
+      .select("accion_pendiente, puntos1, puntos2, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
       .eq("codigo", codigo)
       .single();
     if (errFresh || !freshPartida?.accion_pendiente) { console.error("noQuiero truco fetch fresco:", errFresh); return; }
@@ -1333,13 +1473,25 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const gameOver = np1 >= puntosObj || np2 >= puntosObj;
     const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
     if (gameOver) {
-      const { error } = await supabase.from("partidas").update({ accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1, ganador_id: ganadorId, estado: "terminada", finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null, ultimo_canto: { tag: "no_quiero", por: user.id, ts: Date.now() } }).eq("codigo", codigo);
+      const updateGameOver = { accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1, ganador_id: ganadorId, estado: "terminada", finalizado_en: new Date().toISOString(), motivo_fin: "puntaje", debia_jugada_id: null, ultimo_canto: { tag: "no_quiero", por: user.id, ts: Date.now() } };
+      // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+      {
+        const estadoAntesLog = { ...partida, ...freshPartida };
+        const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+        const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...updateGameOver }, { userId: user.id });
+        const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+        if (textosLog.length) {
+          updateGameOver.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+        }
+      }
+      // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
+      const { error } = await supabase.from("partidas").update(updateGameOver).eq("codigo", codigo);
       if (error) console.error("noQuiero truco gameOver:", error);
     } else {
       const nuevoMazo = mezclar(MAZO);
       const manoActualNQ = partida.mano_id || partida.jugador1_id;
       const siguienteManoNQ = manoActualNQ === partida.jugador1_id ? partida.jugador2_id : partida.jugador1_id;
-      const { error } = await supabase.from("partidas").update({
+      const updateRedeal = {
         accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1,
         envido_jugado: false, truco_jugado: false,
         truco_nivel: null, truco_derecho_de: null, truco_en_pausa: null,
@@ -1353,7 +1505,19 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         mano_id: siguienteManoNQ,
         turno_inicio: new Date().toISOString(),
         ultimo_canto: { tag: "no_quiero", por: user.id, ts: Date.now() },
-      }).eq("codigo", codigo);
+      };
+      // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+      {
+        const estadoAntesLog = { ...partida, ...freshPartida };
+        const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+        const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...updateRedeal }, { userId: user.id });
+        const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+        if (textosLog.length) {
+          updateRedeal.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+        }
+      }
+      // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
+      const { error } = await supabase.from("partidas").update(updateRedeal).eq("codigo", codigo);
       if (error) console.error("noQuiero truco:", error);
     }
   }
@@ -1366,7 +1530,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     setIrseAlMazoBloqueado(true);
     const { data: freshPartida, error: errFresh } = await supabase
       .from("partidas")
-      .select("puntos_mano, envido_jugado, mesa, truco_nivel, puntos1, puntos2")
+      .select("puntos_mano, envido_jugado, mesa, truco_nivel, puntos1, puntos2, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
       .eq("codigo", codigo)
       .single();
     if (errFresh) { console.error("irseAlMazo fetch fresco:", errFresh); irseAlMazoEjecutandoRef.current = false; setIrseAlMazoBloqueado(false); return; }
@@ -1396,26 +1560,50 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     const gameOver = np1 >= puntosObj || np2 >= puntosObj;
     const ganadorId = np1 >= puntosObj ? partida.jugador1_id : partida.jugador2_id;
     if (gameOver) {
-      const { error } = await supabase.from("partidas").update({
+      const updateGameOver = {
         accion_pendiente: null, puntos1: np1, puntos2: np2,
         puntos_mano: 1, ganador_id: ganadorId, estado: "terminada",
         finalizado_en: new Date().toISOString(), motivo_fin: motivoFin, debia_jugada_id: debiaJugadaId,
         ultimo_canto: { tag: "me_voy_al_mazo", por: user.id, ts: Date.now() },
-      }).eq("codigo", codigo);
+      };
+      // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+      {
+        const estadoAntesLog = { ...partida, ...freshPartida };
+        const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+        const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...updateGameOver }, { userId: user.id });
+        const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+        if (textosLog.length) {
+          updateGameOver.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+        }
+      }
+      // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
+      const { error } = await supabase.from("partidas").update(updateGameOver).eq("codigo", codigo);
       if (error) console.error("irseAlMazo gameOver:", error);
       irseAlMazoEjecutandoRef.current = false;
       setIrseAlMazoBloqueado(false);
     } else {
       // Paso 1: publicar puntaje — la suscripción lo muestra en ambos clientes
       setResolviendoMano(true);
-      const { error: err1 } = await supabase.from("partidas").update({
+      const paso1 = {
         accion_pendiente: null, puntos1: np1, puntos2: np2, puntos_mano: 1,
         envido_jugado: false, truco_jugado: false,
         truco_nivel: null, truco_derecho_de: null, truco_en_pausa: null,
         envido_resultado: null,
         turno: user.id,
         ultimo_canto: { tag: "me_voy_al_mazo", por: user.id, ts: Date.now() },
-      }).eq("codigo", codigo);
+      };
+      // === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+      {
+        const estadoAntesLog = { ...partida, ...freshPartida };
+        const rivalNombreCortoLog = (soyJugador1 ? estadoAntesLog.jugador2_nombre : estadoAntesLog.jugador1_nombre) || "Rival";
+        const eventosLog = derivarEventosPartida(estadoAntesLog, { ...estadoAntesLog, ...paso1 }, { userId: user.id });
+        const textosLog = textosCortosDeEventos(eventosLog, { soyJugador1, rivalNombreCorto: rivalNombreCortoLog });
+        if (textosLog.length) {
+          paso1.jugadas_log = [...(estadoAntesLog.jugadas_log || []), ...textosLog.map(texto => ({ id: Date.now() + Math.random(), texto }))];
+        }
+      }
+      // === FIN DEBUG TEMPORAL — PERSISTENCIA ===
+      const { error: err1 } = await supabase.from("partidas").update(paso1).eq("codigo", codigo);
       if (err1) { console.error("irseAlMazo paso1:", err1); setResolviendoMano(false); irseAlMazoEjecutandoRef.current = false; setIrseAlMazoBloqueado(false); return; }
       // Paso 2: tras la misma pausa que jugarCarta, repartir nueva mano
       await new Promise(resolve => setTimeout(resolve, 1500));
