@@ -225,6 +225,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const noQuieroRef = useRef(null);
   const irseAlMazoEjecutandoRef = useRef(false); // guard síncrono anti doble-ejecución (click + timeout)
   const [irseAlMazoBloqueado, setIrseAlMazoBloqueado] = useState(false); // espejo para disabled del botón
+  const respuestaCantoEjecutandoRef = useRef(false); // guard síncrono anti doble-ejecución (quiero/no quiero: click + timeout de 15s vía noQuieroRef)
+  const [respuestaCantoBloqueada, setRespuestaCantoBloqueada] = useState(false); // espejo para disabled de Quiero/No quiero
   const ultimoCantoMostradoRef = useRef(null);
   const resolviendoManoRef = useRef(false);
   const refetchPartidaRef = useRef(null);
@@ -1217,9 +1219,12 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   }
 
   async function quiero() {
+    if (respuestaCantoEjecutandoRef.current) return;
     if (debugBloqueo) return; // DEBUG TEMPORAL
     const acc = partida?.accion_pendiente;
     if (!acc || acc.cantado_por === user.id) return;
+    respuestaCantoEjecutandoRef.current = true;
+    setRespuestaCantoBloqueada(true);
     reproducirVoz('quiero');
     const puntosObj = partida.puntos || 15;
 
@@ -1229,9 +1234,18 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         .select("accion_pendiente, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
         .eq("codigo", codigo)
         .single();
-      if (errFresh || !freshPartida?.accion_pendiente) { console.error("quiero truco fetch fresco:", errFresh); return; }
+      if (errFresh || !freshPartida?.accion_pendiente) {
+        console.error("quiero truco fetch fresco:", errFresh);
+        respuestaCantoEjecutandoRef.current = false;
+        setRespuestaCantoBloqueada(false);
+        return;
+      }
       const accFresh = freshPartida.accion_pendiente;
-      if (accFresh.cantado_por === user.id) return;
+      if (accFresh.cantado_por === user.id) {
+        respuestaCantoEjecutandoRef.current = false;
+        setRespuestaCantoBloqueada(false);
+        return;
+      }
       const updateTruco = {
         accion_pendiente: null,
         puntos_mano: accFresh.si_quiero,
@@ -1248,6 +1262,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       } else {
         addLog(`Quiero. Mano vale ${accFresh.si_quiero} pt${accFresh.si_quiero > 1 ? 's' : ''}.`);
       }
+      respuestaCantoEjecutandoRef.current = false;
+      setRespuestaCantoBloqueada(false);
       return;
     }
 
@@ -1257,9 +1273,18 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       .select("accion_pendiente, puntos1, puntos2, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
       .eq("codigo", codigo)
       .single();
-    if (errFresh || !freshPartida?.accion_pendiente) { console.error("quiero envido fetch fresco:", errFresh); return; }
+    if (errFresh || !freshPartida?.accion_pendiente) {
+      console.error("quiero envido fetch fresco:", errFresh);
+      respuestaCantoEjecutandoRef.current = false;
+      setRespuestaCantoBloqueada(false);
+      return;
+    }
     const accFresh = freshPartida.accion_pendiente;
-    if (accFresh.cantado_por === user.id) return;
+    if (accFresh.cantado_por === user.id) {
+      respuestaCantoEjecutandoRef.current = false;
+      setRespuestaCantoBloqueada(false);
+      return;
+    }
 
     // Envido: comparar valores
     const mano1 = JSON.parse(partida.mano_original_j1 || partida.mano_jugador1);
@@ -1300,12 +1325,17 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         if (errClean) console.error("quiero envido cleanup:", errClean);
       }, 4000);
     }
+    respuestaCantoEjecutandoRef.current = false;
+    setRespuestaCantoBloqueada(false);
   }
 
   async function noQuiero() {
+    if (respuestaCantoEjecutandoRef.current) return;
     if (debugBloqueo) return; // DEBUG TEMPORAL
     const acc = partida?.accion_pendiente;
     if (!acc || acc.cantado_por === user.id) return;
+    respuestaCantoEjecutandoRef.current = true;
+    setRespuestaCantoBloqueada(true);
     reproducirVoz('no_quiero');
     const puntosObj = partida.puntos || 15;
 
@@ -1315,9 +1345,18 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         .select("accion_pendiente, puntos1, puntos2, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
         .eq("codigo", codigo)
         .single();
-      if (errFresh || !freshPartida?.accion_pendiente) { console.error("noQuiero envido fetch fresco:", errFresh); return; }
+      if (errFresh || !freshPartida?.accion_pendiente) {
+        console.error("noQuiero envido fetch fresco:", errFresh);
+        respuestaCantoEjecutandoRef.current = false;
+        setRespuestaCantoBloqueada(false);
+        return;
+      }
       const accFresh = freshPartida.accion_pendiente;
-      if (accFresh.cantado_por === user.id) return;
+      if (accFresh.cantado_por === user.id) {
+        respuestaCantoEjecutandoRef.current = false;
+        setRespuestaCantoBloqueada(false);
+        return;
+      }
       const callerEsJ1 = accFresh.cantado_por === partida.jugador1_id;
       const np1 = (freshPartida.puntos1 || 0) + (callerEsJ1 ? accFresh.si_no : 0);
       const np2 = (freshPartida.puntos2 || 0) + (!callerEsJ1 ? accFresh.si_no : 0);
@@ -1337,6 +1376,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         const { error } = await supabase.from("partidas").update(updateContinua).eq("codigo", codigo);
         if (error) console.error("noQuiero envido:", error);
       }
+      respuestaCantoEjecutandoRef.current = false;
+      setRespuestaCantoBloqueada(false);
       return;
     }
 
@@ -1346,9 +1387,18 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       .select("accion_pendiente, puntos1, puntos2, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
       .eq("codigo", codigo)
       .single();
-    if (errFresh || !freshPartida?.accion_pendiente) { console.error("noQuiero truco fetch fresco:", errFresh); return; }
+    if (errFresh || !freshPartida?.accion_pendiente) {
+      console.error("noQuiero truco fetch fresco:", errFresh);
+      respuestaCantoEjecutandoRef.current = false;
+      setRespuestaCantoBloqueada(false);
+      return;
+    }
     const accFresh = freshPartida.accion_pendiente;
-    if (accFresh.cantado_por === user.id) return;
+    if (accFresh.cantado_por === user.id) {
+      respuestaCantoEjecutandoRef.current = false;
+      setRespuestaCantoBloqueada(false);
+      return;
+    }
     const callerEsJ1 = accFresh.cantado_por === partida.jugador1_id;
     const np1 = (freshPartida.puntos1 || 0) + (callerEsJ1 ? accFresh.si_no : 0);
     const np2 = (freshPartida.puntos2 || 0) + (!callerEsJ1 ? accFresh.si_no : 0);
@@ -1385,6 +1435,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       const { error } = await supabase.from("partidas").update(updateRedeal).eq("codigo", codigo);
       if (error) console.error("noQuiero truco:", error);
     }
+    respuestaCantoEjecutandoRef.current = false;
+    setRespuestaCantoBloqueada(false);
   }
 
   async function irseAlMazo(origen = "manual") {
@@ -1857,7 +1909,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
               </>
             ) : (
               <>
-                <button onClick={quiero} style={{ ...btnStyle("#065f46","#4ade80"), flex:"0 1 30%", minWidth:100 }}>Quiero</button>
+                <button disabled={respuestaCantoBloqueada} onClick={quiero} style={{ ...btnStyle("#065f46","#4ade80"), flex:"0 1 30%", minWidth:100, opacity: respuestaCantoBloqueada ? 0.5 : 1, cursor: respuestaCantoBloqueada ? "not-allowed" : "pointer" }}>Quiero</button>
                 {esTruco && acc.nivel === 1 && (
                   <button onClick={subirTruco} style={{ ...btnStyle("#92400e","#fbbf24"), flex:"0 1 30%", minWidth:100 }}>Quiero Retruco</button>
                 )}
@@ -1879,7 +1931,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
                 {!esTruco && acc.subtipo === 'real_envido' && (
                   <button onClick={()=>escalarEnvido('falta_envido')} style={{ ...btnStyle("#065f46","#34d399"), flex:"0 1 30%", minWidth:100 }}>Falta Envido</button>
                 )}
-                <button onClick={noQuiero} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100 }}>No quiero</button>
+                <button disabled={respuestaCantoBloqueada} onClick={noQuiero} style={{ ...btnStyle("#7f1d1d","#f87171"), flex:"0 1 30%", minWidth:100, opacity: respuestaCantoBloqueada ? 0.5 : 1, cursor: respuestaCantoBloqueada ? "not-allowed" : "pointer" }}>No quiero</button>
               </>
             );
           })()}
