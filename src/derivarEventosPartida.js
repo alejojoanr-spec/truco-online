@@ -42,17 +42,18 @@ export function derivarEventosPartida(prev, p, { userId }) {
   const esNuevoUltimoCanto = p.ultimo_canto && p.ultimo_canto.ts !== prev.ultimo_canto?.ts;
   if (esNuevoUltimoCanto) {
     const tag = p.ultimo_canto.tag;
-    const disparadoPorMi = p.ultimo_canto.por === userId;
+    const actorId = p.ultimo_canto.por;
+    const disparadoPorMi = actorId === userId;
     if (tag === 'quiero' || tag === 'no_quiero') {
       const cantoResuelto = prev.accion_pendiente || null;
       eventos.push({
-        campo: "accion_pendiente", tipoEvento: tag, disparadoPorMi,
+        campo: "accion_pendiente", tipoEvento: tag, disparadoPorMi, actorId,
         cantoResuelto, cantoResueltoLabel: cantoResuelto ? getCantoLabel(cantoResuelto) : '',
         anterior: prev.accion_pendiente || null, nuevo: p.accion_pendiente || null,
       });
     } else if (p.accion_pendiente && ['truco', 'retruco', 'vale_cuatro', 'envido', 'real_envido', 'falta_envido'].includes(tag)) {
       eventos.push({
-        campo: "accion_pendiente", tipoEvento: "canto", disparadoPorMi,
+        campo: "accion_pendiente", tipoEvento: "canto", disparadoPorMi, actorId,
         cantoNuevo: p.accion_pendiente, cantoNuevoLabel: getCantoLabel(p.accion_pendiente),
         anterior: prev.accion_pendiente || null, nuevo: p.accion_pendiente,
       });
@@ -85,3 +86,52 @@ export function textosCortosDeEventos(eventosPartida, { soyJugador1, rivalNombre
   }
   return textos;
 }
+
+// === DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN) ===
+// A diferencia de textosCortosDeEventos, estas entradas no llevan "Vos"/nombre
+// del rival: quedan etiquetadas con el jugador absoluto (j1/j2) para que
+// jugadas_log sirva para auditar la partida sin importar quién la escribió.
+// La traducción a "Vos" vs nombre del rival se hace recién al mostrarlas
+// (ver formatearEntradaJugadaLog), no al persistirlas.
+function entradasNeutralesDeEventos(eventosPartida, { jugador1Id }) {
+  const entradas = [];
+  for (const ev of eventosPartida) {
+    if (ev.campo === "puntos1" || ev.campo === "puntos2") {
+      entradas.push({ jugador: ev.jugadorClave, tipo: "delta", delta: ev.delta });
+    } else if (ev.campo === "accion_pendiente") {
+      const jugador = ev.actorId === jugador1Id ? "j1" : "j2";
+      if (ev.tipoEvento === 'quiero') entradas.push({ jugador, tipo: "quiero" });
+      else if (ev.tipoEvento === 'no_quiero') entradas.push({ jugador, tipo: "no_quiero" });
+      else if (ev.tipoEvento === 'canto') entradas.push({ jugador, tipo: "canto", cantoLabel: ev.cantoNuevoLabel });
+    } else if (ev.campo === "envido_resultado") {
+      const revelado = ev.nuevo.texto_j1.includes("Son buenas") ? ev.nuevo.texto_j2 : ev.nuevo.texto_j1;
+      entradas.push({ jugador: null, tipo: "envido", texto: revelado.replace(/[¡!]/g, '') });
+    }
+  }
+  return entradas;
+}
+
+// Traduce una entrada neutral de jugadas_log a texto legible desde la
+// perspectiva de quien la está mirando. Para usar cuando se consulte el
+// historial persistido (por SQL o en alguna pantalla), no al guardarlo.
+export function formatearEntradaJugadaLog(entrada, { soyJugador1, rivalNombreCorto }) {
+  if (entrada.tipo === "envido") return `Envido: ${entrada.texto}`;
+  const nombre = entrada.jugador === (soyJugador1 ? "j1" : "j2") ? "Vos" : rivalNombreCorto;
+  if (entrada.tipo === "delta") return `${nombre}: ${entrada.delta >= 0 ? '+' : ''}${entrada.delta}`;
+  if (entrada.tipo === "quiero") return `${nombre}: QUIERO`;
+  if (entrada.tipo === "no_quiero") return `${nombre}: NO QUIERO`;
+  if (entrada.tipo === "canto") return `${nombre}: ${entrada.cantoLabel.toUpperCase()}`;
+  return '';
+}
+
+// Deriva los eventos entre estadoAntes y estadoAntes+updates, y si hay
+// alguno relevante, agrega las entradas neutrales resultantes a
+// updates.jugadas_log (mutando `updates` in place, como hacen los call
+// sites de Multijugador.js con el resto de los campos a actualizar).
+export function appendJugadasLog(estadoAntes, updates, { userId }) {
+  const eventos = derivarEventosPartida(estadoAntes, { ...estadoAntes, ...updates }, { userId });
+  const entradas = entradasNeutralesDeEventos(eventos, { jugador1Id: estadoAntes.jugador1_id });
+  if (!entradas.length) return;
+  updates.jugadas_log = [...(estadoAntes.jugadas_log || []), ...entradas.map(entrada => ({ id: Date.now() + Math.random(), ...entrada }))];
+}
+// === FIN DEBUG TEMPORAL — PERSISTENCIA ===
