@@ -707,13 +707,18 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       const segundosSinActividad = (Date.now() - new Date(ultimaRival).getTime()) / 1000;
       if (segundosSinActividad > 90) {
         abandonoDetectado = true;
-        const { error } = await supabase.from("partidas").update({
+        const rivalId = soyJugador1 ? p.jugador2_id : p.jugador1_id;
+        const updateAbandono = {
           ganador_id: user.id,
           estado: "terminada",
           finalizado_en: new Date().toISOString(),
           motivo_fin: "abandono",
           debia_jugada_id: null,
-        }).eq("codigo", codigo);
+          ultimo_canto: { tag: "abandono_inactividad", por: rivalId, ts: Date.now() },
+        };
+        // DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN)
+        appendJugadasLog({ ...p }, updateAbandono, { userId: user.id });
+        const { error } = await supabase.from("partidas").update(updateAbandono).eq("codigo", codigo);
         if (error) console.error("abandono por inactividad:", error);
       }
     }
@@ -1030,8 +1035,15 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       const rivalId = soyJugador1 ? partida.jugador2_id : partida.jugador1_id;
       if (rivalId) {
         pagoProcesadoRef.current = true;
+        const updateAbandono = {
+          ganador_id: rivalId, estado: "terminada", finalizado_en: new Date().toISOString(),
+          motivo_fin: "abandono", debia_jugada_id: null,
+          ultimo_canto: { tag: "salio_de_partida", por: user.id, ts: Date.now() },
+        };
+        // DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN)
+        appendJugadasLog({ ...partida }, updateAbandono, { userId: user.id });
         await supabase.from("partidas")
-          .update({ ganador_id: rivalId, estado: "terminada", finalizado_en: new Date().toISOString(), motivo_fin: "abandono", debia_jugada_id: null })
+          .update(updateAbandono)
           .eq("codigo", codigo);
       }
     }

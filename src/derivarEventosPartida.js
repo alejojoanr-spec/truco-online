@@ -21,11 +21,24 @@ export function derivarEventosPartida(prev, p, { userId }) {
   if (!prev) return [];
   const eventos = [];
 
+  // Solo algunos call-sites de Multijugador.js piden mesa/envido_jugado/
+  // puntos_mano frescos en su SELECT antes de escribir; cuando no los piden,
+  // `estado[campo]` es undefined y NO lo tratamos como 0/false (sería un
+  // dato falso) — dejamos null para marcar "no capturado en este punto".
+  function contextoMano(estado) {
+    return {
+      mesaLen: estado.mesa !== undefined ? JSON.parse(estado.mesa || "[]").length : null,
+      envidoJugado: estado.envido_jugado !== undefined ? !!estado.envido_jugado : null,
+      puntosMano: estado.puntos_mano !== undefined ? (estado.puntos_mano || 1) : null,
+    };
+  }
+
   if (prev.puntos1 !== p.puntos1) {
     eventos.push({
       campo: "puntos1", jugadorClave: "j1",
       delta: (p.puntos1 || 0) - (prev.puntos1 || 0),
       anterior: prev.puntos1, nuevo: p.puntos1,
+      ...contextoMano(prev),
     });
   }
   if (prev.puntos2 !== p.puntos2) {
@@ -33,6 +46,7 @@ export function derivarEventosPartida(prev, p, { userId }) {
       campo: "puntos2", jugadorClave: "j2",
       delta: (p.puntos2 || 0) - (prev.puntos2 || 0),
       anterior: prev.puntos2, nuevo: p.puntos2,
+      ...contextoMano(prev),
     });
   }
   if (prev.puntos_mano !== p.puntos_mano) {
@@ -57,6 +71,22 @@ export function derivarEventosPartida(prev, p, { userId }) {
         cantoNuevo: p.accion_pendiente, cantoNuevoLabel: getCantoLabel(p.accion_pendiente),
         anterior: prev.accion_pendiente || null, nuevo: p.accion_pendiente,
       });
+    } else if (tag === 'me_voy_al_mazo') {
+      eventos.push({
+        campo: "accion_pendiente", tipoEvento: "me_voy_al_mazo", disparadoPorMi, actorId,
+        ...contextoMano(prev),
+        anterior: prev.accion_pendiente || null, nuevo: p.accion_pendiente || null,
+      });
+    } else if (tag === 'abandono_inactividad') {
+      eventos.push({
+        campo: "accion_pendiente", tipoEvento: "abandono_inactividad", disparadoPorMi, actorId,
+        anterior: prev.accion_pendiente || null, nuevo: p.accion_pendiente || null,
+      });
+    } else if (tag === 'salio_de_partida') {
+      eventos.push({
+        campo: "accion_pendiente", tipoEvento: "salio_de_partida", disparadoPorMi, actorId,
+        anterior: prev.accion_pendiente || null, nuevo: p.accion_pendiente || null,
+      });
     }
   }
 
@@ -78,6 +108,9 @@ export function textosCortosDeEventos(eventosPartida, { soyJugador1, rivalNombre
       if (ev.tipoEvento === 'quiero') textos.push(`${nombre}: QUIERO`);
       else if (ev.tipoEvento === 'no_quiero') textos.push(`${nombre}: NO QUIERO`);
       else if (ev.tipoEvento === 'canto') textos.push(`${nombre}: ${ev.cantoNuevoLabel.toUpperCase()}`);
+      else if (ev.tipoEvento === 'me_voy_al_mazo') textos.push(`${nombre}: SE FUE AL MAZO`);
+      else if (ev.tipoEvento === 'abandono_inactividad') textos.push(`${nombre}: ABANDONÓ POR INACTIVIDAD`);
+      else if (ev.tipoEvento === 'salio_de_partida') textos.push(`${nombre}: SE FUE DE LA PARTIDA`);
     } else if (ev.campo === "envido_resultado") {
       const revelado = ev.nuevo.texto_j1.includes("Son buenas") ? ev.nuevo.texto_j2 : ev.nuevo.texto_j1;
       textos.push(`Envido: ${revelado.replace(/[¡!]/g, '')}`);
@@ -97,12 +130,15 @@ function entradasNeutralesDeEventos(eventosPartida, { jugador1Id }) {
   const entradas = [];
   for (const ev of eventosPartida) {
     if (ev.campo === "puntos1" || ev.campo === "puntos2") {
-      entradas.push({ jugador: ev.jugadorClave, tipo: "delta", delta: ev.delta });
+      entradas.push({ jugador: ev.jugadorClave, tipo: "delta", delta: ev.delta, mesaLen: ev.mesaLen, envidoJugado: ev.envidoJugado, puntosMano: ev.puntosMano });
     } else if (ev.campo === "accion_pendiente") {
       const jugador = ev.actorId === jugador1Id ? "j1" : "j2";
       if (ev.tipoEvento === 'quiero') entradas.push({ jugador, tipo: "quiero" });
       else if (ev.tipoEvento === 'no_quiero') entradas.push({ jugador, tipo: "no_quiero" });
       else if (ev.tipoEvento === 'canto') entradas.push({ jugador, tipo: "canto", cantoLabel: ev.cantoNuevoLabel });
+      else if (ev.tipoEvento === 'me_voy_al_mazo') entradas.push({ jugador, tipo: "me_voy_al_mazo", mesaLen: ev.mesaLen, envidoJugado: ev.envidoJugado, puntosMano: ev.puntosMano });
+      else if (ev.tipoEvento === 'abandono_inactividad') entradas.push({ jugador, tipo: "abandono_inactividad" });
+      else if (ev.tipoEvento === 'salio_de_partida') entradas.push({ jugador, tipo: "salio_de_partida" });
     } else if (ev.campo === "envido_resultado") {
       const revelado = ev.nuevo.texto_j1.includes("Son buenas") ? ev.nuevo.texto_j2 : ev.nuevo.texto_j1;
       entradas.push({ jugador: null, tipo: "envido", texto: revelado.replace(/[¡!]/g, '') });
@@ -117,10 +153,16 @@ function entradasNeutralesDeEventos(eventosPartida, { jugador1Id }) {
 export function formatearEntradaJugadaLog(entrada, { soyJugador1, rivalNombreCorto }) {
   if (entrada.tipo === "envido") return `Envido: ${entrada.texto}`;
   const nombre = entrada.jugador === (soyJugador1 ? "j1" : "j2") ? "Vos" : rivalNombreCorto;
-  if (entrada.tipo === "delta") return `${nombre}: ${entrada.delta >= 0 ? '+' : ''}${entrada.delta}`;
+  if (entrada.tipo === "delta") {
+    const contexto = entrada.mesaLen != null ? ` (mesa=${entrada.mesaLen}, envido_jugado=${entrada.envidoJugado}, puntos_mano=${entrada.puntosMano})` : '';
+    return `${nombre}: ${entrada.delta >= 0 ? '+' : ''}${entrada.delta}${contexto}`;
+  }
   if (entrada.tipo === "quiero") return `${nombre}: QUIERO`;
   if (entrada.tipo === "no_quiero") return `${nombre}: NO QUIERO`;
   if (entrada.tipo === "canto") return `${nombre}: ${entrada.cantoLabel.toUpperCase()}`;
+  if (entrada.tipo === "me_voy_al_mazo") return `${nombre}: SE FUE AL MAZO (mesa=${entrada.mesaLen}, envido_jugado=${entrada.envidoJugado}, puntos_mano=${entrada.puntosMano})`;
+  if (entrada.tipo === "abandono_inactividad") return `${nombre}: ABANDONÓ POR INACTIVIDAD`;
+  if (entrada.tipo === "salio_de_partida") return `${nombre}: SE FUE DE LA PARTIDA`;
   return '';
 }
 
