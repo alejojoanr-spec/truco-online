@@ -1290,17 +1290,21 @@ export default function App() {
       // Verificar si hay una partida activa guardada (para recuperar tras recarga o cierre de pestaña)
       const savedCodigo = localStorage.getItem(`truco_partida_${u.id}`);
       if (savedCodigo) {
-        const { data: p } = await supabase
-          .from("partidas")
-          .select("jugador1_id, jugador2_id, estado")
-          .eq("codigo", savedCodigo)
-          .maybeSingle();
-        if (p?.estado === "jugando" &&
-            (p.jugador1_id === u.id || p.jugador2_id === u.id)) {
-          setCodigoRejoin(savedCodigo);
-          setModoJuego("multi");
-        } else {
-          localStorage.removeItem(`truco_partida_${u.id}`);
+        try {
+          const { data: p } = await supabase
+            .from("partidas")
+            .select("jugador1_id, jugador2_id, estado")
+            .eq("codigo", savedCodigo)
+            .maybeSingle();
+          if (p?.estado === "jugando" &&
+              (p.jugador1_id === u.id || p.jugador2_id === u.id)) {
+            setCodigoRejoin(savedCodigo);
+            setModoJuego("multi");
+          } else {
+            localStorage.removeItem(`truco_partida_${u.id}`);
+          }
+        } catch (err) {
+          console.warn("No se pudo verificar la partida guardada:", err);
         }
       }
     } else {

@@ -14,10 +14,9 @@ export const GLOBO_TEXTOS = {
   falta_envido:   "¡Falta envido!",
 };
 
-function GrupoCinco({ activos }) {
-  const a = "#fbbf24";
+function GrupoCinco({ activos, colorActivo = "#fbbf24" }) {
   const i = "rgba(255,140,160,0.35)";
-  const c = (n) => activos >= n ? a : i;
+  const c = (n) => activos >= n ? colorActivo : i;
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" style={{ flexShrink:0 }}>
       <line x1="2"  y1="2"  x2="22" y2="2"  stroke={c(1)} strokeWidth="2" strokeLinecap="round"/>
@@ -32,13 +31,15 @@ function GrupoCinco({ activos }) {
 export function PalitosPuntaje({ puntos, total = 15 }) {
   const POR_GRUPO = 5;
   const GRUPOS_POR_FILA = 3;
-  const puntosEscalados = Math.round(puntos / (total / 15));
+  const enBuenas = total === 30 && puntos >= 15;
+  const puntosMostrados = enBuenas ? puntos % 15 : puntos;
+  const colorActivo = enBuenas ? "#f59e0b" : "#fbbf24";
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
       <div style={{ display:"flex", gap:8 }}>
         {Array.from({ length:GRUPOS_POR_FILA }, (_, grupo) => {
           const base = grupo * POR_GRUPO;
-          return <GrupoCinco key={grupo} activos={Math.min(POR_GRUPO, Math.max(0, puntosEscalados - base))} />;
+          return <GrupoCinco key={grupo} activos={Math.min(POR_GRUPO, Math.max(0, puntosMostrados - base))} colorActivo={colorActivo} />;
         })}
       </div>
     </div>
