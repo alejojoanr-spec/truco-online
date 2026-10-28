@@ -23,7 +23,7 @@ function codigoPartidaPendiente(bracket, userId) {
   return null;
 }
 
-export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo, torneoInicialId }) {
+export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo, onPerfilActualizado, torneoInicialId }) {
   const [torneos, setTorneos] = useState([]);
   const [pantalla, setPantalla] = useState("lista"); // lista | crear | detalle
   const [torneoSeleccionado, setTorneoSeleccionado] = useState(null);
@@ -86,6 +86,8 @@ export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo, to
     setNombre(""); setMaxJugadores(8); setEntrada(0);
     cargarTorneos();
     setPantalla("lista");
+    const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+    if (fresh) onPerfilActualizado(p => ({ ...p, saldo: fresh.saldo }));
   }
 
   async function unirseATorneo(torneo) {
@@ -94,6 +96,8 @@ export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo, to
     cargarTorneos();
     const { data } = await supabase.from("torneo_jugadores").select("*").eq("torneo_id", torneo.id).order("posicion");
     if (data) setJugadoresTorneo(data);
+    const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+    if (fresh) onPerfilActualizado(p => ({ ...p, saldo: fresh.saldo }));
   }
 
   async function verDetalle(torneo) {

@@ -376,7 +376,7 @@ const IconVolver = () => (
   </svg>
 );
 
-export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaIniciada, onVolver }) {
+export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, onUnirse, onPartidaIniciada, onVolver }) {
   const [salas, setSalas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [torneosAbiertos, setTorneosAbiertos] = useState([]);
@@ -693,6 +693,8 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
       if (error) { setErrorCrear(error); return; }
       setPantalla("lobby");
       cargarTorneos();
+      const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+      if (fresh) onPerfilActualizado(p => ({ ...p, saldo: fresh.saldo }));
       return;
     }
 
@@ -795,6 +797,8 @@ export default function Lobby({ user, perfil, onJugarIA, onUnirse, onPartidaInic
     setUniendose(null);
     if (error) { setErrorTorneo(error); return; }
     cargarTorneos();
+    const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+    if (fresh) onPerfilActualizado(p => ({ ...p, saldo: fresh.saldo }));
   }
 
   async function jugarContraIA() {

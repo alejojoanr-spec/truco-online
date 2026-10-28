@@ -1384,6 +1384,7 @@ export default function App() {
       <Torneos
         user={user}
         perfil={perfil}
+        onPerfilActualizado={setPerfil}
         torneoInicialId={torneoInicialId}
         onVolver={()=>{ setVerTorneos(false); setTorneoInicialId(null); }}
         onIrAPartidaTorneo={(codigo) => {
@@ -1403,6 +1404,7 @@ export default function App() {
       <Lobby
         user={user}
         perfil={perfil}
+        onPerfilActualizado={setPerfil}
         onJugarIA={() => setModoJuego("single")}
         onUnirse={(cod) => {
           setCodigoUnirse(cod);
