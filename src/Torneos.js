@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
-import { crearTorneo as crearTorneoApi, unirseATorneo as unirseATorneoApi } from "./torneosApi";
+import { crearTorneo as crearTorneoApi, unirseATorneo as unirseATorneoApi, salirDeTorneo as salirDeTorneoApi } from "./torneosApi";
 
 // Soporta los dos formatos de bracket: v1 {ronda1:[...], final:{...}} y v2 {rondas:[{nombre, duelos:[...]}]}
 function codigoPartidaPendiente(bracket, userId) {
@@ -100,6 +100,18 @@ export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo, on
     if (fresh) onPerfilActualizado(p => ({ ...p, saldo: fresh.saldo }));
   }
 
+  async function salirDelTorneo(torneo) {
+    if (!window.confirm("¿Salir del torneo? Se te devolverá la entrada si la pagaste.")) return;
+    const { error } = await salirDeTorneoApi({ torneo });
+    if (error) { alert(error); return; }
+    cargarTorneos();
+    const { data } = await supabase.from("torneo_jugadores").select("*").eq("torneo_id", torneo.id).order("posicion");
+    if (data) setJugadoresTorneo(data);
+    const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
+    if (fresh) onPerfilActualizado(p => ({ ...p, saldo: fresh.saldo }));
+    if (data && data.length === 0) setPantalla("lista");
+  }
+
   async function verDetalle(torneo) {
     setTorneoSeleccionado(torneo);
     const { data } = await supabase.from("torneo_jugadores").select("*").eq("torneo_id", torneo.id).order("posicion");
@@ -153,7 +165,9 @@ export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo, on
     </div>
   );
 
-  if (pantalla === "detalle" && torneoSeleccionado) return (
+  if (pantalla === "detalle" && torneoSeleccionado) {
+    const yaInscripto = jugadoresTorneo.some(j => j.jugador_id === user.id);
+    return (
     <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",padding:"24px 16px",fontFamily:"Georgia,serif" }}>
       <div style={{ maxWidth:500,margin:"0 auto" }}>
         <button onClick={()=>setPantalla("lista")} style={{ background:"transparent",border:"none",color:"#4ade80",fontSize:14,cursor:"pointer",marginBottom:16 }}>← Volver</button>
@@ -183,14 +197,21 @@ export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo, on
           ))}
         </div>
 
-        {torneoSeleccionado.estado === "abierto" && (
+        {torneoSeleccionado.estado === "abierto" && !yaInscripto && (
           <button onClick={()=>unirseATorneo(torneoSeleccionado)} style={{ width:"100%",padding:14,borderRadius:10,background:"#1a472a",border:"1px solid #4ade80",color:"#4ade80",fontSize:16,cursor:"pointer",fontFamily:"Georgia",fontWeight:700 }}>
             ✅ Inscribirme al torneo
           </button>
         )}
+
+        {torneoSeleccionado.estado === "abierto" && yaInscripto && (
+          <button onClick={()=>salirDelTorneo(torneoSeleccionado)} style={{ width:"100%",padding:14,borderRadius:10,background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.35)",color:"#f87171",fontSize:16,cursor:"pointer",fontFamily:"Georgia",fontWeight:700 }}>
+            🚪 Irme del torneo
+          </button>
+        )}
       </div>
     </div>
-  );
+    );
+  }
 
   return (
     <div style={{ minHeight:"100vh",background:"radial-gradient(ellipse at center,#1a472a 0%,#0a2414 50%,#050f08 100%)",padding:"24px 16px",fontFamily:"Georgia,serif" }}>

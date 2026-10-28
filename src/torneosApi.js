@@ -61,3 +61,10 @@ export async function unirseATorneo({ user, torneo }) {
 
   return { data: true };
 }
+
+export async function salirDeTorneo({ torneo }) {
+  const { error } = await supabase.rpc("salir_torneo", { p_torneo_id: torneo.id });
+  if (error) return { error: error.message };
+
+  return { data: true };
+}
