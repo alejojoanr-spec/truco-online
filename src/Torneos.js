@@ -2,6 +2,27 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import { crearTorneo as crearTorneoApi, unirseATorneo as unirseATorneoApi } from "./torneosApi";
 
+// Soporta los dos formatos de bracket: v1 {ronda1:[...], final:{...}} y v2 {rondas:[{nombre, duelos:[...]}]}
+function codigoPartidaPendiente(bracket, userId) {
+  if (!bracket) return null;
+
+  if (Array.isArray(bracket.rondas)) {
+    for (const ronda of bracket.rondas) {
+      const duelo = (ronda.duelos || []).find(
+        d => (d.jugador1 === userId || d.jugador2 === userId) && d.codigo_partida && !d.ganador
+      );
+      if (duelo) return duelo.codigo_partida;
+    }
+    return null;
+  }
+
+  const parRonda1 = (bracket.ronda1 || []).find(p => p.jugador1 === userId || p.jugador2 === userId);
+  if (parRonda1) return parRonda1.codigo_partida;
+  const final = bracket.final;
+  if (final && (final.jugador1 === userId || final.jugador2 === userId) && final.codigo_partida) return final.codigo_partida;
+  return null;
+}
+
 export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo, torneoInicialId }) {
   const [torneos, setTorneos] = useState([]);
   const [pantalla, setPantalla] = useState("lista"); // lista | crear | detalle
@@ -37,16 +58,8 @@ export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo, to
         (payload) => {
           if (navegadoRef.current) return;
           if (payload.new.estado === "en_curso" && payload.new.bracket) {
-            const parRonda1 = (payload.new.bracket.ronda1 || []).find(
-              p => p.jugador1 === user.id || p.jugador2 === user.id
-            );
-            if (parRonda1) { navegadoRef.current = true; onIrAPartidaTorneo(parRonda1.codigo_partida); return; }
-
-            const final = payload.new.bracket.final;
-            if (final && (final.jugador1 === user.id || final.jugador2 === user.id) && final.codigo_partida) {
-              navegadoRef.current = true;
-              onIrAPartidaTorneo(final.codigo_partida);
-            }
+            const codigoPartida = codigoPartidaPendiente(payload.new.bracket, user.id);
+            if (codigoPartida) { navegadoRef.current = true; onIrAPartidaTorneo(codigoPartida); }
           }
         }
       )
