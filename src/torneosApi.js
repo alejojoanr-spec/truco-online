@@ -36,12 +36,18 @@ export async function crearTorneo({ user, perfil, nombre, maxJugadores, entrada,
   if (error) return { error: "Error al crear torneo" };
 
   const joinResult = await unirseATorneo({ user, perfil, torneo: data });
-  if (joinResult?.error) return { error: joinResult.error };
+  if (joinResult?.error) {
+    const { error: cancelError } = await supabase.rpc("cancelar_torneo", { p_torneo_id: data.id });
+    if (cancelError) console.error("crearTorneo: no se pudo cancelar el torneo huérfano:", cancelError);
+    return { error: joinResult.error };
+  }
 
   return { data };
 }
 
-export async function unirseATorneo({ user, perfil, torneo }) {
+export async function unirseATorneo({ user, torneo }) {
+  if (torneo.jugadores_actuales >= torneo.max_jugadores) return { error: "El torneo está lleno" };
+
   const { data: yaInscripto } = await supabase
     .from("torneo_jugadores")
     .select("id")
@@ -49,24 +55,9 @@ export async function unirseATorneo({ user, perfil, torneo }) {
     .eq("jugador_id", user.id)
     .maybeSingle();
   if (yaInscripto) return { error: "Ya estás inscripto" };
-  if (torneo.jugadores_actuales >= torneo.max_jugadores) return { error: "El torneo está lleno" };
 
-  if (await tieneOtroTorneoActivo(user.id)) {
-    return { error: "Ya estás anotado en otro torneo. Solo podés participar de uno a la vez." };
-  }
-
-  await supabase.from("torneo_jugadores").insert({
-    torneo_id: torneo.id,
-    jugador_id: user.id,
-    nombre_jugador: perfil?.nombre || user.email?.split("@")[0] || "Jugador",
-    posicion: 0,
-    eliminado: false,
-  });
-
-  await supabase.from("torneos").update({
-    jugadores_actuales: torneo.jugadores_actuales + 1,
-    premio: (torneo.jugadores_actuales + 1) * torneo.entrada,
-  }).eq("id", torneo.id);
+  const { error } = await supabase.rpc("inscribir_torneo", { p_torneo_id: torneo.id });
+  if (error) return { error: error.message };
 
   return { data: true };
 }

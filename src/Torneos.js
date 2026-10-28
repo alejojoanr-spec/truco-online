@@ -92,6 +92,8 @@ export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo, to
     const { error } = await unirseATorneoApi({ user, perfil, torneo });
     if (error) { alert(error); return; }
     cargarTorneos();
+    const { data } = await supabase.from("torneo_jugadores").select("*").eq("torneo_id", torneo.id).order("posicion");
+    if (data) setJugadoresTorneo(data);
   }
 
   async function verDetalle(torneo) {
