@@ -42,4 +42,6 @@ export async function sumarPuntosRanking(user, perfil, puntosRival, rivalFueAlMa
     },
     { onConflict: "user_id,semana" }
   );
+
+  return incremento;
 }
