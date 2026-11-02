@@ -439,13 +439,6 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
       if (cargandoRef.current) return; // ignorar si ya hay una carga en vuelo
       cargar();
     };
-    const disparPartidasDebug = (payload) => {
-      console.log("[DEBUG truco-lobby][partidas]", payload.eventType, payload.table, {
-        codigo: payload.new?.codigo ?? payload.old?.codigo,
-        estado: payload.new?.estado ?? payload.old?.estado,
-      });
-      disparar();
-    };
     const dispararTorneos = () => { cargarTorneos(); };
     // "montado" se apaga en el cleanup ANTES de desmontar el canal activo, para que un
     // CLOSED disparado por ese removeChannel del unmount no programe un reintento después
@@ -458,7 +451,7 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
       // otro reintento ni termine removiendo el canal nuevo recién creado.
       let vigente = true;
       const canal = supabase.channel("truco-lobby")
-        .on("postgres_changes", { event: "*", schema: "public", table: "partidas" }, disparPartidasDebug)
+        .on("postgres_changes", { event: "*", schema: "public", table: "partidas" }, disparar)
         .on("postgres_changes", { event: "*", schema: "public", table: "torneos" }, dispararTorneos)
         // Broadcast como fallback para INSERT/DELETE (postgres_changes requiere ALTER PUBLICATION)
         .on("broadcast", { event: "sala_actualizada" }, disparar)
