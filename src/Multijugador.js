@@ -296,6 +296,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       apuesta: apuestaPartida,
       rake: ganoPartida ? rakeAmount : 0,
       rakePct,
+      porInactividad: !ganoPartida && p.motivo_fin === "abandono" && p.ultimo_canto?.tag === "abandono_inactividad",
     });
   }
 
@@ -632,6 +633,16 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       if (!ultimaRival) return;
       const segundosSinActividad = (Date.now() - new Date(ultimaRival).getTime()) / 1000;
       if (segundosSinActividad > 90) {
+        // Confirmar contra la base: el dato local puede estar viejo si el canal Realtime está caído
+        const { data: fresh } = await supabase.from("partidas")
+          .select("estado, ultima_actividad_j1, ultima_actividad_j2")
+          .eq("codigo", codigo).single();
+        if (!fresh || fresh.estado !== "jugando") return;
+        const ultimaFresca = fresh[rivalColumna];
+        if (ultimaFresca && (Date.now() - new Date(ultimaFresca).getTime()) / 1000 <= 90) {
+          refetchPartidaRef.current?.(); // resincronizar el estado local, no declarar nada
+          return;
+        }
         abandonoDetectado = true;
         const rivalId = soyJugador1 ? p.jugador2_id : p.jugador1_id;
         const updateAbandono = {
@@ -643,8 +654,9 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           ultimo_canto: { tag: "abandono_inactividad", por: rivalId, ts: Date.now() },
         };
         // DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN)
-        appendJugadasLog({ ...p }, updateAbandono, { userId: user.id });
-        const { error } = await supabase.from("partidas").update(updateAbandono).eq("codigo", codigo);
+        appendJugadasLog({ ...p, ...fresh }, updateAbandono, { userId: user.id });
+        const { error } = await supabase.from("partidas").update(updateAbandono)
+          .eq("codigo", codigo).eq("estado", "jugando");
         if (error) console.error("abandono por inactividad:", error);
       }
     }
@@ -1603,7 +1615,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
         <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:24,padding:"36px 28px",maxWidth:300,width:"100%",textAlign:"center",fontFamily:"'Lato',sans-serif",boxShadow:"0 24px 60px rgba(0,0,0,0.7),0 0 0 1px rgba(248,113,113,0.12)" }}>
           <div style={{ fontSize:56,marginBottom:12 }}>😞</div>
           <div style={{ fontSize:28,fontWeight:900,color:"#f87171",marginBottom:6 }}>¡Perdiste!</div>
-          <div style={{ fontSize:14,color:"#9ca3af",marginBottom:4 }}>Volvé a intentarlo</div>
+          <div style={{ fontSize:14,color:"#9ca3af",marginBottom:4 }}>{resultadoPartida.porInactividad ? "Perdiste por inactividad" : "Volvé a intentarlo"}</div>
           {resultadoPartida.apuesta > 0 && (
             <div style={{ fontSize:13,color:"#4b5563",marginBottom:16 }}>Perdiste {fmtARS(resultadoPartida.apuesta)}</div>
           )}
