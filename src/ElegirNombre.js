@@ -43,7 +43,11 @@ export default function ElegirNombre({ user, onPerfilCreado }) {
       .select()
       .single();
     if (dbError) {
-      setError("❌ No se pudo guardar. Intentá de nuevo.");
+      setError(
+        dbError.code === "23505" && /nombre/i.test(dbError.message || "")
+          ? "Este nombre de usuario ya está en uso, elegí otro"
+          : "❌ No se pudo guardar. Intentá de nuevo."
+      );
       setCargando(false);
       return;
     }
