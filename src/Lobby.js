@@ -626,7 +626,7 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
     const ids = [...new Set(salas.flatMap(s => [s.jugador1_id, s.jugador2_id].filter(Boolean)))];
     if (ids.length > 0) {
       const { data: perfiles } = await supabase
-        .from("perfiles")
+        .from("perfiles_publicos")
         .select("usuario_id, nombre, avatar")
         .in("usuario_id", ids);
       if (perfiles?.length) {

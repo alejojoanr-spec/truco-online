@@ -159,7 +159,7 @@ export default function Home({ user, perfil, onJugar, onCrearSalaPrivada, onUnir
     setErrorEdit("");
     if (cambioNombre) {
       const { data: existe } = await supabase
-        .from("perfiles")
+        .from("perfiles_publicos")
         .select("usuario_id")
         .eq("nombre", nombre)
         .neq("usuario_id", perfil.usuario_id)
