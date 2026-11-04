@@ -2780,7 +2780,7 @@ const TABS = [
 ];
 
 export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usuarioId = '' }) {
-  const tabsVisibles = rol === 'asesor' ? TABS.filter(t => t.id === 'usuarios' || t.id === 'equipo') : TABS;
+  const tabsVisibles = rol === 'asesor' ? TABS.filter(t => t.id === 'usuarios' || t.id === 'equipo' || t.id === 'soporte') : TABS;
   const [tab, setTab] = useState(() => {
     const guardada = localStorage.getItem('truco_admin_tab');
     return guardada && tabsVisibles.some(t => t.id === guardada) ? guardada : tabsVisibles[0].id;
