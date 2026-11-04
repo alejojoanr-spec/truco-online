@@ -207,6 +207,8 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const reconectarRef = useRef(null);
   const reconectandoRef = useRef(false);
   const reconexionTimerRef = useRef(null);
+  const reconexionCanalTimerRef = useRef(null); // reintento programado tras caída del canal de la partida
+  const canalVigenteRef = useRef(null); // token del canal actual; el status de un canal reemplazado se ignora
 
   useEffect(() => { partidaRef.current = partida; }, [partida]);
 
@@ -458,6 +460,11 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     refetchPartidaRef.current = refetchPartida;
 
     function crearCanal() {
+      // Silenciar el canal que se reemplaza ANTES de removerlo (el nuevo token deja viejo al anterior),
+      // para que su CLOSED no programe otro reintento ni toque el canal nuevo.
+      const token = {};
+      canalVigenteRef.current = token;
+      if (reconexionCanalTimerRef.current) { clearTimeout(reconexionCanalTimerRef.current); reconexionCanalTimerRef.current = null; }
       if (channelRef.current) supabase.removeChannel(channelRef.current);
       const ch = supabase.channel(`partida-${codigo}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "partidas", filter: `codigo=eq.${codigo}` },
@@ -511,15 +518,27 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           setCodigo(nuevoCodigo);
         })
         .subscribe((status) => {
-          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED")
+          if (canalVigenteRef.current !== token) return;
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
             console.warn("[Realtime] Canal caído:", status);
+            if (reconexionCanalTimerRef.current) return; // ya hay un reintento programado
+            reconexionCanalTimerRef.current = setTimeout(() => {
+              reconexionCanalTimerRef.current = null;
+              crearCanal();
+              refetchPartida(); // Realtime no reproduce eventos perdidos durante la caída
+            }, 1500);
+          }
         });
       channelRef.current = ch;
     }
     reconectarRef.current = async () => { crearCanal(); await refetchPartida(); };
 
     crearCanal();
-    return () => { if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null; } };
+    return () => {
+      canalVigenteRef.current = null; // silencia el canal antes de removerlo
+      if (reconexionCanalTimerRef.current) { clearTimeout(reconexionCanalTimerRef.current); reconexionCanalTimerRef.current = null; }
+      if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null; }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codigo, soyJugador1]);
 
