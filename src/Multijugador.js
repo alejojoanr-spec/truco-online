@@ -453,9 +453,25 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       }
     }
 
-    async function refetchPartida() {
+    // Campos que alcanzan para saber si la fila cambió respecto de lo que ya procesó este cliente
+    const claveCambio = (r) => JSON.stringify([
+      r.estado, r.ganador_id, r.turno, r.turno_inicio, r.accion_pendiente, r.mesa,
+      r.puntos1, r.puntos2, r.puntos_mano, r.ultimo_canto, r.envido_resultado,
+      r.ultima_actividad_j1, r.ultima_actividad_j2,
+    ]);
+
+    // soloSiCambio: lectura de respaldo por polling; no reprocesa (ni repite sonidos/globos) si la fila es igual
+    async function refetchPartida({ soloSiCambio = false } = {}) {
+      const claveLocal = () => (partidaRef.current ? claveCambio(partidaRef.current) : null);
+      const claveAntes = claveLocal();
       const { data } = await supabase.from("partidas").select("*").eq("codigo", codigo).single();
-      if (data) { setPartida(data); procesarCambio(data); }
+      if (!data) return;
+      if (soloSiCambio) {
+        // Si mientras tanto llegó algo por Realtime, la respuesta del polling puede ser más vieja: descartarla
+        if (claveLocal() !== claveAntes) return;
+        if (partidaRef.current && claveCambio(partidaRef.current) === claveCambio(data)) return;
+      }
+      setPartida(data); procesarCambio(data);
     }
     refetchPartidaRef.current = refetchPartida;
 
@@ -632,6 +648,26 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codigo]);
+
+  // Red de seguridad por polling: Realtime no reproduce eventos perdidos, así que mientras espero
+  // al rival (sala sin rival, o partida en curso sin ser mi turno / con mi canto pendiente) releo
+  // la fila cada 5s sin depender del canal. Solo reprocesa si la fila cambió.
+  const esperandoRivalPolling = !!codigo && (
+    pantalla === "esperando" ||
+    (pantalla === "jugando" && partida?.estado === "jugando" && !partida?.ganador_id && (
+      partida.accion_pendiente
+        ? partida.accion_pendiente.cantado_por === user.id
+        : partida.turno !== user.id
+    ))
+  );
+  useEffect(() => {
+    if (!esperandoRivalPolling) return;
+    const id = setInterval(() => {
+      if (document.hidden) return;
+      refetchPartidaRef.current?.({ soloSiCambio: true });
+    }, 5000);
+    return () => clearInterval(id);
+  }, [esperandoRivalPolling, codigo]);
 
   // Heartbeat de actividad propia (cada 20s) + detección de abandono del rival por
   // inactividad (>90s sin heartbeat suyo). Efecto separado del timer Anti-injusticia:
