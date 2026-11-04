@@ -1207,6 +1207,7 @@ export default function App() {
   const [codigoRejoin, setCodigoRejoin] = useState(null);
   const [mostrarBannerHorario, setMostrarBannerHorario] = useState(false);
   const [bannerHorarioCerrado, setBannerHorarioCerrado] = useState(false);
+  const [avisoPartida, setAvisoPartida] = useState(null);
 
   function esFueraDePico() {
     const h = parseInt(new Intl.DateTimeFormat("es-AR", {
@@ -1293,7 +1294,7 @@ export default function App() {
         try {
           const { data: p } = await supabase
             .from("partidas")
-            .select("jugador1_id, jugador2_id, estado")
+            .select("jugador1_id, jugador2_id, estado, ganador_id, motivo_fin, ultimo_canto")
             .eq("codigo", savedCodigo)
             .maybeSingle();
           if (p?.estado === "jugando" &&
@@ -1301,6 +1302,10 @@ export default function App() {
             setCodigoRejoin(savedCodigo);
             setModoJuego("multi");
           } else {
+            if (p?.estado === "terminada" && p.ganador_id && p.ganador_id !== u.id &&
+                p.motivo_fin === "abandono" && p.ultimo_canto?.tag === "abandono_inactividad") {
+              setAvisoPartida("Perdiste la partida por inactividad.");
+            }
             localStorage.removeItem(`truco_partida_${u.id}`);
           }
         } catch (err) {
@@ -1486,6 +1491,18 @@ export default function App() {
                 style={{ width:"100%",padding:"12px",borderRadius:12,cursor:"pointer",background:"rgba(255,255,255,0.04)",border:"1px solid #374151",color:"#9ca3af",fontFamily:"'Lato',sans-serif",fontSize:14 }}
               >Entendido</button>
             </div>
+          </div>
+        </div>
+      )}
+      {avisoPartida && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.78)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:300,padding:16 }}>
+          <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)",border:"1px solid #2d6a4f",borderRadius:20,padding:"28px 24px",maxWidth:340,width:"100%",fontFamily:"'Lato',sans-serif",boxShadow:"0 24px 60px rgba(0,0,0,0.7)",position:"relative" }}>
+            <div style={{ fontSize:28,marginBottom:10,textAlign:"center" }}>😞</div>
+            <div style={{ fontSize:15,color:"#d1fae5",lineHeight:1.65,marginBottom:22,textAlign:"center" }}>{avisoPartida}</div>
+            <button
+              onClick={() => setAvisoPartida(null)}
+              style={{ width:"100%",padding:"12px",borderRadius:12,cursor:"pointer",background:"rgba(255,255,255,0.04)",border:"1px solid #374151",color:"#9ca3af",fontFamily:"'Lato',sans-serif",fontSize:14 }}
+            >Entendido</button>
           </div>
         </div>
       )}
