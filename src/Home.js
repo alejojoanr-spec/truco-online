@@ -815,7 +815,7 @@ export default function Home({ user, perfil, onJugar, onCrearSalaPrivada, onUnir
                   <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
                   <div style={{ fontSize: 16, color: "#4ade80", fontWeight: 700, marginBottom: 8 }}>¡Solicitud enviada!</div>
                   <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.6 }}>
-                    Tu retiro quedó pendiente de aprobación. Lo verás reflejado en tu cuenta en breve.
+                    Tu retiro quedó pendiente de aprobación. El monto quedó reservado (ya se descontó de tu saldo) hasta que se resuelva la solicitud.
                   </div>
                 </div>
                 <button onClick={() => { reproducirSonidoClick(); setMostrarRetirar(false); }} style={{ width: "100%", padding: "12px", borderRadius: 10, cursor: "pointer", background: "linear-gradient(135deg,#1a472a,#2d6a4f)", border: "1px solid #4ade80", color: "#4ade80", fontFamily: "'Lato', sans-serif", fontSize: 14, fontWeight: 700 }}>
@@ -881,26 +881,11 @@ export default function Home({ user, perfil, onJugar, onCrearSalaPrivada, onUnir
                       if (monto > (perfil.saldo || 0)) { setRetiroError("No tenés saldo suficiente."); return; }
                       if (!retiroCbu.trim()) { setRetiroError("Ingresá el CBU, CVU o Alias de destino."); return; }
                       setRetiroCargando(true);
-                      // Verificar límite diario
-                      const inicioDia = new Date(); inicioDia.setHours(0,0,0,0);
-                      const { count } = await supabase.from("transacciones")
-                        .select("*", { count: "exact", head: true })
-                        .eq("usuario_id", perfil.usuario_id)
-                        .eq("tipo", "retiro")
-                        .gte("created_at", inicioDia.toISOString());
-                      if (count >= 2) { setRetiroError("Alcanzaste el límite de 2 retiros diarios."); setRetiroCargando(false); return; }
-                      const saldoAnterior = perfil.saldo || 0;
-                      const { error } = await supabase.from("transacciones").insert({
-                        usuario_id: perfil.usuario_id,
-                        tipo: "retiro",
-                        monto,
-                        estado: "pendiente",
-                        nota: retiroCbu.trim(),
-                        ejecutado_por: perfil.nombre || perfil.usuario_id,
-                        saldo_anterior: saldoAnterior,
-                        saldo_nuevo: saldoAnterior - monto,
-                      });
-                      if (error) { console.error("[Home] retiro insert error:", error); setRetiroError("No se pudo enviar la solicitud. Intentá de nuevo."); setRetiroCargando(false); return; }
+                      // El servidor valida todo (límite diario incluido) y reserva el saldo en el acto
+                      const { error } = await supabase.rpc("pedir_retiro", { p_monto: monto, p_destino: retiroCbu.trim() });
+                      if (error) { console.error("[Home] pedir_retiro error:", error); setRetiroError(error.message || "No se pudo enviar la solicitud. Intentá de nuevo."); setRetiroCargando(false); return; }
+                      const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", perfil.usuario_id).single();
+                      if (fresh) onPerfilActualizado(p => ({ ...p, saldo: fresh.saldo }));
                       setRetiroExito(true);
                       setRetiroCargando(false);
                     }}
