@@ -1205,6 +1205,7 @@ export default function App() {
   const [splashSaliendo, setSplashSaliendo] = useState(false);
   const [splashOculto, setSplashOculto] = useState(false);
   const [codigoRejoin, setCodigoRejoin] = useState(null);
+  const [claveMulti, setClaveMulti] = useState(0);
   const [mostrarBannerHorario, setMostrarBannerHorario] = useState(false);
   const [bannerHorarioCerrado, setBannerHorarioCerrado] = useState(false);
   const [avisoPartida, setAvisoPartida] = useState(null);
@@ -1429,6 +1430,7 @@ export default function App() {
   );
   if (modoJuego === "multi") return (
     <Multijugador
+      key={claveMulti}
       user={user}
       perfil={perfil}
       codigoInicial={codigoUnirse}
@@ -1437,12 +1439,20 @@ export default function App() {
       puntos={puntosInicialSala}
       codigoYaCreado={codigoYaCreadoInicial}
       codigoRejoin={codigoRejoin}
-      onVolver={() => {
+      onIrAPartidaTorneo={(cod) => {
+        setCodigoUnirse(null);
+        setAutoCrearSala(false);
+        setCodigoYaCreadoInicial(null);
+        setCodigoRejoin(cod);
+        setClaveMulti(k => k + 1); // remonta Multijugador con la partida nueva
+      }}
+      onVolver={(opts) => {
         setCodigoRejoin(null);
         setCodigoUnirse(null);
         setAutoCrearSala(false);
         setCodigoYaCreadoInicial(null);
-        setModoJuego(origenMulti === "lobby" ? "lobby" : null);
+        if (opts?.aTorneos) { setModoJuego(null); setVerTorneos(true); }
+        else setModoJuego(origenMulti === "lobby" ? "lobby" : null);
         setOrigenMulti("home");
       }}
     />

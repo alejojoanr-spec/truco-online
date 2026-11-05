@@ -151,7 +151,9 @@ function valorEnvido(mano) {
 
 
 
-export default function Multijugador({ user, perfil, onVolver, codigoInicial, autoCrear, apuesta, puntos, esTorneo, codigoYaCreado, codigoRejoin }) {
+const NOMBRES_RONDA = { cuartos: "Cuartos de final", semifinal: "Semifinal", final: "Final" };
+
+export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorneo, codigoInicial, autoCrear, apuesta, puntos, esTorneo, codigoYaCreado, codigoRejoin }) {
   const [pantalla, setPantalla] = useState(
     (codigoInicial || autoCrear || codigoYaCreado || codigoRejoin) ? "redirigiendo" : "menu"
   );
@@ -178,6 +180,9 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
 
   const addLog = () => {};
   const [resultadoPartida, setResultadoPartida] = useState(null);
+  const [torneoEstado, setTorneoEstado] = useState(null); // respuesta de estado_espera_torneo
+  const [torneoCartelVisto, setTorneoCartelVisto] = useState(false); // pasaron los 3 s del cartel "¡Ganaste!"
+  const torneoEstadoRef = useRef(null);
   const pagoProcesadoRef = useRef(false);
   const accionLogueadaRef = useRef(null);
 
@@ -299,7 +304,51 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
       rake: ganoPartida ? rakeAmount : 0,
       rakePct,
       porInactividad: !ganoPartida && p.motivo_fin === "abandono" && p.ultimo_canto?.tag === "abandono_inactividad",
+      torneo: !!p.torneo_id,
     });
+  }
+
+  // Partida de torneo ganada: cartel 3 s, consulta del estado de espera cada 4 s y paso a la partida siguiente
+  const esVictoriaTorneo = !!(resultadoPartida?.torneo && resultadoPartida.ganaste);
+
+  useEffect(() => {
+    if (!esVictoriaTorneo || !codigo) return;
+    setTorneoCartelVisto(false);
+    const t = setTimeout(() => setTorneoCartelVisto(true), 3000);
+    return () => clearTimeout(t);
+  }, [esVictoriaTorneo, codigo]);
+
+  useEffect(() => {
+    if (!esVictoriaTorneo || !codigo) return;
+    let vivo = true;
+    async function consultar() {
+      const estadoActual = torneoEstadoRef.current?.estado;
+      if (estadoActual && estadoActual !== "esperando" && estadoActual !== "en_juego" && estadoActual !== "sin_bracket") return;
+      if (document.hidden) return;
+      const { data, error: errRpc } = await supabase.rpc("estado_espera_torneo", { p_codigo: codigo });
+      if (!vivo) return;
+      if (errRpc || !data) return; // se reintenta en el siguiente ciclo; el panel sigue en "Esperando"
+      torneoEstadoRef.current = data;
+      setTorneoEstado(data);
+    }
+    consultar();
+    const intervalo = setInterval(consultar, 4000);
+    return () => { vivo = false; clearInterval(intervalo); };
+  }, [esVictoriaTorneo, codigo]);
+
+  useEffect(() => {
+    if (!torneoCartelVisto || torneoEstado?.estado !== "lista" || !torneoEstado.codigo) return;
+    const t = setTimeout(() => {
+      localStorage.setItem(`truco_partida_${user.id}`, torneoEstado.codigo); // reemplaza el código de la partida vieja
+      if (onIrAPartidaTorneo) onIrAPartidaTorneo(torneoEstado.codigo);
+    }, 2000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [torneoCartelVisto, torneoEstado]);
+
+  function volver() {
+    const deTorneo = !!(partida?.torneo_id || resultadoPartida?.torneo);
+    onVolver(deTorneo ? { aTorneos: true } : undefined);
   }
 
   // Auto-unirse si viene del lobby con un código
@@ -1039,7 +1088,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           .eq("codigo", codigo);
       }
     }
-    onVolver();
+    volver();
   }
 
   async function cantarTruco() {
@@ -1626,7 +1675,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
   const puedoActuar = miTurno && !partida?.accion_pendiente && !resolviendoMano;
   const estaEsperandoRival = !miTurno && !partida?.accion_pendiente && !resolviendoMano;
 
-  if (resultadoPartida) return (
+  if (resultadoPartida && !esVictoriaTorneo) return (
     <div style={{ minHeight:"100vh",background:"#101010",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Lato',sans-serif",padding:24 }}>
       {resultadoPartida.ganaste ? (
         /* ── Pantalla de victoria ── */
@@ -1662,7 +1711,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
                 {revanchaEstado === "rechazada" ? "El rival no aceptó la revancha" : "La revancha fue cancelada"}
               </div>
             )}
-            <button onClick={onVolver} style={{ padding:"12px 28px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>Volver al inicio</button>
+            <button onClick={volver} style={{ padding:"12px 28px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>Volver al inicio</button>
           </div>
         </div>
       ) : (
@@ -1675,7 +1724,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
             <div style={{ fontSize:13,color:"#4b5563",marginBottom:16 }}>Perdiste {fmtARS(resultadoPartida.apuesta)}</div>
           )}
           <div style={{ display:"flex",flexDirection:"column",gap:10,marginTop:20 }}>
-            {revanchaEstado === null && (
+            {revanchaEstado === null && !resultadoPartida.torneo && (
               <button onClick={solicitarRevancha} style={{ padding:"12px 28px",borderRadius:12,cursor:"pointer",background:"rgba(251,191,36,0.1)",border:"1px solid #fbbf24",color:"#fbbf24",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>🔄 Revancha</button>
             )}
             {revanchaEstado === "esperando_rival" && (
@@ -1691,7 +1740,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
                 {revanchaEstado === "rechazada" ? "El rival no aceptó la revancha" : "La revancha fue cancelada"}
               </div>
             )}
-            <button onClick={onVolver} style={{ width:"100%",padding:"13px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>Volver al inicio</button>
+            <button onClick={volver} style={{ width:"100%",padding:"13px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>{resultadoPartida.torneo ? "Volver a Torneos" : "Volver al inicio"}</button>
           </div>
         </div>
       )}
@@ -1742,7 +1791,7 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
           <button onClick={unirseASala} style={{ padding:"12px 16px",borderRadius:10,background:"#1a472a",border:"1px solid #4ade80",color:"#4ade80",fontSize:14,cursor:"pointer",fontFamily:"Georgia" }}>Unirse</button>
         </div>
         {error && <div style={{ color:"#f87171",fontSize:13,textAlign:"center" }}>{error}</div>}
-        <button onClick={onVolver} style={{ padding:"10px",borderRadius:10,background:"transparent",border:"1px solid #374151",color:"#6b7280",fontSize:13,cursor:"pointer",fontFamily:"Georgia" }}>← Volver</button>
+        <button onClick={volver} style={{ padding:"10px",borderRadius:10,background:"transparent",border:"1px solid #374151",color:"#6b7280",fontSize:13,cursor:"pointer",fontFamily:"Georgia" }}>← Volver</button>
       </div>
     </div>
   );
@@ -1928,6 +1977,42 @@ export default function Multijugador({ user, perfil, onVolver, codigoInicial, au
                 style={{ flex:1,padding:"11px",borderRadius:10,cursor:"pointer",background:"linear-gradient(135deg,#7f1d1d,#991b1b)",border:"1px solid #f87171",color:"#ffffff",fontFamily:"'Lato',sans-serif",fontSize:14,fontWeight:700 }}
               >Salir</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {esVictoriaTorneo && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:60,padding:16 }}>
+          <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)",border:"1px solid #2d6a4f",borderRadius:20,padding:"28px 24px",maxWidth:320,width:"100%",textAlign:"center",fontFamily:"'Lato',sans-serif",boxShadow:"0 24px 60px rgba(0,0,0,0.7)" }}>
+            {!torneoCartelVisto ? (
+              <>
+                <div style={{ fontSize:56,marginBottom:10 }}>🏆</div>
+                <div style={{ fontSize:26,fontWeight:900,color:"#fbbf24" }}>¡Ganaste!</div>
+              </>
+            ) : torneoEstado?.estado === "campeon" ? (
+              <>
+                <div style={{ fontSize:56,marginBottom:10 }}>🏆</div>
+                <div style={{ fontSize:22,fontWeight:900,color:"#fbbf24",marginBottom:20,lineHeight:1.3 }}>¡Sos el campeón del torneo!</div>
+                <button onClick={volver} style={{ width:"100%",padding:"13px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>Volver a Torneos</button>
+              </>
+            ) : torneoEstado?.estado === "lista" ? (
+              <>
+                <div style={{ fontSize:48,marginBottom:10 }}>🎴</div>
+                <div style={{ fontSize:20,fontWeight:900,color:"#4ade80" }}>¡Tu partida está lista!</div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize:18,fontWeight:900,color:"#fbbf24",marginBottom:16 }}>Esperando a tu próximo rival</div>
+                {torneoEstado?.estado === "esperando" && typeof torneoEstado.progreso === "number" && (
+                  <div style={{ background:"rgba(255,255,255,0.1)",borderRadius:6,height:8,overflow:"hidden",marginBottom:10 }}>
+                    <div style={{ height:"100%",background:"#4ade80",width:`${Math.max(0, Math.min(1, torneoEstado.progreso)) * 100}%`,transition:"width 0.8s ease" }} />
+                  </div>
+                )}
+                {torneoEstado?.ronda && (
+                  <div style={{ fontSize:12,color:"#9ca3af" }}>Próxima ronda: {NOMBRES_RONDA[String(torneoEstado.ronda).trim().toLowerCase()] || torneoEstado.ronda}</div>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
