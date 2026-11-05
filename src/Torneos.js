@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import { crearTorneo as crearTorneoApi, unirseATorneo as unirseATorneoApi, salirDeTorneo as salirDeTorneoApi } from "./torneosApi";
+import { soportaPush, estadoNotificaciones, activarNotificaciones, desactivarNotificaciones, esAppInstalada, esCelular } from "./notificaciones";
 
 // Soporta los dos formatos de bracket: v1 {ronda1:[...], final:{...}} y v2 {rondas:[{nombre, duelos:[...]}]}
 function codigoPartidaPendiente(bracket, userId) {
@@ -34,8 +35,46 @@ export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo, on
   const [entrada, setEntrada] = useState(0);
   const channelRef = useRef(null);
   const navegadoRef = useRef(false);
+  const [notifActivas, setNotifActivas] = useState(false);
+  const [notifOcupado, setNotifOcupado] = useState(false);
+  const [errorNotif, setErrorNotif] = useState("");
+  const [mostrarAvisoInstalar, setMostrarAvisoInstalar] = useState(false);
 
   useEffect(() => { cargarTorneos(); }, []);
+
+  useEffect(() => {
+    let vivo = true;
+    estadoNotificaciones().then(v => { if (vivo) setNotifActivas(v); });
+    return () => { vivo = false; };
+  }, []);
+
+  async function intentarActivarNotif() {
+    if (!soportaPush()) { setErrorNotif("Este navegador no soporta notificaciones."); return; }
+    setNotifOcupado(true);
+    const r = await activarNotificaciones(user.id);
+    if (r.ok) setNotifActivas(true); else setErrorNotif(r.error);
+    setNotifOcupado(false);
+  }
+
+  async function toggleNotif() {
+    if (notifOcupado) return;
+    setErrorNotif("");
+    if (notifActivas) {
+      setNotifOcupado(true);
+      const r = await desactivarNotificaciones(user.id);
+      if (r.ok) setNotifActivas(false); else setErrorNotif(r.error);
+      setNotifOcupado(false);
+      return;
+    }
+    if (esCelular() && !esAppInstalada()) { setMostrarAvisoInstalar(true); return; }
+    await intentarActivarNotif();
+  }
+
+  async function cerrarAvisoInstalar() {
+    setMostrarAvisoInstalar(false);
+    if (soportaPush()) await intentarActivarNotif();
+    else setErrorNotif("Cuando lo agregues, abrí el juego desde ese ícono y activá los avisos.");
+  }
 
   useEffect(() => {
     if (!torneoInicialId) return;
@@ -228,6 +267,29 @@ export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo, on
         <button onClick={()=>setPantalla("crear")} style={{ width:"100%",padding:14,borderRadius:10,background:"#1a472a",border:"1px solid #4ade80",color:"#4ade80",fontSize:16,cursor:"pointer",fontFamily:"Georgia",fontWeight:700,marginBottom:20 }}>
           ➕ Crear nuevo torneo
         </button>
+
+        <div onClick={toggleNotif} style={{ display:"flex",alignItems:"flex-start",gap:10,marginBottom:20,cursor:notifOcupado?"default":"pointer",opacity:notifOcupado?0.6:1 }}>
+          <input type="checkbox" checked={notifActivas} readOnly style={{ marginTop:2,width:16,height:16,accentColor:"#4ade80",pointerEvents:"none" }} />
+          <div>
+            <div style={{ fontSize:12,color:"#4ade80",letterSpacing:2 }}>ACTIVAR NOTIFICACIONES</div>
+            <div style={{ fontSize:11,color:"#6b7280",marginTop:2 }}>Te avisamos cuando tu partida del torneo esté lista.</div>
+            {errorNotif && <div style={{ fontSize:11,color:"#f87171",marginTop:4 }}>{errorNotif}</div>}
+          </div>
+        </div>
+
+        {mostrarAvisoInstalar && (
+          <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.78)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:300,padding:16 }}>
+            <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)",border:"1px solid #2d6a4f",borderRadius:20,padding:"28px 24px",maxWidth:340,width:"100%",fontFamily:"'Lato',sans-serif",boxShadow:"0 24px 60px rgba(0,0,0,0.7)",position:"relative" }}>
+              <div style={{ fontSize:13,color:"#d1fae5",lineHeight:1.65,marginBottom:22 }}>
+                Para tener el juego en tu inicio y recibir avisos: tocá COMPARTIR (iPhone) o el menú ⋮ (Android) y elegí AGREGAR A PANTALLA DE INICIO. Después abrí el juego desde ese ícono y activá los avisos ahí.
+              </div>
+              <button
+                onClick={cerrarAvisoInstalar}
+                style={{ width:"100%",padding:"12px",borderRadius:12,cursor:"pointer",background:"rgba(255,255,255,0.04)",border:"1px solid #374151",color:"#9ca3af",fontFamily:"'Lato',sans-serif",fontSize:14 }}
+              >Entendido</button>
+            </div>
+          </div>
+        )}
 
         <div style={{ fontSize:11,color:"#4ade80",letterSpacing:2,marginBottom:12 }}>TORNEOS DISPONIBLES</div>
 

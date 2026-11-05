@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import { avatarSrc } from "./avatares";
+import { estadoNotificaciones, activarNotificaciones as activarNotificacionesPush } from "./notificaciones";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -1458,15 +1459,6 @@ function TabFinanzas({ rol = 'admin' }) {
 const ESTADO_COLOR_S = { abierto: "#fbbf24", en_curso: "#60a5fa", resuelto: "#4ade80" };
 const ESTADO_LABEL_S = { abierto: "Abierto", en_curso: "En curso", resuelto: "Resuelto" };
 
-function urlBase64ToUint8Array(base64String) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
-  return outputArray;
-}
-
 function TabSoporte({ ejecutadoPor, usuarioId }) {
   const [casos, setCasos] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -1484,38 +1476,18 @@ function TabSoporte({ ejecutadoPor, usuarioId }) {
 
   useEffect(() => { cargar(); }, []);
 
+  useEffect(() => {
+    let vivo = true;
+    estadoNotificaciones().then(v => { if (vivo) setNotifActivas(v); });
+    return () => { vivo = false; };
+  }, []);
+
   async function activarNotificaciones() {
     if (activandoNotif || notifActivas) return;
     setActivandoNotif(true); setErrorNotif("");
-    try {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-        setErrorNotif("Este navegador no soporta notificaciones push.");
-        return;
-      }
-      const registration = await navigator.serviceWorker.register("/sw.js");
-      const permiso = await Notification.requestPermission();
-      if (permiso !== "granted") {
-        setErrorNotif("Permiso de notificaciones denegado.");
-        return;
-      }
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(process.env.REACT_APP_VAPID_PUBLIC_KEY),
-      });
-      const { endpoint, keys } = subscription.toJSON();
-      const { error } = await supabase.from("push_subscriptions").upsert({
-        usuario_id: usuarioId,
-        endpoint,
-        p256dh: keys.p256dh,
-        auth: keys.auth,
-      }, { onConflict: "usuario_id,endpoint" });
-      if (error) { setErrorNotif("No se pudo guardar la suscripción."); return; }
-      setNotifActivas(true);
-    } catch (e) {
-      setErrorNotif("No se pudieron activar las notificaciones.");
-    } finally {
-      setActivandoNotif(false);
-    }
+    const r = await activarNotificacionesPush(usuarioId);
+    if (r.ok) setNotifActivas(true); else setErrorNotif(r.error);
+    setActivandoNotif(false);
   }
 
   useEffect(() => {
