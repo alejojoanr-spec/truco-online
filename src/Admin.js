@@ -1163,6 +1163,37 @@ function DatosTransferenciaConfig() {
   );
 }
 
+// Suscripción en vivo a INSERT y UPDATE de transacciones; si el canal se cae lo recrea (una vez cada 1,5 s) y vuelve a avisar.
+// Devuelve la función de limpieza.
+function suscribirTransacciones(nombreCanal, onEvento, filtro) {
+  let canal = null;
+  let timer = null;
+  let activo = true;
+  function crear() {
+    if (!activo) return;
+    if (canal) supabase.removeChannel(canal);
+    const c = supabase.channel(nombreCanal)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "transacciones", ...(filtro ? { filter: filtro } : {}) }, () => onEvento())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "transacciones", ...(filtro ? { filter: filtro } : {}) }, () => onEvento());
+    canal = c;
+    c.subscribe((status) => {
+      if (!activo || canal !== c) return; // ignora el estado de un canal ya reemplazado
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        console.warn("[Realtime] Canal caído:", nombreCanal, status);
+        clearTimeout(timer);
+        timer = setTimeout(() => { crear(); onEvento(); }, 1500);
+      }
+    });
+  }
+  crear();
+  return () => {
+    activo = false;
+    clearTimeout(timer);
+    if (canal) supabase.removeChannel(canal);
+    canal = null;
+  };
+}
+
 function TabFinanzas({ rol = 'admin' }) {
   const [transacciones, setTransacciones] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -1175,7 +1206,29 @@ function TabFinanzas({ rol = 'admin' }) {
   const [movimientos, setMovimientos] = useState([]);
   const [cargandoMov, setCargandoMov] = useState(false);
 
+  const modalMovRef = useRef(null);
+  modalMovRef.current = modalMov;
+
   useEffect(() => { cargar(); }, []);
+
+  // En vivo: ante cualquier INSERT/UPDATE de transacciones se recarga la lista (agrupando ráfagas en una sola recarga)
+  useEffect(() => {
+    let timer = null;
+    async function refrescar() {
+      await cargar(true);
+      const u = modalMovRef.current;
+      if (u) {
+        const { data } = await supabase.from("transacciones").select("*").eq("usuario_id", u.usuario_id).order("created_at", { ascending: false });
+        if (data && modalMovRef.current === u) setMovimientos(data);
+      }
+    }
+    const limpiar = suscribirTransacciones("finanzas-tab-admin", () => {
+      clearTimeout(timer);
+      timer = setTimeout(refrescar, 500);
+    });
+    return () => { clearTimeout(timer); limpiar(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function abrirMovimientos(u) {
     setModalMov(u);
@@ -1190,8 +1243,8 @@ function TabFinanzas({ rol = 'admin' }) {
     setCargandoMov(false);
   }
 
-  async function cargar() {
-    setCargando(true);
+  async function cargar(silencioso = false) {
+    if (!silencioso) setCargando(true);
     const { data: txs, error } = await supabase
       .from("transacciones")
       .select("*")
@@ -2757,6 +2810,38 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
   const [ticketsBadge, setTicketsBadge] = useState(0);
   const [chatBadge, setChatBadge] = useState(0);
   const [soporteBadge, setSoporteBadge] = useState(0);
+  const [finanzasBadge, setFinanzasBadge] = useState(0);
+  const tabRef = useRef(tab);
+  tabRef.current = tab; // el callback en vivo siempre lee la pestaña actual
+
+  async function cargarFinanzasBadge() {
+    const { count } = await supabase
+      .from("transacciones")
+      .select("*", { count: "exact", head: true })
+      .eq("tipo", "retiro")
+      .eq("estado", "pendiente");
+    setFinanzasBadge(count || 0);
+  }
+
+  // Al montar y en cada cambio de pestaña (también al entrar a Finanzas) se recalcula
+  useEffect(() => {
+    if (rol !== 'admin') return;
+    cargarFinanzasBadge();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, rol]);
+
+  useEffect(() => {
+    if (rol !== 'admin') return;
+    let timer = null;
+    const limpiar = suscribirTransacciones("finanzas-badge-admin", () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (tabRef.current !== "finanzas") cargarFinanzasBadge();
+      }, 1000);
+    }, "tipo=eq.retiro");
+    return () => { clearTimeout(timer); limpiar(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rol]);
 
   function cambiarTab(id) {
     localStorage.setItem('truco_admin_tab', id);
@@ -2854,6 +2939,11 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
             {t.id === "equipo" && (ticketsBadge + chatBadge) > 0 && (
               <span style={{ position: "absolute", top: 6, right: "50%", transform: "translateX(calc(50% + 16px))", background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 900, borderRadius: "50%", minWidth: 16, height: 16, display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: "0 3px" }}>
                 {(ticketsBadge + chatBadge) > 9 ? "9+" : (ticketsBadge + chatBadge)}
+              </span>
+            )}
+            {t.id === "finanzas" && rol === 'admin' && tab !== "finanzas" && finanzasBadge > 0 && (
+              <span style={{ position: "absolute", top: 6, right: "50%", transform: "translateX(calc(50% + 20px))", background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 900, borderRadius: "50%", minWidth: 16, height: 16, display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: "0 3px" }}>
+                {finanzasBadge > 9 ? "9+" : finanzasBadge}
               </span>
             )}
             {t.id === "soporte" && soporteBadge > 0 && (
