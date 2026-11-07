@@ -1252,6 +1252,49 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Saldo en vivo: refleja cambios hechos en la base (retiro rechazado, ajuste manual, etc.) sin recargar
+  const tienePerfil = !!perfil;
+  useEffect(() => {
+    if (!user?.id || !tienePerfil) return;
+    const uid = user.id;
+    let canal = null;
+    let timer = null;
+    let token = null; // identifica el canal vigente; el estado de un canal reemplazado se ignora
+
+    function aplicarSaldo(saldo) {
+      if (saldo === undefined || saldo === null) return;
+      setPerfil(p => (p ? { ...p, saldo } : p));
+    }
+    async function leerSaldoFresco() {
+      const { data } = await supabase.from("perfiles").select("saldo").eq("usuario_id", uid).single();
+      if (data) aplicarSaldo(data.saldo);
+    }
+    function crearCanal() {
+      clearTimeout(timer);
+      if (canal) supabase.removeChannel(canal);
+      const miToken = {};
+      token = miToken;
+      canal = supabase.channel(`perfil-${uid}`)
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "perfiles", filter: `usuario_id=eq.${uid}` },
+          (payload) => { if (token === miToken) aplicarSaldo(payload.new?.saldo); })
+        .subscribe((status) => {
+          if (token !== miToken) return;
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            console.warn("[Realtime] Canal de perfil caído:", status);
+            clearTimeout(timer);
+            timer = setTimeout(() => { crearCanal(); leerSaldoFresco(); }, 1500);
+          }
+        });
+    }
+    crearCanal();
+    return () => {
+      token = null;
+      clearTimeout(timer);
+      if (canal) supabase.removeChannel(canal);
+      canal = null;
+    };
+  }, [user?.id, tienePerfil]);
+
   async function cargarPerfil(u) {
     const cacheKey = `truco_perfil_${u.id}`;
     // Siempre fetchea de DB para verificar ban; cache solo como fallback si falla la red
