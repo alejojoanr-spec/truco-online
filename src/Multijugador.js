@@ -153,7 +153,7 @@ function valorEnvido(mano) {
 
 const NOMBRES_RONDA = { cuartos: "Cuartos de final", semifinal: "Semifinal", final: "Final" };
 
-export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorneo, codigoInicial, autoCrear, apuesta, puntos, esTorneo, codigoYaCreado, codigoRejoin }) {
+export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorneo, onRejoinFallido, codigoInicial, autoCrear, apuesta, puntos, esTorneo, codigoYaCreado, codigoRejoin }) {
   const [pantalla, setPantalla] = useState(
     (codigoInicial || autoCrear || codigoYaCreado || codigoRejoin) ? "redirigiendo" : "menu"
   );
@@ -418,6 +418,7 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
         const { data, error: err } = await supabase.from("partidas").select("*").eq("codigo", cod).single();
         if (err || !data || data.estado !== "jugando") {
           localStorage.removeItem(`truco_partida_${user.id}`);
+          if (onRejoinFallido) onRejoinFallido(cod);
           setError("La partida ya no está activa");
           setPantalla("menu");
           return;

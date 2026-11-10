@@ -1182,6 +1182,8 @@ function TrucoApp({ user, perfil, setPerfil, onLogout, onMultijugador, onVerTerm
   );
 }
 
+const NOMBRES_RONDA_TORNEO = { cuartos: "Cuartos de final", semifinal: "Semifinal", final: "Final", ronda1: "Primera ronda" };
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [perfil, setPerfil] = useState(null);
@@ -1294,6 +1296,86 @@ export default function App() {
       canal = null;
     };
   }, [user?.id, tienePerfil]);
+
+  // Retomar partida de torneo: si el servidor dice que tengo una partida de torneo en juego y no estoy jugando otra,
+  // se muestra un cartel y a los 2 s se lleva al jugador a esa partida
+  const [avisoTorneo, setAvisoTorneo] = useState(null); // { codigo, ronda } mientras se muestra el cartel
+  const consultandoTorneoRef = useRef(false);
+  const avisoTorneoTimerRef = useRef(null);
+  const rejoinTorneoFallidoRef = useRef(null); // { codigo, hasta }: no reintentar ese código antes de "hasta"
+  const puedeRetomar = !!user?.id && !!perfil && !cargando && splashOculto && !necesitaNombre && !necesitaAvatar && !esBaneado;
+  const libreRetomarRef = useRef(false);
+  // Libre = no está dentro de una partida (IA ni 1vs1) ni en pantallas que taparían la mesa
+  libreRetomarRef.current = modoJuego !== "single" && modoJuego !== "multi" && !verTerminos && !verPrivacidad && !verAdmin;
+
+  useEffect(() => {
+    if (!puedeRetomar) return;
+    const uid = user.id;
+    let activo = true;
+
+    async function consultar() {
+      if (document.hidden || consultandoTorneoRef.current || avisoTorneoTimerRef.current || !libreRetomarRef.current) return;
+      consultandoTorneoRef.current = true;
+      try {
+        const { data, error } = await supabase.rpc("mi_partida_torneo");
+        if (!activo || error || !data?.codigo) return;
+        if (document.hidden || avisoTorneoTimerRef.current || !libreRetomarRef.current) return;
+        const fallido = rejoinTorneoFallidoRef.current;
+        if (fallido && fallido.codigo === data.codigo && Date.now() < fallido.hasta) return;
+        const codigo = data.codigo;
+        const ronda = data.ronda == null ? "" : (NOMBRES_RONDA_TORNEO[String(data.ronda).trim().toLowerCase()] || String(data.ronda));
+        setAvisoTorneo({ codigo, ronda });
+        avisoTorneoTimerRef.current = setTimeout(() => {
+          avisoTorneoTimerRef.current = null;
+          setAvisoTorneo(null);
+          if (!activo || !libreRetomarRef.current) return;
+          localStorage.setItem(`truco_partida_${uid}`, codigo);
+          setCodigoUnirse(null);
+          setAutoCrearSala(false);
+          setCodigoYaCreadoInicial(null);
+          setCodigoRejoin(codigo);
+          setModoJuego("multi");
+          setVerTorneos(false);
+          setClaveMulti(k => k + 1); // remonta Multijugador con la partida
+        }, 2000);
+      } finally {
+        consultandoTorneoRef.current = false;
+      }
+    }
+    function onVisible() { if (!document.hidden) consultar(); }
+
+    consultar();
+    const intervalo = setInterval(consultar, 20000);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      activo = false;
+      clearInterval(intervalo);
+      document.removeEventListener("visibilitychange", onVisible);
+      if (avisoTorneoTimerRef.current) { clearTimeout(avisoTorneoTimerRef.current); avisoTorneoTimerRef.current = null; }
+      setAvisoTorneo(null);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [puedeRetomar, user?.id]);
+
+  // Si el jugador cambia de pantalla o empieza otra partida durante los 2 s del cartel, se cancela
+  const claveVista = `${modoJuego}|${verTorneos}|${verTerminos}|${verPrivacidad}|${verAdmin}`;
+  useEffect(() => {
+    if (avisoTorneoTimerRef.current) {
+      clearTimeout(avisoTorneoTimerRef.current);
+      avisoTorneoTimerRef.current = null;
+      setAvisoTorneo(null);
+    }
+  }, [claveVista]);
+
+  const cartelTorneo = avisoTorneo && (
+    <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:300,padding:16 }}>
+      <div style={{ background:"radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)",border:"1px solid #2d6a4f",borderRadius:20,padding:"28px 24px",maxWidth:320,width:"100%",textAlign:"center",fontFamily:"'Lato',sans-serif",boxShadow:"0 24px 60px rgba(0,0,0,0.7)" }}>
+        <div style={{ fontSize:48,marginBottom:10 }}>🎴</div>
+        <div style={{ fontSize:20,fontWeight:900,color:"#4ade80" }}>¡Tu partida del torneo está lista!</div>
+        {avisoTorneo.ronda && <div style={{ fontSize:12,color:"#9ca3af",marginTop:8 }}>{avisoTorneo.ronda}</div>}
+      </div>
+    </div>
+  );
 
   async function cargarPerfil(u) {
     const cacheKey = `truco_perfil_${u.id}`;
@@ -1443,6 +1525,7 @@ export default function App() {
         }}
       />
       <BotonSoporte perfil={perfil} />
+      {cartelTorneo}
     </>
   );
   const esAdmin = perfil?.rol === 'admin';
@@ -1469,6 +1552,7 @@ export default function App() {
         onVolver={() => setModoJuego(null)}
       />
       <BotonSoporte perfil={perfil} />
+      {cartelTorneo}
     </>
   );
   if (modoJuego === "multi") return (
@@ -1482,6 +1566,7 @@ export default function App() {
       puntos={puntosInicialSala}
       codigoYaCreado={codigoYaCreadoInicial}
       codigoRejoin={codigoRejoin}
+      onRejoinFallido={(cod) => { rejoinTorneoFallidoRef.current = { codigo: cod, hasta: Date.now() + 2 * 60 * 1000 }; }}
       onIrAPartidaTorneo={(cod) => {
         setCodigoUnirse(null);
         setAutoCrearSala(false);
@@ -1559,6 +1644,7 @@ export default function App() {
           </div>
         </div>
       )}
+      {cartelTorneo}
     </>
   );
 }
