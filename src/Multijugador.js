@@ -725,43 +725,20 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
   useEffect(() => {
     if (!codigo) return;
     let abandonoDetectado = false;
-    const miColumna = soyJugador1 ? "ultima_actividad_j1" : "ultima_actividad_j2";
-    const rivalColumna = soyJugador1 ? "ultima_actividad_j2" : "ultima_actividad_j1";
     async function tick() {
       const p = partidaRef.current;
       if (!p || p.estado !== "jugando") return;
-      await supabase.from("partidas").update({ [miColumna]: new Date().toISOString() }).eq("codigo", codigo);
-
       if (abandonoDetectado) return;
-      const ultimaRival = p[rivalColumna];
-      if (!ultimaRival) return;
-      const segundosSinActividad = (Date.now() - new Date(ultimaRival).getTime()) / 1000;
-      if (segundosSinActividad > 90) {
-        // Confirmar contra la base: el dato local puede estar viejo si el canal Realtime está caído
-        const { data: fresh } = await supabase.from("partidas")
-          .select("estado, ultima_actividad_j1, ultima_actividad_j2")
-          .eq("codigo", codigo).single();
-        if (!fresh || fresh.estado !== "jugando") return;
-        const ultimaFresca = fresh[rivalColumna];
-        if (ultimaFresca && (Date.now() - new Date(ultimaFresca).getTime()) / 1000 <= 90) {
-          refetchPartidaRef.current?.(); // resincronizar el estado local, no declarar nada
-          return;
-        }
+
+      // El servidor anota mi latido, compara con el rival (hora del servidor) y declara el abandono si corresponde
+      const { data, error } = await supabase.rpc("latido_partida", { p_codigo: codigo });
+      if (error || !data) return; // error de red o respuesta vacía: se reintenta en el próximo ciclo
+
+      if (data.estado === "abandono") {
         abandonoDetectado = true;
-        const rivalId = soyJugador1 ? p.jugador2_id : p.jugador1_id;
-        const updateAbandono = {
-          ganador_id: user.id,
-          estado: "terminada",
-          finalizado_en: new Date().toISOString(),
-          motivo_fin: "abandono",
-          debia_jugada_id: null,
-          ultimo_canto: { tag: "abandono_inactividad", por: rivalId, ts: Date.now() },
-        };
-        // DEBUG TEMPORAL — PERSISTENCIA jugadas_log (sacar junto con el panel de debug — ver checklist DROP COLUMN)
-        appendJugadasLog({ ...p, ...fresh }, updateAbandono, { userId: user.id });
-        const { error } = await supabase.from("partidas").update(updateAbandono)
-          .eq("codigo", codigo).eq("estado", "jugando");
-        if (error) console.error("abandono por inactividad:", error);
+        refetchPartidaRef.current?.(); // relee la partida terminada: de ahí sale procesarFinPartida (victoria / torneo)
+      } else if (data.estado !== "jugando") {
+        refetchPartidaRef.current?.(); // la partida ya no está en juego: resincronizar el estado local
       }
     }
     tick();
