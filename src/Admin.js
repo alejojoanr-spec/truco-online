@@ -1163,9 +1163,68 @@ function DatosTransferenciaConfig() {
   );
 }
 
-// Suscripción en vivo a INSERT y UPDATE de transacciones; si el canal se cae lo recrea (una vez cada 1,5 s) y vuelve a avisar.
+function PermisosAsesoresConfig() {
+  const [activo, setActivo] = useState(false);
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [errorGuardar, setErrorGuardar] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("configuracion").select("valor").eq("clave", "asesores_aprueban_retiros").maybeSingle();
+      setActivo(data?.valor === "true");
+      setCargando(false);
+    })();
+  }, []);
+
+  async function toggleActivo() {
+    const anterior = activo;
+    const nuevo = !anterior;
+    setActivo(nuevo);
+    setGuardando(true);
+    setErrorGuardar("");
+    const { error } = await supabase.from("configuracion").upsert({ clave: "asesores_aprueban_retiros", valor: String(nuevo) });
+    setGuardando(false);
+    if (error) {
+      console.error("[PermisosAsesores] upsert error:", error);
+      setActivo(anterior);
+      setErrorGuardar("No se pudo guardar el permiso. Intentá de nuevo.");
+    }
+  }
+
+  if (cargando) return <div style={{ color: "#4ade80", fontSize: 13 }}>Cargando...</div>;
+
+  return (
+    <>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 13, color: "#e2f5e9", fontWeight: 700 }}>Asesores aprueban retiros</div>
+          <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>Los asesores pueden aprobar y rechazar retiros de hasta $50.000</div>
+        </div>
+        <button
+          onClick={toggleActivo}
+          disabled={guardando}
+          style={{
+            width: 44, height: 24, borderRadius: 12, border: "none",
+            cursor: guardando ? "not-allowed" : "pointer",
+            background: activo ? "#a78bfa" : "#374151",
+            position: "relative", transition: "background 0.2s", flexShrink: 0,
+          }}
+        >
+          <div style={{
+            position: "absolute", top: 2, left: activo ? 22 : 2, width: 20, height: 20,
+            borderRadius: "50%", background: "#fff", transition: "left 0.2s",
+          }} />
+        </button>
+      </div>
+      {errorGuardar && <div style={{ fontSize: 12, color: "#f87171", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 8, padding: "8px 12px", marginTop: 10 }}>{errorGuardar}</div>}
+    </>
+  );
+}
+
+// Suscripción en vivo a INSERT y UPDATE de una tabla; si el canal se cae lo recrea (una vez cada 1,5 s) y vuelve a avisar.
 // Devuelve la función de limpieza.
-function suscribirTransacciones(nombreCanal, onEvento, filtro) {
+function suscribirTabla(nombreCanal, tabla, onEvento, filtro) {
   let canal = null;
   let timer = null;
   let activo = true;
@@ -1173,8 +1232,8 @@ function suscribirTransacciones(nombreCanal, onEvento, filtro) {
     if (!activo) return;
     if (canal) supabase.removeChannel(canal);
     const c = supabase.channel(nombreCanal)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "transacciones", ...(filtro ? { filter: filtro } : {}) }, () => onEvento())
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "transacciones", ...(filtro ? { filter: filtro } : {}) }, () => onEvento());
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: tabla, ...(filtro ? { filter: filtro } : {}) }, () => onEvento())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: tabla, ...(filtro ? { filter: filtro } : {}) }, () => onEvento());
     canal = c;
     c.subscribe((status) => {
       if (!activo || canal !== c) return; // ignora el estado de un canal ya reemplazado
@@ -1209,6 +1268,11 @@ function TabFinanzas({ rol = 'admin' }) {
   const modalMovRef = useRef(null);
   modalMovRef.current = modalMov;
 
+  // Asesor: modo reducido (solo retiros pendientes, tope de aprobación en el servidor)
+  const esAsesor = rol === 'asesor';
+  const TOPE_ASESOR = 50000;
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { cargar(); }, []);
 
   // En vivo: ante cualquier INSERT/UPDATE de transacciones se recarga la lista (agrupando ráfagas en una sola recarga)
@@ -1222,7 +1286,7 @@ function TabFinanzas({ rol = 'admin' }) {
         if (data && modalMovRef.current === u) setMovimientos(data);
       }
     }
-    const limpiar = suscribirTransacciones("finanzas-tab-admin", () => {
+    const limpiar = suscribirTabla("finanzas-tab-admin", "transacciones", () => {
       clearTimeout(timer);
       timer = setTimeout(refrescar, 500);
     });
@@ -1245,9 +1309,9 @@ function TabFinanzas({ rol = 'admin' }) {
 
   async function cargar(silencioso = false) {
     if (!silencioso) setCargando(true);
-    const { data: txs, error } = await supabase
-      .from("transacciones")
-      .select("*")
+    let consultaTxs = supabase.from("transacciones").select("*");
+    if (esAsesor) consultaTxs = consultaTxs.eq("tipo", "retiro").eq("estado", "pendiente");
+    const { data: txs, error } = await consultaTxs
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) { console.error("[TabFinanzas] cargar error:", error); setCargando(false); return; }
@@ -1263,6 +1327,8 @@ function TabFinanzas({ rol = 'admin' }) {
     }
 
     setTransacciones((txs || []).map(t => ({ ...t, perfiles: perfilesMap[t.usuario_id] || null })));
+
+    if (esAsesor) { setCargando(false); return; } // el asesor no ve el rake
 
     // Rake stats (fetch from start of year to cover all periods)
     const ahora = new Date();
@@ -1308,7 +1374,9 @@ function TabFinanzas({ rol = 'admin' }) {
     setProcesando(null);
   }
 
-  const filtradas = transacciones.filter(t => filtro === "todas" || t.estado === filtro);
+  const filtradas = esAsesor
+    ? transacciones.filter(t => t.tipo === "retiro" && t.estado === "pendiente")
+    : transacciones.filter(t => filtro === "todas" || t.estado === filtro);
 
   const stats = {
     pendientes: transacciones.filter(t => t.estado === "pendiente").length,
@@ -1326,6 +1394,7 @@ function TabFinanzas({ rol = 'admin' }) {
 
   return (
     <>
+      {!esAsesor && (<>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 16 }}>
         <StatCard label="Pendientes" valor={stats.pendientes} color="#fbbf24" onClick={() => setFiltro(f => f === "pendiente" ? "todas" : "pendiente")} activo={filtro === "pendiente"} />
         <StatCard label="Aprobado total" valor={formatARS(stats.aprobados)} color="#4ade80" onClick={() => setFiltro(f => f === "aprobado" ? "todas" : "aprobado")} activo={filtro === "aprobado"} />
@@ -1344,9 +1413,10 @@ function TabFinanzas({ rol = 'admin' }) {
           Ver rechazados
         </button>
       </div>
+      </>)}
 
       {filtradas.length === 0 ? (
-        <div style={{ textAlign: "center", color: "#6b7280", padding: 30, fontSize: 13 }}>Sin transacciones</div>
+        <div style={{ textAlign: "center", color: "#6b7280", padding: 30, fontSize: 13 }}>{esAsesor ? "Sin retiros pendientes" : "Sin transacciones"}</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {filtradas.map(t => (
@@ -1356,8 +1426,10 @@ function TabFinanzas({ rol = 'admin' }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span
-                      onClick={() => t.usuario_id && abrirMovimientos({ usuario_id: t.usuario_id, nombre: t.perfiles?.nombre || "—", avatar: t.perfiles?.avatar || "👤" })}
-                      style={{ fontSize: 13, fontWeight: 900, color: "#fbbf24", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}
+                      onClick={esAsesor ? undefined : () => t.usuario_id && abrirMovimientos({ usuario_id: t.usuario_id, nombre: t.perfiles?.nombre || "—", avatar: t.perfiles?.avatar || "👤" })}
+                      style={esAsesor
+                        ? { fontSize: 13, fontWeight: 900, color: "#fbbf24" }
+                        : { fontSize: 13, fontWeight: 900, color: "#fbbf24", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}
                     >{t.perfiles?.nombre || "—"}</span>
                     <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, border: `1px solid ${colorEstado(t.estado)}`, color: colorEstado(t.estado), background: `rgba(0,0,0,0.3)` }}>{t.estado}</span>
                     <span style={{ fontSize: 10, color: "#6b7280", background: "rgba(0,0,0,0.3)", border: "1px solid #374151", borderRadius: 4, padding: "1px 6px" }}>{t.tipo}</span>
@@ -1396,7 +1468,12 @@ function TabFinanzas({ rol = 'admin' }) {
                     <div style={{ fontSize: 11, color: "#6b7280", marginTop: 1 }}>{formatARS(t.saldo_anterior)} → {formatARS(t.saldo_nuevo)}</div>
                   )}
                 </div>
-                {t.estado === "pendiente" && (
+                {t.estado === "pendiente" && esAsesor && parseFloat(t.monto) > TOPE_ASESOR && (
+                  <div style={{ fontSize: 11, color: "#fbbf24", maxWidth: 130, textAlign: "right", flexShrink: 0, lineHeight: 1.4 }}>
+                    Supera el tope de $50.000: lo resuelve un administrador
+                  </div>
+                )}
+                {t.estado === "pendiente" && !(esAsesor && parseFloat(t.monto) > TOPE_ASESOR) && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 }}>
                     <button onClick={() => cambiarEstado(t.id, "aprobado")} disabled={procesando === t.id} style={BTN_SM("#4ade80")}>
                       {procesando === t.id ? "..." : "Aprobar"}
@@ -1412,6 +1489,7 @@ function TabFinanzas({ rol = 'admin' }) {
         </div>
       )}
 
+      {!esAsesor && (<>
       {/* Rake configuration */}
       <div style={{ ...CARD, marginTop: 20 }}>
         <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>Configuración de comisiones</div>
@@ -1425,6 +1503,14 @@ function TabFinanzas({ rol = 'admin' }) {
         <div style={{ ...CARD, marginTop: 12 }}>
           <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>Datos de transferencia</div>
           <DatosTransferenciaConfig />
+        </div>
+      )}
+
+      {/* Permisos de asesores — solo admin principal */}
+      {rol === 'admin' && (
+        <div style={{ ...CARD, marginTop: 12 }}>
+          <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>Permisos de asesores</div>
+          <PermisosAsesoresConfig />
         </div>
       )}
 
@@ -1448,9 +1534,10 @@ function TabFinanzas({ rol = 'admin' }) {
           {formatARS(rakeStats[periodoRake])}
         </div>
       </div>
+      </>)}
 
       {/* Modal historial de movimientos */}
-      {modalMov && (
+      {!esAsesor && modalMov && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.88)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 60, padding: "16px 16px 32px", overflowY: "auto" }}>
           <div style={{ background: "radial-gradient(ellipse at top,#0f2d1a 0%,#050f08 100%)", border: "1px solid rgba(167,139,250,0.4)", borderRadius: 20, padding: "24px", width: "100%", maxWidth: 480, fontFamily: "'Lato',sans-serif", marginTop: 16 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
@@ -2802,7 +2889,12 @@ const TABS = [
 ];
 
 export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usuarioId = '' }) {
-  const tabsVisibles = rol === 'asesor' ? TABS.filter(t => t.id === 'usuarios' || t.id === 'equipo' || t.id === 'soporte') : TABS;
+  // Permiso (lo escribe un admin en configuracion): con "true" el asesor ve Finanzas en modo reducido
+  const [asesoresAprueban, setAsesoresAprueban] = useState(false);
+  const puedeVerFinanzas = rol === 'admin' || asesoresAprueban;
+  const tabsVisibles = rol === 'asesor'
+    ? TABS.filter(t => t.id === 'usuarios' || t.id === 'equipo' || t.id === 'soporte' || (t.id === 'finanzas' && asesoresAprueban))
+    : TABS;
   const [tab, setTab] = useState(() => {
     const guardada = localStorage.getItem('truco_admin_tab');
     return guardada && tabsVisibles.some(t => t.id === guardada) ? guardada : tabsVisibles[0].id;
@@ -2823,17 +2915,36 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
     setFinanzasBadge(count || 0);
   }
 
+  // Asesor: lee la clave al montar y la mantiene al día en vivo (con reintento si el canal se cae)
+  useEffect(() => {
+    if (rol !== 'asesor') return;
+    let vivo = true;
+    async function leerPermiso() {
+      const { data } = await supabase.from("configuracion").select("valor").eq("clave", "asesores_aprueban_retiros").maybeSingle();
+      if (vivo) setAsesoresAprueban(data?.valor === "true");
+    }
+    leerPermiso();
+    const limpiar = suscribirTabla("config-asesores-retiros", "configuracion", leerPermiso, "clave=eq.asesores_aprueban_retiros");
+    return () => { vivo = false; limpiar(); };
+  }, [rol]);
+
+  // Si la pestaña actual deja de estar visible (p. ej. se apagó el permiso estando en Finanzas), va a la primera visible
+  useEffect(() => {
+    if (!tabsVisibles.some(t => t.id === tab)) cambiarTab(tabsVisibles[0].id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asesoresAprueban, rol, tab]);
+
   // Al montar y en cada cambio de pestaña (también al entrar a Finanzas) se recalcula
   useEffect(() => {
-    if (rol !== 'admin') return;
+    if (!puedeVerFinanzas) return;
     cargarFinanzasBadge();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, rol]);
+  }, [tab, puedeVerFinanzas]);
 
   useEffect(() => {
-    if (rol !== 'admin') return;
+    if (!puedeVerFinanzas) return;
     let timer = null;
-    const limpiar = suscribirTransacciones("finanzas-badge-admin", () => {
+    const limpiar = suscribirTabla("finanzas-badge-admin", "transacciones", () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
         if (tabRef.current !== "finanzas") cargarFinanzasBadge();
@@ -2841,7 +2952,7 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
     }, "tipo=eq.retiro");
     return () => { clearTimeout(timer); limpiar(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rol]);
+  }, [puedeVerFinanzas]);
 
   function cambiarTab(id) {
     localStorage.setItem('truco_admin_tab', id);
@@ -2941,7 +3052,7 @@ export default function Admin({ onVolver, rol = 'admin', ejecutadoPor = '', usua
                 {(ticketsBadge + chatBadge) > 9 ? "9+" : (ticketsBadge + chatBadge)}
               </span>
             )}
-            {t.id === "finanzas" && rol === 'admin' && tab !== "finanzas" && finanzasBadge > 0 && (
+            {t.id === "finanzas" && puedeVerFinanzas && tab !== "finanzas" && finanzasBadge > 0 && (
               <span style={{ position: "absolute", top: 6, right: "50%", transform: "translateX(calc(50% + 20px))", background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 900, borderRadius: "50%", minWidth: 16, height: 16, display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: "0 3px" }}>
                 {finanzasBadge > 9 ? "9+" : finanzasBadge}
               </span>
