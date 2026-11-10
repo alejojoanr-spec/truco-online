@@ -244,14 +244,14 @@ export default function Auth() {
               background: modo === "login" ? "#1a472a" : "transparent",
               border: modo === "login" ? "1px solid #2d6a4f" : "1px solid transparent",
               color: "#ffffff",
-              fontFamily: CINZEL, fontSize:13, letterSpacing:0.5,
+              fontFamily: LATO, fontSize:13, letterSpacing:0.5, textTransform:"uppercase",
             }}>Ingresar</button>
             <button onClick={() => { setModo("registro"); setMensaje(""); }} style={{
               flex:1, padding:"10px", borderRadius:8, cursor:"pointer",
               background: modo === "registro" ? "#1a472a" : "transparent",
               border: modo === "registro" ? "1px solid #2d6a4f" : "1px solid transparent",
               color: "#ffffff",
-              fontFamily: CINZEL, fontSize:13, letterSpacing:0.5,
+              fontFamily: LATO, fontSize:13, letterSpacing:0.5, textTransform:"uppercase",
             }}>Registrarse</button>
           </div>
         )}
@@ -320,7 +320,7 @@ export default function Auth() {
             padding:"14px", borderRadius:10, cursor: (cargando || (modo === "login" && bloqueado)) ? "not-allowed" : "pointer",
             background:"linear-gradient(135deg,#1a472a,#2d6a4f)",
             border:"1px solid #4ade80", color:"#ffffff",
-            fontFamily:CINZEL, fontSize:14, fontWeight:700, letterSpacing:1.5,
+            fontFamily:LATO, fontSize:14, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase",
             opacity: (cargando || (modo === "login" && bloqueado)) ? 0.6 : 1,
           }}>
             {cargando ? "Cargando..." : modo === "login" ? "🃏 Ingresar a jugar" : "✅ Crear cuenta"}
@@ -353,7 +353,7 @@ export default function Auth() {
         {modo === "recuperar" && (<>
           <div style={{ textAlign:"center" }}>
             <div style={{ fontSize:28, marginBottom:6 }}>🔑</div>
-            <div style={{ fontFamily:CINZEL, color:"#4ade80", fontSize:15, fontWeight:700, letterSpacing:1 }}>Recuperar contraseña</div>
+            <div style={{ fontFamily:LATO, color:"#4ade80", fontSize:15, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Recuperar contraseña</div>
             <div style={{ fontFamily:LATO, color:"#9ca3af", fontSize:12, marginTop:6, lineHeight:1.5 }}>Te enviamos un link a tu email para que puedas crear una nueva</div>
           </div>
 
@@ -371,7 +371,7 @@ export default function Auth() {
             padding:"14px", borderRadius:10, cursor:"pointer",
             background:"linear-gradient(135deg,#1a472a,#2d6a4f)",
             border:"1px solid #4ade80", color:"#ffffff",
-            fontFamily:CINZEL, fontSize:13, fontWeight:700, letterSpacing:1,
+            fontFamily:LATO, fontSize:13, fontWeight:700, letterSpacing:1, textTransform:"uppercase",
           }}>
             {cargando ? "Enviando..." : "📧 Enviar link de recuperación"}
           </button>
@@ -389,7 +389,7 @@ export default function Auth() {
         {modo === "nueva_password" && (<>
           <div style={{ textAlign:"center" }}>
             <div style={{ fontSize:28, marginBottom:6 }}>🔐</div>
-            <div style={{ fontFamily:CINZEL, color:"#4ade80", fontSize:15, fontWeight:700, letterSpacing:1 }}>Nueva contraseña</div>
+            <div style={{ fontFamily:LATO, color:"#4ade80", fontSize:15, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Nueva contraseña</div>
             <div style={{ fontFamily:LATO, color:"#9ca3af", fontSize:12, marginTop:6, lineHeight:1.5 }}>Elegí una contraseña nueva para tu cuenta</div>
           </div>
 
@@ -418,7 +418,7 @@ export default function Auth() {
             padding:"14px", borderRadius:10, cursor:"pointer",
             background:"linear-gradient(135deg,#1a472a,#2d6a4f)",
             border:"1px solid #4ade80", color:"#ffffff",
-            fontFamily:CINZEL, fontSize:13, fontWeight:700, letterSpacing:1,
+            fontFamily:LATO, fontSize:13, fontWeight:700, letterSpacing:1, textTransform:"uppercase",
           }}>
             {cargando ? "Guardando..." : "✅ Cambiar contraseña"}
           </button>
