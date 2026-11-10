@@ -92,23 +92,62 @@ export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo, on
     if (!torneoSeleccionado?.id) return;
     navegadoRef.current = false;
 
-    const ch = supabase.channel(`torneo-${torneoSeleccionado.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "torneos", filter: `id=eq.${torneoSeleccionado.id}` },
-        (payload) => {
-          if (navegadoRef.current) return;
-          if (payload.new.estado === "en_curso" && payload.new.bracket) {
-            const codigoPartida = codigoPartidaPendiente(payload.new.bracket, user.id);
-            if (codigoPartida) { navegadoRef.current = true; onIrAPartidaTorneo(codigoPartida); }
-          }
-        }
-      )
-      .subscribe((status) => {
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED")
-          console.warn("[Realtime] Canal caído:", status);
-      });
-    channelRef.current = ch;
+    const torneoId = torneoSeleccionado.id;
+    const MAX_REINTENTOS = 5;
+    let activo = true;
+    let token = null; // identifica el canal vigente; el estado de un canal reemplazado se ignora
+    let timer = null;
+    let intentos = 0;
+    let huboCaida = false;
 
-    return () => { if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null; } };
+    function irSiHayPartida(torneo) {
+      if (navegadoRef.current) return;
+      if (torneo?.estado === "en_curso" && torneo.bracket) {
+        const codigoPartida = codigoPartidaPendiente(torneo.bracket, user.id);
+        if (codigoPartida) { navegadoRef.current = true; onIrAPartidaTorneo(codigoPartida); }
+      }
+    }
+
+    // Lectura de la base: al entrar al detalle y cada vez que el canal se reconecta (por si se perdió un evento)
+    async function leerTorneo() {
+      const { data } = await supabase.from("torneos").select("*").eq("id", torneoId).maybeSingle();
+      if (activo) irSiHayPartida(data);
+    }
+
+    function crearCanal() {
+      clearTimeout(timer);
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
+      const miToken = {};
+      token = miToken;
+      channelRef.current = supabase.channel(`torneo-${torneoId}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "torneos", filter: `id=eq.${torneoId}` },
+          (payload) => { if (token === miToken) irSiHayPartida(payload.new); }
+        )
+        .subscribe((status) => {
+          if (token !== miToken) return;
+          if (status === "SUBSCRIBED") {
+            intentos = 0;
+            if (huboCaida) { huboCaida = false; leerTorneo(); }
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            console.warn("[Realtime] Canal caído:", status);
+            huboCaida = true;
+            if (intentos >= MAX_REINTENTOS) return;
+            intentos++;
+            clearTimeout(timer);
+            timer = setTimeout(crearCanal, 1500);
+          }
+        });
+    }
+
+    crearCanal();
+    leerTorneo();
+
+    return () => {
+      activo = false;
+      token = null;
+      clearTimeout(timer);
+      if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null; }
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [torneoSeleccionado?.id]);
 
