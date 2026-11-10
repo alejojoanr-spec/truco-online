@@ -1316,7 +1316,7 @@ function TabFinanzas({ rol = 'admin' }) {
       .limit(100);
     if (error) { console.error("[TabFinanzas] cargar error:", error); setCargando(false); return; }
 
-    const ids = [...new Set((txs || []).map(t => t.usuario_id).filter(Boolean))];
+    const ids = [...new Set((txs || []).flatMap(t => [t.usuario_id, t.resuelto_por]).filter(Boolean))];
     let perfilesMap = {};
     if (ids.length > 0) {
       const { data: perfs } = await supabase
@@ -1326,7 +1326,7 @@ function TabFinanzas({ rol = 'admin' }) {
       if (perfs) perfilesMap = Object.fromEntries(perfs.map(p => [p.usuario_id, p]));
     }
 
-    setTransacciones((txs || []).map(t => ({ ...t, perfiles: perfilesMap[t.usuario_id] || null })));
+    setTransacciones((txs || []).map(t => ({ ...t, perfiles: perfilesMap[t.usuario_id] || null, resolutor: perfilesMap[t.resuelto_por] || null })));
 
     if (esAsesor) { setCargando(false); return; } // el asesor no ve el rake
 
@@ -1463,6 +1463,9 @@ function TabFinanzas({ rol = 'admin' }) {
                   )}
                   {t.tipo === 'ajuste' && t.ejecutado_por && (
                     <div style={{ fontSize: 11, color: "#a78bfa", marginTop: 2 }}>Por: {t.ejecutado_por}</div>
+                  )}
+                  {rol === 'admin' && t.tipo === 'retiro' && t.estado !== 'pendiente' && t.resuelto_por && (
+                    <div style={{ fontSize: 11, color: "#a78bfa", marginTop: 2 }}>Resuelto por: {t.resolutor?.nombre || "—"}{t.resuelto_en ? ` · ${fechaHora(t.resuelto_en)}` : ""}</div>
                   )}
                   {t.tipo === 'ajuste' && t.saldo_anterior != null && t.saldo_nuevo != null && (
                     <div style={{ fontSize: 11, color: "#6b7280", marginTop: 1 }}>{formatARS(t.saldo_anterior)} → {formatARS(t.saldo_nuevo)}</div>
