@@ -258,35 +258,9 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
     const premio = pot - rakeAmount;
 
     if (p.ganador_id === user.id && apuestaPartida > 0) {
-      const rivalNombre = p.jugador1_id === user.id ? p.jugador2_nombre : p.jugador1_nombre;
-      const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-      const saldoAntes = fresh?.saldo || 0;
-      const saldoDespues = saldoAntes + premio;
-      await supabase.from("perfiles")
-        .update({ saldo: saldoDespues })
-        .eq("usuario_id", user.id);
-      await supabase.from("transacciones").insert({
-        usuario_id: user.id,
-        tipo: "premio",
-        monto: premio,
-        estado: "aprobado",
-        nota: `Ganancia vs ${rivalNombre || "rival"}`,
-        ejecutado_por: "sistema",
-        saldo_anterior: saldoAntes,
-        saldo_nuevo: saldoDespues,
-      });
-      if (rakeAmount > 0) {
-        await supabase.from("transacciones").insert({
-          usuario_id: user.id,
-          tipo: "rake",
-          monto: rakeAmount,
-          estado: "aprobado",
-          nota: `Comisión partida ${p.codigo || ""}`,
-          ejecutado_por: "sistema",
-          saldo_anterior: saldoAntes,
-          saldo_nuevo: saldoDespues,
-        });
-      }
+      // El servidor calcula el pozo y la comisión, acredita el premio y anota las transacciones (true = pagó ahora, false = ya estaba pagado)
+      const { error: errCobro } = await supabase.rpc("cobrar_premio_partida", { p_codigo: p.codigo });
+      if (errCobro) console.error("cobrar_premio_partida:", errCobro);
     }
 
     const ganoPartida = p.ganador_id === user.id;
