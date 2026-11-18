@@ -49,10 +49,6 @@ function mezclarLobby(arr) {
   return a;
 }
 
-function generarCodigoLobby() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-}
-
 /* ─── Partidas simuladas ─────────────────────────────────────── */
 const NOMBRES_M_SIM = [
   "juan","mateo","tomas","lucas","santiago","agustin","franco","nicolas",
@@ -546,7 +542,8 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
     timerSalaRef.current = setTimeout(async () => {
       const info = salaAbiertaRef.current;
       if (!info) return;
-      await cancelarSalaConReembolso(info.codigo, info.apuesta);
+      const cancelada = await cancelarSalaConReembolso(info.codigo);
+      if (!cancelada) return;
       setMiCodigoSala(null);
       cargar();
       canalRef.current?.send({ type: "broadcast", event: "sala_actualizada", payload: {} });
@@ -561,27 +558,9 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
       if (navegandoRef.current) return;
       const info = salaAbiertaRef.current;
       if (!info) return;
-      supabase.from("partidas").delete().eq("codigo", info.codigo);
-      if (info.apuesta > 0) {
-        supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single()
-          .then(({ data }) => {
-            if (!data) return;
-            const nuevoSaldo = data.saldo + info.apuesta;
-            supabase.from("perfiles").update({ saldo: nuevoSaldo }).eq("usuario_id", user.id)
-              .then(() => {
-                supabase.from("transacciones").insert({
-                  usuario_id: user.id,
-                  tipo: "reembolso",
-                  monto: info.apuesta,
-                  estado: "aprobado",
-                  nota: `Reembolso sala ${info.codigo}`,
-                  ejecutado_por: "sistema",
-                  saldo_anterior: data.saldo,
-                  saldo_nuevo: nuevoSaldo,
-                });
-              });
-          });
-      }
+      supabase.rpc("cancelar_sala", { p_codigo: info.codigo }).then(({ error }) => {
+        if (error) console.error("cancelar_sala (cleanup):", error);
+      });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -649,25 +628,16 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
     cargandoRef.current = false;
   }
 
-  async function cancelarSalaConReembolso(codigo, apuesta) {
-    if ((apuesta || 0) > 0) {
-      const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-      if (fresh) {
-        const nuevoSaldo = fresh.saldo + apuesta;
-        await supabase.from("perfiles").update({ saldo: nuevoSaldo }).eq("usuario_id", user.id);
-        await supabase.from("transacciones").insert({
-          usuario_id: user.id,
-          tipo: "reembolso",
-          monto: apuesta,
-          estado: "aprobado",
-          nota: `Reembolso sala ${codigo}`,
-          ejecutado_por: "sistema",
-          saldo_anterior: fresh.saldo,
-          saldo_nuevo: nuevoSaldo,
-        });
-      }
+  // Devuelve true si la sala quedó cancelada (o ya no existe); false si ya no estaba esperando (p. ej. el rival se unió justo)
+  async function cancelarSalaConReembolso(codigo) {
+    const { data, error } = await supabase.rpc("cancelar_sala", { p_codigo: codigo });
+    if (error) { console.error("cancelar_sala:", error); return false; }
+    if (!data?.cancelada) {
+      if (data?.estado === "inexistente") return true; // la sala ya no existe: mismo resultado que cancelarla
+      cargar();
+      return false;
     }
-    await supabase.from("partidas").delete().eq("codigo", codigo);
+    return true;
   }
 
   async function crearSalaPublica() {
@@ -697,70 +667,23 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
       setCreandoSala(false);
       return;
     }
-    // 1. Verificar saldo sin descontar todavía
-    if (apuestaCrear > 0) {
-      const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-      if ((fresh?.saldo || 0) < apuestaCrear) {
-        setErrorCrear("Saldo insuficiente");
-        setCreandoSala(false);
-        return;
-      }
-    }
-    // 2. INSERT primero
-    const cod = generarCodigoLobby();
+    // 1. El servidor valida, descuenta la apuesta, anota la transacción y crea la sala
     const mazo = mezclarLobby(MAZO_LOBBY);
     const mano1 = mazo.slice(0, 3);
     const mano2 = mazo.slice(3, 6);
-    const { error: err } = await supabase.from("partidas").insert({
-      codigo: cod,
-      estado: "esperando",
-      jugador1_id: user.id,
-      jugador1_nombre: perfil?.nombre || "",
-      jugador1_avatar: avatarSrc(perfil?.avatar),
-      mano_jugador1: JSON.stringify(mano1),
-      mano_jugador2: JSON.stringify(mano2),
-      turno: user.id,
-      mesa: JSON.stringify([]),
-      puntos1: 0,
-      puntos2: 0,
-      apuesta: apuestaCrear,
-      puntos: puntosCrear,
-      es_torneo: esTorneoCrear,
+    const { data, error: err } = await supabase.rpc("crear_sala", {
+      p_apuesta: apuestaCrear,
+      p_puntos: puntosCrear,
+      p_mano1: JSON.stringify(mano1),
+      p_mano2: JSON.stringify(mano2),
+      p_avatar: avatarSrc(perfil?.avatar),
     });
-    if (err) {
-      setErrorCrear(`Error al crear la sala: ${err.message}`);
+    if (err || !data?.codigo) {
+      setErrorCrear(err?.message || "Error al crear la sala");
       setCreandoSala(false);
       return;
     }
-    // 3. Descontar saldo solo después del INSERT exitoso
-    if (apuestaCrear > 0) {
-      const { data: fresh, error: fetchErr } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-      if (fetchErr || !fresh || fresh.saldo < apuestaCrear) {
-        await supabase.from("partidas").delete().eq("codigo", cod);
-        setErrorCrear("Error al procesar el saldo. Intentá de nuevo.");
-        setCreandoSala(false);
-        return;
-      }
-      const { error: saldoErr } = await supabase.from("perfiles")
-        .update({ saldo: fresh.saldo - apuestaCrear })
-        .eq("usuario_id", user.id);
-      if (saldoErr) {
-        await supabase.from("partidas").delete().eq("codigo", cod);
-        setErrorCrear("Error al procesar el saldo. Intentá de nuevo.");
-        setCreandoSala(false);
-        return;
-      }
-      await supabase.from("transacciones").insert({
-        usuario_id: user.id,
-        tipo: "apuesta",
-        monto: apuestaCrear,
-        estado: "aprobado",
-        nota: `Apuesta partida ${cod}`,
-        ejecutado_por: "sistema",
-        saldo_anterior: fresh.saldo,
-        saldo_nuevo: fresh.saldo - apuestaCrear,
-      });
-    }
+    const cod = data.codigo;
     setMiCodigoSala(cod);
     localStorage.setItem(`truco_partida_${user.id}`, cod);
     setCreandoSala(false);
@@ -771,8 +694,8 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
 
   async function eliminarSala(sala) {
     setEliminandoSala(true);
-    await cancelarSalaConReembolso(sala.codigo, sala.apuesta || 0);
-    setMiCodigoSala(null);
+    const cancelada = await cancelarSalaConReembolso(sala.codigo);
+    if (cancelada) setMiCodigoSala(null);
     setEliminandoSala(false);
     cargar();
     canalRef.current?.send({ type: "broadcast", event: "sala_actualizada", payload: {} });

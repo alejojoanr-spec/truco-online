@@ -227,7 +227,7 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
     return () => {
       const cod = salaEnEsperaRef.current;
       if (cod) {
-        supabase.from("partidas").delete().eq("codigo", cod).then(({ error }) => {
+        supabase.rpc("cancelar_sala", { p_codigo: cod }).then(({ error }) => {
           if (error) console.error("cleanup sala en espera:", error);
         });
       }
@@ -742,76 +742,19 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
     if (await tieneTorneoActivo()) { setError("Estás anotado en un torneo en curso. No podés crear partidas 1vs1 hasta que termine."); setPantalla("menu"); return; }
     if (await tienePartidaActiva(user.id)) { setError("Ya tenés una partida activa. Finalizala antes de crear otra."); setPantalla("menu"); return; }
 
-    // Eliminar salas propias previas en espera (evita acumulación y reemplaza la anterior)
-    const { data: salasPrevias, error: errPrevias } = await supabase
-      .from("partidas")
-      .select("codigo, apuesta")
-      .eq("jugador1_id", user.id)
-      .eq("estado", "esperando");
-    if (!errPrevias && salasPrevias?.length) {
-      for (const sala of salasPrevias) {
-        if ((sala.apuesta || 0) > 0) {
-          const { data: freshPrev } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-          const { error: refundErr } = await supabase.from("perfiles")
-            .update({ saldo: (freshPrev?.saldo || 0) + sala.apuesta })
-            .eq("usuario_id", user.id);
-          if (refundErr) console.error("refund sala previa:", refundErr);
-        }
-        const { error: delErr } = await supabase.from("partidas").delete().eq("codigo", sala.codigo);
-        if (delErr) console.error("eliminar sala previa:", delErr);
-      }
-    }
-
-    let saldoAntesCrea = 0;
-    if ((apuesta || 0) > 0) {
-      const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-      const saldoActual = fresh?.saldo || 0;
-      if (saldoActual < apuesta) { setError("Saldo insuficiente."); setPantalla("menu"); return; }
-      const { error: saldoErr } = await supabase.from("perfiles")
-        .update({ saldo: saldoActual - apuesta })
-        .eq("usuario_id", user.id);
-      if (saldoErr) { setError("Error al procesar el saldo."); setPantalla("menu"); return; }
-      saldoAntesCrea = saldoActual;
-    }
-    const cod = generarCodigo();
+    // El servidor valida, descuenta la apuesta, anota la transacción y crea la sala
     const mazo = mezclar(MAZO);
     const mano1 = mazo.slice(0, 3);
     const mano2 = mazo.slice(3, 6);
-    const { error: err } = await supabase.from("partidas").insert({
-      codigo: cod,
-      estado: "esperando",
-      jugador1_id: user.id,
-      jugador1_nombre: perfil?.nombre || "",
-      jugador1_avatar: avatarSrc(perfil?.avatar),
-      mano_jugador1: JSON.stringify(mano1),
-      mano_jugador2: JSON.stringify(mano2),
-      mano_original_j1: JSON.stringify(mano1),
-      mano_original_j2: JSON.stringify(mano2),
-      truco_nivel: null,
-      truco_derecho_de: null,
-      truco_en_pausa: null,
-      turno: user.id,
-      mano_id: user.id,
-      mesa: JSON.stringify([]),
-      puntos1: 0,
-      puntos2: 0,
-      apuesta: apuesta || 0,
-      puntos: puntos || 30,
-      es_torneo: esTorneo || false,
+    const { data, error: err } = await supabase.rpc("crear_sala", {
+      p_apuesta: apuesta || 0,
+      p_puntos: puntos || 30,
+      p_mano1: JSON.stringify(mano1),
+      p_mano2: JSON.stringify(mano2),
+      p_avatar: avatarSrc(perfil?.avatar),
     });
-    if (err) { setError("Error al crear sala"); setPantalla("menu"); return; }
-    if ((apuesta || 0) > 0) {
-      await supabase.from("transacciones").insert({
-        usuario_id: user.id,
-        tipo: "apuesta",
-        monto: apuesta,
-        estado: "aprobado",
-        nota: `Apuesta partida ${cod}`,
-        ejecutado_por: "sistema",
-        saldo_anterior: saldoAntesCrea,
-        saldo_nuevo: saldoAntesCrea - apuesta,
-      });
-    }
+    if (err || !data?.codigo) { setError(err?.message || "Error al crear sala"); setPantalla("menu"); return; }
+    const cod = data.codigo;
     setCodigo(cod);
     salaEnEsperaRef.current = cod;
     setSoyJugador1(true);
@@ -1013,17 +956,20 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
   }
 
   async function salirDePartida() {
-    localStorage.removeItem(`truco_partida_${user.id}`);
     if (pantalla === "esperando" && codigo) {
-      // Sala sin rival: borrarla y devolver apuesta si la hay
-      salaEnEsperaRef.current = null; // evitar doble-delete en unmount
-      if ((apuesta || 0) > 0) {
-        const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-        const { error: refErr } = await supabase.from("perfiles").update({ saldo: (fresh?.saldo || 0) + apuesta }).eq("usuario_id", user.id);
-        if (refErr) console.error("salirDePartida esperando refund:", refErr);
+      // Sala sin rival: el servidor la cancela y devuelve la apuesta, solo si sigue en "esperando"
+      const { data: res, error: errCancel } = await supabase.rpc("cancelar_sala", { p_codigo: codigo });
+      if (errCancel) {
+        console.error("salirDePartida esperando cancelar_sala:", errCancel);
+      } else if (res && res.cancelada === false) {
+        if (res.estado === "jugando") {
+          // El rival se unió justo: no salgo, releo la partida para entrar a jugar
+          refetchPartidaRef.current?.();
+          return;
+        }
       }
-      const { error: delErr } = await supabase.from("partidas").delete().eq("codigo", codigo);
-      if (delErr) console.error("salirDePartida esperando delete:", delErr);
+      // Solo si no hubo error: si falló, la ref queda para que el cleanup al desmontar reintente la cancelación
+      if (!errCancel) salaEnEsperaRef.current = null;
     } else if (partida && partida.estado === "jugando") {
       const rivalId = soyJugador1 ? partida.jugador2_id : partida.jugador1_id;
       if (rivalId) {
@@ -1040,6 +986,7 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
           .eq("codigo", codigo);
       }
     }
+    localStorage.removeItem(`truco_partida_${user.id}`); // solo si efectivamente salgo (no si me quedo porque el rival se unió justo)
     volver();
   }
 
