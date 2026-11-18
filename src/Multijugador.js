@@ -113,10 +113,6 @@ function mezclar(arr) {
   return a;
 }
 
-function generarCodigo() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-}
-
 function valorTruco(c) {
   if (c.num === 1  && c.palo === 'espada') return 13;
   if (c.num === 1  && c.palo === 'basto')  return 12;
@@ -196,6 +192,12 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
   const channelRef = useRef(null);
   const partidaRef = useRef(null);
   const revanchaTimerRef = useRef(null);
+  const [revanchaMensaje, setRevanchaMensaje] = useState(""); // texto del servidor cuando la revancha se cancela por un error
+  const revanchaEntradaRef = useRef(false); // guard: entrar a la partida de revancha una sola vez (aviso en vivo o consulta de respaldo)
+  const pidiendoRevanchaRef = useRef(false); // guard anti doble click mientras se registra el pedido
+  const aceptandoRevanchaRef = useRef(false); // guard anti doble click mientras se acepta la revancha
+  const revanchaConectandoRef = useRef(false); // true si la revancha ya está cobrada pero todavía no encontré la partida nueva
+  const entrarRevanchaRef = useRef(null); // siempre apunta a la versión actual de entrarARevancha (la usa el handler del canal)
   const salaEnEsperaRef = useRef(null); // codigo de sala propia en "esperando"; se limpia al entrar a jugando o al cancelar
   const [displayTimer, setDisplayTimer] = useState(null);
   const displayTimerIntervalRef = useRef(null);
@@ -493,44 +495,9 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
           setRevanchaEstado("rechazada");
           setTimeout(() => setRevanchaEstado(null), 3000);
         })
-        .on("broadcast", { event: "revancha_accept" }, async ({ payload }) => {
-          if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current);
-          const { nuevoCodigo } = payload;
-          setRevanchaEstado("procesando");
-
-          const apuestaR = partidaRef.current?.apuesta || 0;
-          if (apuestaR > 0) {
-            const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-            const saldoActual = fresh?.saldo || 0;
-            if (saldoActual < apuestaR) {
-              setRevanchaEstado("cancelada");
-              setTimeout(() => setRevanchaEstado(null), 3000);
-              return;
-            }
-            const saldoNuevo = saldoActual - apuestaR;
-            await supabase.from("perfiles").update({ saldo: saldoNuevo }).eq("usuario_id", user.id);
-            await supabase.from("transacciones").insert({
-              usuario_id: user.id, tipo: "apuesta", monto: apuestaR, estado: "aprobado",
-              nota: `Apuesta revancha ${nuevoCodigo}`, ejecutado_por: "sistema",
-              saldo_anterior: saldoActual, saldo_nuevo: saldoNuevo,
-            });
-          }
-
-          const { data: nuevaPartida } = await supabase.from("partidas").select("*").eq("codigo", nuevoCodigo).single();
-          if (!nuevaPartida) { setRevanchaEstado("cancelada"); setTimeout(() => setRevanchaEstado(null), 3000); return; }
-
-          // Solicitante entra como jugador2 (aceptante creó como jugador1)
-          pagoProcesadoRef.current = false;
-          accionLogueadaRef.current = null;
-          setResultadoPartida(null);
-          setRevanchaEstado(null);
-          setCartaSeleccionada(null);
-          setPartida(nuevaPartida);
-          setSoyJugador1(false);
-          setMiMano(JSON.parse(nuevaPartida.mano_jugador2));
-          setManoRival(JSON.parse(nuevaPartida.mano_jugador1));
-          setPantalla("jugando");
-          setCodigo(nuevoCodigo);
+        .on("broadcast", { event: "revancha_accept" }, ({ payload }) => {
+          // El servidor ya cobró a los dos al aceptar: acá solo se entra a la partida nueva
+          entrarRevanchaRef.current?.(payload?.nuevoCodigo);
         })
         .subscribe((status) => {
           if (canalVigenteRef.current !== token) return;
@@ -1384,17 +1351,43 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
   noQuieroRef.current = noQuiero;
 
   /* ─── revancha ─── */
-  function solicitarRevancha() {
+  async function solicitarRevancha() {
+    if (!channelRef.current || pidiendoRevanchaRef.current) return;
+    pidiendoRevanchaRef.current = true;
+    const { error: errPedir } = await supabase.rpc("pedir_revancha", { p_codigo: codigo });
+    pidiendoRevanchaRef.current = false;
+    if (errPedir) {
+      setRevanchaMensaje(errPedir.message || "");
+      setRevanchaEstado("cancelada");
+      setTimeout(() => setRevanchaEstado(null), 4000);
+      return;
+    }
     if (!channelRef.current) return;
-    if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current);
+    revanchaEntradaRef.current = false;
+    revanchaConectandoRef.current = false;
+    setRevanchaMensaje("");
     setRevanchaEstado("esperando_rival");
-    setRevanchaTimer(30);
     channelRef.current.send({ type: "broadcast", event: "revancha_request" });
+    arrancarTemporizadorRevancha();
+  }
+
+  // Cuenta regresiva de 30 s mientras espero al rival. Si se agota estando "conectando" (revancha ya cobrada pero sin encontrar
+  // la partida nueva), avisa cómo pedir ayuda; si no, simplemente vuelve al estado inicial.
+  function arrancarTemporizadorRevancha() {
+    if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current);
+    setRevanchaTimer(30);
     revanchaTimerRef.current = setInterval(() => {
       setRevanchaTimer(t => {
         if (t <= 1) {
           clearInterval(revanchaTimerRef.current);
-          setRevanchaEstado(prev => prev === "esperando_rival" ? null : prev);
+          if (revanchaConectandoRef.current) {
+            revanchaConectandoRef.current = false;
+            setRevanchaMensaje(`No pudimos abrir la revancha. Si te cobraron la apuesta, avisá a soporte con el código ${codigo}`);
+            setRevanchaEstado(prev => prev === "esperando_rival" ? "cancelada" : prev);
+            setTimeout(() => setRevanchaEstado(null), 10000);
+          } else {
+            setRevanchaEstado(prev => prev === "esperando_rival" ? null : prev);
+          }
           return 30;
         }
         return t - 1;
@@ -1404,85 +1397,110 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
 
   function cancelarRevancha() {
     if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current);
+    revanchaConectandoRef.current = false;
+    setRevanchaMensaje("");
     setRevanchaEstado(null);
     setRevanchaTimer(30);
   }
 
   async function aceptarRevancha() {
-    setRevanchaEstado("procesando");
-    const p = partidaRef.current;
-    const apuestaR = p?.apuesta || 0;
+    if (aceptandoRevanchaRef.current) return;
+    aceptandoRevanchaRef.current = true;
+    try {
+      setRevanchaMensaje("");
+      setRevanchaEstado("procesando");
+      const mazo = mezclar(MAZO);
+      const mano1 = mazo.slice(0, 3);
+      const mano2 = mazo.slice(3, 6);
 
-    if (apuestaR > 0) {
-      const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-      const saldoActual = fresh?.saldo || 0;
-      if (saldoActual < apuestaR) {
-        setRevanchaEstado(null);
+      // El servidor valida a los dos, cobra la apuesta a los dos, anota las transacciones y crea la partida nueva
+      const { data, error: errAceptar } = await supabase.rpc("aceptar_revancha", {
+        p_codigo: codigo,
+        p_mano1: JSON.stringify(mano1),
+        p_mano2: JSON.stringify(mano2),
+      });
+      if (errAceptar || !data) {
+        setRevanchaMensaje(errAceptar?.message || "");
+        setRevanchaEstado("cancelada");
+        setTimeout(() => setRevanchaEstado(null), 4000);
         if (channelRef.current) channelRef.current.send({ type: "broadcast", event: "revancha_reject" });
         return;
       }
-      const saldoNuevo = saldoActual - apuestaR;
-      await supabase.from("perfiles").update({ saldo: saldoNuevo }).eq("usuario_id", user.id);
-      await supabase.from("transacciones").insert({
-        usuario_id: user.id, tipo: "apuesta", monto: apuestaR, estado: "aprobado",
-        nota: `Apuesta revancha`, ejecutado_por: "sistema",
-        saldo_anterior: saldoActual, saldo_nuevo: saldoNuevo,
-      });
+
+      // Avisar al rival antes de cambiar de código (el cambio recrea el canal); espera máxima de 3 s, después sigo igual
+      if (channelRef.current) {
+        await Promise.race([
+          channelRef.current.send({ type: "broadcast", event: "revancha_accept", payload: { nuevoCodigo: data.codigo } }).catch(() => {}),
+          new Promise(r => setTimeout(r, 3000)),
+        ]);
+      }
+
+      // Aceptante entra como jugador1
+      pagoProcesadoRef.current = false;
+      accionLogueadaRef.current = null;
+      setResultadoPartida(null);
+      setRevanchaEstado(null);
+      setCartaSeleccionada(null);
+      setPartida(data);
+      setSoyJugador1(true);
+      setMiMano(JSON.parse(data.mano_jugador1));
+      setManoRival(JSON.parse(data.mano_jugador2));
+      setPantalla("jugando");
+      setCodigo(data.codigo);
+    } finally {
+      aceptandoRevanchaRef.current = false;
     }
+  }
 
-    const rivalId     = soyJugador1 ? p?.jugador2_id    : p?.jugador1_id;
-    const rivalNombre = soyJugador1 ? p?.jugador2_nombre : p?.jugador1_nombre;
-    const rivalAvatar = soyJugador1 ? p?.jugador2_avatar : p?.jugador1_avatar;
-    const nuevoCod = generarCodigo();
-    const mazo = mezclar(MAZO);
-    const mano1 = mazo.slice(0, 3);
-    const mano2 = mazo.slice(3, 6);
+  // Quien pidió la revancha entra como jugador2 a la partida que creó el rival (el servidor ya cobró a los dos).
+  // Se la llama por el aviso en vivo o por la consulta de respaldo; el guard evita entrar dos veces.
+  async function entrarARevancha(nuevoCodigo) {
+    if (!nuevoCodigo || revanchaEntradaRef.current) return;
+    revanchaEntradaRef.current = true;
+    if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current);
+    setRevanchaEstado("procesando");
 
-    const { error: errInsert } = await supabase.from("partidas").insert({
-      codigo: nuevoCod, estado: "jugando",
-      jugador1_id: user.id,
-      jugador1_nombre: perfil?.nombre || "",
-      jugador1_avatar: avatarSrc(perfil?.avatar),
-      jugador2_id: rivalId,
-      jugador2_nombre: rivalNombre || "",
-      jugador2_avatar: avatarSrc(rivalAvatar),
-      mano_jugador1: JSON.stringify(mano1),
-      mano_jugador2: JSON.stringify(mano2),
-      mano_original_j1: JSON.stringify(mano1),
-      mano_original_j2: JSON.stringify(mano2),
-      truco_nivel: null,
-      truco_derecho_de: null,
-      truco_en_pausa: null,
-      turno: user.id, mano_id: user.id, mesa: JSON.stringify([]),
-      puntos1: 0, puntos2: 0,
-      apuesta: apuestaR,
-      puntos: p?.puntos || 15,
-      es_torneo: p?.es_torneo || false,
-      turno_inicio: new Date().toISOString(),
-    });
-
-    if (errInsert) { setRevanchaEstado(null); return; }
-
-    if (channelRef.current) {
-      channelRef.current.send({ type: "broadcast", event: "revancha_accept", payload: { nuevoCodigo: nuevoCod } });
+    let nuevaPartida = null;
+    for (let intento = 0; intento < 4 && !nuevaPartida; intento++) { // 1 lectura + hasta 3 reintentos con 1 s de espera
+      if (intento > 0) await new Promise(r => setTimeout(r, 1000));
+      const { data } = await supabase.from("partidas").select("*").eq("codigo", nuevoCodigo).maybeSingle();
+      if (data) nuevaPartida = data;
     }
+    if (!nuevaPartida) {
+      // El servidor ya cobró y la partida existe: no la doy por cancelada; sigo buscándola con la consulta de respaldo
+      revanchaEntradaRef.current = false;
+      revanchaConectandoRef.current = true;
+      setRevanchaMensaje("Conectando con la revancha...");
+      setRevanchaEstado("esperando_rival");
+      arrancarTemporizadorRevancha();
+      return;
+    }
+    revanchaConectandoRef.current = false;
 
-    // Cargar la partida nueva en estado local (evita ver el marcador de la partida anterior)
-    const { data: nuevaPartida } = await supabase.from("partidas").select("*").eq("codigo", nuevoCod).single();
-
-    // Aceptante entra como jugador1
     pagoProcesadoRef.current = false;
     accionLogueadaRef.current = null;
     setResultadoPartida(null);
     setRevanchaEstado(null);
     setCartaSeleccionada(null);
-    if (nuevaPartida) setPartida(nuevaPartida);
-    setSoyJugador1(true);
-    setMiMano(mano1);
-    setManoRival(mano2);
+    setPartida(nuevaPartida);
+    setSoyJugador1(false);
+    setMiMano(JSON.parse(nuevaPartida.mano_jugador2));
+    setManoRival(JSON.parse(nuevaPartida.mano_jugador1));
     setPantalla("jugando");
-    setCodigo(nuevoCod);
+    setCodigo(nuevoCodigo);
   }
+  entrarRevanchaRef.current = entrarARevancha;
+
+  // Respaldo por si se pierde el aviso en vivo: mientras espero la respuesta, busco la partida de revancha en la base
+  useEffect(() => {
+    if (revanchaEstado !== "esperando_rival" || !codigo) return;
+    const id = setInterval(async () => {
+      if (revanchaEntradaRef.current) return;
+      const { data } = await supabase.from("partidas").select("codigo").eq("revancha_de", codigo).maybeSingle();
+      if (data?.codigo) entrarRevanchaRef.current?.(data.codigo);
+    }, 3000);
+    return () => clearInterval(id);
+  }, [revanchaEstado, codigo]);
 
   function rechazarRevancha() {
     setRevanchaEstado(null);
@@ -1520,7 +1538,7 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
             )}
             {revanchaEstado === "esperando_rival" && (
               <div style={{ background:"rgba(251,191,36,0.07)",border:"1px solid rgba(251,191,36,0.3)",borderRadius:12,padding:"14px 16px" }}>
-                <div style={{ fontSize:13,color:"#fbbf24",fontWeight:700,marginBottom:4 }}>Esperando respuesta del rival...</div>
+                <div style={{ fontSize:13,color:"#fbbf24",fontWeight:700,marginBottom:4 }}>{revanchaMensaje || "Esperando respuesta del rival..."}</div>
                 <div style={{ fontSize:28,color:"#fbbf24",fontWeight:900,marginBottom:10 }}>{revanchaTimer}s</div>
                 <button onClick={cancelarRevancha} style={{ padding:"6px 16px",borderRadius:8,cursor:"pointer",background:"none",border:"1px solid #374151",color:"#6b7280",fontFamily:"'Lato',sans-serif",fontSize:12 }}>Cancelar</button>
               </div>
@@ -1528,7 +1546,7 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
             {revanchaEstado === "procesando" && <div style={{ fontSize:13,color:"#4ade80",padding:"10px" }}>⏳ Preparando la revancha...</div>}
             {(revanchaEstado === "rechazada" || revanchaEstado === "cancelada") && (
               <div style={{ fontSize:13,color:"#f87171",background:"rgba(248,113,113,0.07)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:10,padding:"12px" }}>
-                {revanchaEstado === "rechazada" ? "El rival no aceptó la revancha" : "La revancha fue cancelada"}
+                {revanchaEstado === "rechazada" ? "El rival no aceptó la revancha" : (revanchaMensaje || "La revancha fue cancelada")}
               </div>
             )}
             <button onClick={volver} style={{ padding:"12px 28px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>Volver al inicio</button>
@@ -1549,7 +1567,7 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
             )}
             {revanchaEstado === "esperando_rival" && (
               <div style={{ background:"rgba(251,191,36,0.07)",border:"1px solid rgba(251,191,36,0.3)",borderRadius:12,padding:"14px 16px" }}>
-                <div style={{ fontSize:13,color:"#fbbf24",fontWeight:700,marginBottom:4 }}>Esperando respuesta del rival...</div>
+                <div style={{ fontSize:13,color:"#fbbf24",fontWeight:700,marginBottom:4 }}>{revanchaMensaje || "Esperando respuesta del rival..."}</div>
                 <div style={{ fontSize:28,color:"#fbbf24",fontWeight:900,marginBottom:10 }}>{revanchaTimer}s</div>
                 <button onClick={cancelarRevancha} style={{ padding:"6px 16px",borderRadius:8,cursor:"pointer",background:"none",border:"1px solid #374151",color:"#6b7280",fontFamily:"'Lato',sans-serif",fontSize:12 }}>Cancelar</button>
               </div>
@@ -1557,7 +1575,7 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
             {revanchaEstado === "procesando" && <div style={{ fontSize:13,color:"#4ade80",padding:"10px" }}>⏳ Preparando la revancha...</div>}
             {(revanchaEstado === "rechazada" || revanchaEstado === "cancelada") && (
               <div style={{ fontSize:13,color:"#f87171",background:"rgba(248,113,113,0.07)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:10,padding:"12px" }}>
-                {revanchaEstado === "rechazada" ? "El rival no aceptó la revancha" : "La revancha fue cancelada"}
+                {revanchaEstado === "rechazada" ? "El rival no aceptó la revancha" : (revanchaMensaje || "La revancha fue cancelada")}
               </div>
             )}
             <button onClick={volver} style={{ width:"100%",padding:"13px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>{resultadoPartida.torneo ? "Volver a Torneos" : "Volver al inicio"}</button>
