@@ -153,7 +153,7 @@ function valorEnvido(mano) {
 
 const NOMBRES_RONDA = { cuartos: "Cuartos de final", semifinal: "Semifinal", final: "Final" };
 
-export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorneo, onRejoinFallido, codigoInicial, autoCrear, apuesta, puntos, esTorneo, codigoYaCreado, codigoRejoin }) {
+export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorneo, onRejoinFallido, codigoInicial, desdeLobby, autoCrear, apuesta, puntos, esTorneo, codigoYaCreado, codigoRejoin }) {
   const [pantalla, setPantalla] = useState(
     (codigoInicial || autoCrear || codigoYaCreado || codigoRejoin) ? "redirigiendo" : "menu"
   );
@@ -330,45 +330,20 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
     if (codigoInicial) {
       (async () => {
         const cod = codigoInicial.toUpperCase().trim();
-        const { data, error: err } = await supabase.from("partidas").select("*").eq("codigo", cod).single();
-        if (err || !data) { setError("Sala no encontrada"); setPantalla("menu"); return; }
-        if (data.estado !== "esperando") { setError("La sala ya no está disponible"); setPantalla("menu"); return; }
-        const montoSalaLobby = data.apuesta || 0;
-        let saldoAntesLobby = 0;
-        if (montoSalaLobby > 0) {
-          const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-          const saldoActual = fresh?.saldo || 0;
-          if (saldoActual < montoSalaLobby) { setError("Saldo insuficiente para unirte a esta partida."); setPantalla("menu"); return; }
-          const { error: saldoErr } = await supabase.from("perfiles")
-            .update({ saldo: saldoActual - montoSalaLobby })
-            .eq("usuario_id", user.id);
-          if (saldoErr) { setError("Error al procesar el saldo."); setPantalla("menu"); return; }
-          saldoAntesLobby = saldoActual;
-        }
-        await supabase.from("partidas").update({
-          jugador2_id: user.id,
-          jugador2_nombre: perfil?.nombre || "",
-          jugador2_avatar: avatarSrc(perfil?.avatar),
-          estado: "jugando",
-        }).eq("codigo", cod);
-        if (montoSalaLobby > 0) {
-          await supabase.from("transacciones").insert({
-            usuario_id: user.id,
-            tipo: "apuesta",
-            monto: montoSalaLobby,
-            estado: "aprobado",
-            nota: `Apuesta vs ${data.jugador1_nombre || "rival"}`,
-            ejecutado_por: "sistema",
-            saldo_anterior: saldoAntesLobby,
-            saldo_nuevo: saldoAntesLobby - montoSalaLobby,
-          });
+        // El servidor valida, descuenta la apuesta, anota la transacción y me pone como jugador2
+        const { data, error: err } = await supabase.rpc("unirse_a_sala", { p_codigo: cod, p_avatar: avatarSrc(perfil?.avatar) });
+        if (err || !data) {
+          const mensaje = err?.message || "No se pudo unir a la sala";
+          if (desdeLobby) onVolver({ aLobby: true, mensaje });
+          else { setError(mensaje); setPantalla("menu"); }
+          return;
         }
         setCodigo(cod);
         setSoyJugador1(false);
         setMiMano(JSON.parse(data.mano_jugador2));
         setManoRival(JSON.parse(data.mano_jugador1));
         ultimoCantoMostradoRef.current = data.ultimo_canto?.ts ?? null;
-        setPartida({ ...data, jugador2_id: user.id, estado: "jugando" });
+        setPartida(data);
         setPantalla("jugando");
         addLog("¡Partida iniciada!");
       })();
@@ -765,71 +740,17 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
 
   async function unirseASala() {
     const cod = codigoInput.toUpperCase().trim();
-    const { data, error: err } = await supabase.from("partidas").select("*").eq("codigo", cod).single();
-    if (err || !data) { setError("Sala no encontrada"); return; }
-    if (data.estado !== "esperando") { setError("La sala ya está en juego"); return; }
     if (await tieneTorneoActivo()) { setError("Estás anotado en un torneo en curso. No podés unirte a partidas 1vs1 hasta que termine."); return; }
     // Verificar que el usuario no tenga ya una partida activa
     if (await tienePartidaActiva(user.id)) { setError("Ya tenés una partida activa. Finalizala antes de unirte a otra."); return; }
-    const montoSala = data.apuesta || 0;
-    let saldoActual = 0;
-    if (montoSala > 0) {
-      const { data: fresh } = await supabase.from("perfiles").select("saldo").eq("usuario_id", user.id).single();
-      saldoActual = fresh?.saldo || 0;
-      if (saldoActual < montoSala) { setError("Saldo insuficiente para unirte a esta partida."); return; }
-    }
-    const turnoInicio = new Date().toISOString();
-    const { data: filasGanadas, error: joinErr } = await supabase
-      .from("partidas")
-      .update({
-        jugador2_id: user.id,
-        jugador2_nombre: perfil?.nombre || "",
-        jugador2_avatar: avatarSrc(perfil?.avatar),
-        estado: "jugando",
-        turno_inicio: turnoInicio,
-      })
-      .eq("codigo", cod)
-      .is("jugador2_id", null)
-      .eq("estado", "esperando")
-      .select();
-
-    if (joinErr || !filasGanadas || filasGanadas.length === 0) {
-      setError("La sala ya fue ocupada por otro jugador.");
-      return;
-    }
-    const partidaGanada = filasGanadas[0];
-
-    if (montoSala > 0) {
-      const { error: saldoErr } = await supabase.from("perfiles")
-        .update({ saldo: saldoActual - montoSala })
-        .eq("usuario_id", user.id);
-      if (saldoErr) {
-        await supabase.from("partidas").update({
-          jugador2_id: null,
-          jugador2_nombre: null,
-          jugador2_avatar: null,
-          estado: "esperando",
-          turno_inicio: null,
-        }).eq("codigo", cod).eq("jugador2_id", user.id);
-        setError("Error al procesar el saldo, volvé a intentar unirte.");
-        return;
-      }
-      await supabase.from("transacciones").insert({
-        usuario_id: user.id,
-        tipo: "apuesta",
-        monto: montoSala,
-        estado: "aprobado",
-        nota: `Apuesta vs ${partidaGanada.jugador1_nombre || "rival"}`,
-        ejecutado_por: "sistema",
-        saldo_anterior: saldoActual,
-        saldo_nuevo: saldoActual - montoSala,
-      });
-    }
+    // El servidor valida, descuenta la apuesta, anota la transacción y me pone como jugador2
+    const { data, error: err } = await supabase.rpc("unirse_a_sala", { p_codigo: cod, p_avatar: avatarSrc(perfil?.avatar) });
+    if (err || !data) { setError(err?.message || "No se pudo unir a la sala"); return; }
     setCodigo(cod);
     setSoyJugador1(false);
-    setMiMano(JSON.parse(partidaGanada.mano_jugador2));
-    setManoRival(JSON.parse(partidaGanada.mano_jugador1));
-    setPartida(partidaGanada);
+    setMiMano(JSON.parse(data.mano_jugador2));
+    setManoRival(JSON.parse(data.mano_jugador1));
+    setPartida(data);
     setPantalla("jugando");
     addLog("¡Partida iniciada!");
   }

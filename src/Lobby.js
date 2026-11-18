@@ -372,7 +372,7 @@ const IconVolver = () => (
   </svg>
 );
 
-export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, onUnirse, onPartidaIniciada, onVolver }) {
+export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, onUnirse, onPartidaIniciada, onVolver, avisoLobby, onAvisoLobbyMostrado }) {
   const [salas, setSalas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [torneosAbiertos, setTorneosAbiertos] = useState([]);
@@ -406,6 +406,7 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
   const [uniendose, setUniendose] = useState(null);
   const [cancelandoTorneo, setCancelandoTorneo] = useState(null);
   const [errorTorneo, setErrorTorneo] = useState("");
+  const [aviso, setAviso] = useState("");
   const [pantalla, setPantalla] = useState("lobby");
 
   // Datos del formulario de creación
@@ -564,6 +565,17 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Aviso que llega desde App (p. ej. la sala a la que quería unirme ya no estaba disponible): se muestra ~4 s y se refresca la lista
+  useEffect(() => {
+    if (!avisoLobby) return;
+    setAviso(avisoLobby);
+    if (onAvisoLobbyMostrado) onAvisoLobbyMostrado();
+    cargar();
+    // Sin cleanup a propósito: App limpia avisoLobby enseguida y eso volvería a correr el efecto cancelando este timer
+    setTimeout(() => setAviso(""), 4000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [avisoLobby]);
 
   async function cargarTorneos() {
     const { data: torneos } = await supabase
@@ -960,6 +972,12 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
           s.estado === "esperando"
             ? <CardEsperando key={s.id} sala={s} onUnirse={unirse} uniendose={uniendose} perfil={perfil} />
             : <CardJugando key={s.id} sala={s} />
+        )}
+
+        {aviso && (
+          <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.35)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#fbbf24" }}>
+            {aviso}
+          </div>
         )}
 
         {errorTorneo && (

@@ -1196,6 +1196,7 @@ export default function App() {
   const [puntosInicialSala, setPuntosInicialSala] = useState(30);
   const [codigoYaCreadoInicial, setCodigoYaCreadoInicial] = useState(null);
   const [origenMulti, setOrigenMulti] = useState("home");
+  const [avisoLobby, setAvisoLobby] = useState(""); // mensaje corto para mostrar en el Lobby al volver (p. ej. la sala ya no estaba disponible)
   const [verTerminos, setVerTerminos] = useState(false);
   const [verPrivacidad, setVerPrivacidad] = useState(false);
   const [verTorneos, setVerTorneos] = useState(false);
@@ -1549,6 +1550,8 @@ export default function App() {
           setOrigenMulti("lobby");
           setModoJuego("multi");
         }}
+        avisoLobby={avisoLobby}
+        onAvisoLobbyMostrado={() => setAvisoLobby("")}
         onVolver={() => setModoJuego(null)}
       />
       <BotonSoporte perfil={perfil} />
@@ -1561,6 +1564,7 @@ export default function App() {
       user={user}
       perfil={perfil}
       codigoInicial={codigoUnirse}
+      desdeLobby={origenMulti === "lobby"}
       autoCrear={autoCrearSala}
       apuesta={apuestaInicial}
       puntos={puntosInicialSala}
@@ -1580,6 +1584,7 @@ export default function App() {
         setAutoCrearSala(false);
         setCodigoYaCreadoInicial(null);
         if (opts?.aTorneos) { setModoJuego(null); setVerTorneos(true); }
+        else if (opts?.aLobby) { setAvisoLobby(opts.mensaje || ""); setModoJuego("lobby"); }
         else setModoJuego(origenMulti === "lobby" ? "lobby" : null);
         setOrigenMulti("home");
       }}
