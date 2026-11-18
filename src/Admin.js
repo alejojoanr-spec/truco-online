@@ -148,28 +148,21 @@ function TabUsuarios({ rol, ejecutadoPor, usuarioId }) {
     if (isNaN(monto) || monto === 0) { setErrorSaldo("Ingresá un monto válido (puede ser negativo)."); return; }
     if (rol === 'asesor' && modalSaldo.usuario_id === usuarioId) { setErrorSaldo("No podés ajustar tu propio saldo."); return; }
     if (rol === 'asesor' && Math.abs(monto) > 50000) { setErrorSaldo("Superás el límite máximo por operación."); setMostrarBtnTicket(true); return; }
-    const saldoAnterior = modalSaldo.saldo || 0;
-    if (saldoAnterior + monto < 0) { setErrorSaldo("El saldo no puede quedar en negativo."); return; }
     setProcesandoSaldo(true); setErrorSaldo("");
-    const nuevoSaldo = saldoAnterior + monto;
-    const { error } = await supabase.from("perfiles").update({ saldo: nuevoSaldo }).eq("usuario_id", modalSaldo.usuario_id);
-    if (error) { console.error("[Admin] ajustarSaldo error:", error); setErrorSaldo(`No se pudo ajustar el saldo. (${error.message})`); setProcesandoSaldo(false); return; }
-    const { error: txErr } = await supabase.from("transacciones").insert({
-      usuario_id: modalSaldo.usuario_id,
-      tipo: "ajuste",
-      monto,
-      estado: "aprobado",
-      nota: saldoNota.trim() || null,
-      ejecutado_por: ejecutadoPor || null,
-      saldo_anterior: saldoAnterior,
-      saldo_nuevo: nuevoSaldo,
-    }).select();
-    if (txErr) {
-      setErrorSaldo(`Saldo ajustado pero no se pudo registrar la transacción: ${txErr.message}`);
+    // El servidor valida el rol y las reglas del asesor, suma sobre el saldo real, verifica que no quede negativo y anota la transacción
+    const { data: saldoNuevo, error } = await supabase.rpc("ajustar_saldo", {
+      p_usuario_id: modalSaldo.usuario_id,
+      p_monto: monto,
+      p_nota: saldoNota.trim(),
+    });
+    if (error) {
+      console.error("[Admin] ajustarSaldo error:", error);
+      setErrorSaldo(error.message || "No se pudo ajustar el saldo.");
+      if (/l[ií]mite|tope/i.test(error.message || "")) setMostrarBtnTicket(true);
       setProcesandoSaldo(false);
       return;
     }
-    setUsuarios(prev => prev.map(u => u.usuario_id === modalSaldo.usuario_id ? { ...u, saldo: nuevoSaldo } : u));
+    setUsuarios(prev => prev.map(u => u.usuario_id === modalSaldo.usuario_id ? { ...u, saldo: saldoNuevo } : u));
     resetZoom(); setModalSaldo(null); setSaldoValor(""); setSaldoNota(""); setMostrarBtnTicket(false);
     setProcesandoSaldo(false);
   }
