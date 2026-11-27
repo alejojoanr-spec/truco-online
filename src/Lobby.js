@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
+import { esperaReintento } from "./reintentos";
 import { crearTorneo as crearTorneoApi, unirseATorneo as unirseATorneoApi } from "./torneosApi";
 import { tienePartidaActiva } from "./partidasApi";
 import { AVATARES_MASC, AVATARES_FEM, avatarSrc } from "./avatares";
@@ -450,7 +451,8 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
       };
     }
     const frenoCargar = crearFreno(() => {
-      if (cargandoRef.current) return; // ignorar si ya hay una carga en vuelo
+      // Si hay una carga en vuelo no se descarta: se reprograma para no perder el último cambio
+      if (cargandoRef.current) { frenoCargar.llamar(); return; }
       cargar();
     });
     const frenoTorneos = crearFreno(() => { cargarTorneos(); });
@@ -462,6 +464,7 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
     // CLOSED disparado por ese removeChannel del unmount no programe un reintento después
     // de que el efecto ya se limpió (canal huérfano que nadie volvería a remover).
     let montado = true;
+    let intentosCanalLobby = 0; // no se reinicia al recrear el canal; vuelve a 0 con SUBSCRIBED
 
     function crearCanalLobby() {
       // "vigente" se apaga ANTES de llamar removeChannel() en el reintento, para que
@@ -475,6 +478,7 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
         .on("broadcast", { event: "sala_actualizada" }, disparar)
         .subscribe((status) => {
           if (!vigente || !montado) return;
+          if (status === "SUBSCRIBED") { intentosCanalLobby = 0; return; }
           if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
             console.warn("[Realtime] Canal caído:", status);
             if (reconexionLobbyTimerRef.current) return; // ya hay un reintento programado
@@ -483,7 +487,7 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
               vigente = false;
               supabase.removeChannel(canal);
               canalRef.current = crearCanalLobby();
-            }, 1500);
+            }, esperaReintento(intentosCanalLobby++));
           }
         });
       return canal;

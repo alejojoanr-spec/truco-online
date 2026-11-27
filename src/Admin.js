@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
+import { esperaReintento } from "./reintentos";
 import { avatarSrc } from "./avatares";
 import { estadoNotificaciones, activarNotificaciones as activarNotificacionesPush } from "./notificaciones";
 import {
@@ -1221,6 +1222,7 @@ function suscribirTabla(nombreCanal, tabla, onEvento, filtro) {
   let canal = null;
   let timer = null;
   let activo = true;
+  let intentos = 0; // no se reinicia al recrear el canal; vuelve a 0 con SUBSCRIBED
   function crear() {
     if (!activo) return;
     if (canal) supabase.removeChannel(canal);
@@ -1230,10 +1232,11 @@ function suscribirTabla(nombreCanal, tabla, onEvento, filtro) {
     canal = c;
     c.subscribe((status) => {
       if (!activo || canal !== c) return; // ignora el estado de un canal ya reemplazado
+      if (status === "SUBSCRIBED") { intentos = 0; return; }
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
         console.warn("[Realtime] Canal caído:", nombreCanal, status);
         clearTimeout(timer);
-        timer = setTimeout(() => { crear(); onEvento(); }, 1500);
+        timer = setTimeout(() => { crear(); onEvento(); }, esperaReintento(intentos++));
       }
     });
   }

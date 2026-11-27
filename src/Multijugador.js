@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { resolverGanadorMano, calcularFalta } from "./trucoReglas";
 import { supabase } from "./supabase";
+import { esperaReintento } from "./reintentos";
 import { avatarSrc } from "./avatares";
 import { leerConfig } from "./Configuracion";
 import { sumarPuntosRanking } from "./ranking";
@@ -476,6 +477,8 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
     }
     refetchPartidaRef.current = refetchPartida;
 
+    let intentosCanal = 0; // no se reinicia al recrear el canal; vuelve a 0 con SUBSCRIBED
+
     function crearCanal() {
       // Silenciar el canal que se reemplaza ANTES de removerlo (el nuevo token deja viejo al anterior),
       // para que su CLOSED no programe otro reintento ni toque el canal nuevo.
@@ -502,6 +505,7 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
         })
         .subscribe((status) => {
           if (canalVigenteRef.current !== token) return;
+          if (status === "SUBSCRIBED") { intentosCanal = 0; return; }
           if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
             console.warn("[Realtime] Canal caído:", status);
             if (reconexionCanalTimerRef.current) return; // ya hay un reintento programado
@@ -509,7 +513,7 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
               reconexionCanalTimerRef.current = null;
               crearCanal();
               refetchPartida(); // Realtime no reproduce eventos perdidos durante la caída
-            }, 1500);
+            }, esperaReintento(intentosCanal++, 1000, 10000));
           }
         });
       channelRef.current = ch;

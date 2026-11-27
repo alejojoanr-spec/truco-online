@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
+import { esperaReintento } from "./reintentos";
 import { crearTorneo as crearTorneoApi, unirseATorneo as unirseATorneoApi, salirDeTorneo as salirDeTorneoApi } from "./torneosApi";
 import { soportaPush, estadoNotificaciones, activarNotificaciones, desactivarNotificaciones, esAppInstalada, esCelular } from "./notificaciones";
 
@@ -132,9 +133,10 @@ export default function Torneos({ user, perfil, onVolver, onIrAPartidaTorneo, on
             console.warn("[Realtime] Canal caído:", status);
             huboCaida = true;
             if (intentos >= MAX_REINTENTOS) return;
+            const espera = esperaReintento(intentos);
             intentos++;
             clearTimeout(timer);
-            timer = setTimeout(crearCanal, 1500);
+            timer = setTimeout(crearCanal, espera);
           }
         });
     }

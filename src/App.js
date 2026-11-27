@@ -4,6 +4,7 @@ import { AVATARES, avatarSrc } from "./avatares";
 import { btnStyle, GLOBO_TEXTOS } from "./GameComponents";
 import { MesaJuego } from "./MesaJuego";
 import { supabase } from "./supabase";
+import { esperaReintento } from "./reintentos";
 import { sumarPuntosRanking } from "./ranking";
 import Auth from "./Auth";
 import Multijugador from "./Multijugador";
@@ -1262,6 +1263,7 @@ export default function App() {
     const uid = user.id;
     let canal = null;
     let timer = null;
+    let intentos = 0; // no se reinicia al recrear el canal; vuelve a 0 con SUBSCRIBED
     let token = null; // identifica el canal vigente; el estado de un canal reemplazado se ignora
 
     function aplicarSaldo(saldo) {
@@ -1282,10 +1284,11 @@ export default function App() {
           (payload) => { if (token === miToken) aplicarSaldo(payload.new?.saldo); })
         .subscribe((status) => {
           if (token !== miToken) return;
+          if (status === "SUBSCRIBED") { intentos = 0; return; }
           if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
             console.warn("[Realtime] Canal de perfil caído:", status);
             clearTimeout(timer);
-            timer = setTimeout(() => { crearCanal(); leerSaldoFresco(); }, 1500);
+            timer = setTimeout(() => { crearCanal(); leerSaldoFresco(); }, esperaReintento(intentos++));
           }
         });
     }
