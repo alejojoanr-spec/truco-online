@@ -535,10 +535,15 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
     if (displayTimerIntervalRef.current) clearInterval(displayTimerIntervalRef.current);
     const acc = partida?.accion_pendiente;
     const cantoPendienteParaMi = acc && acc.cantado_por !== user.id;
-    const activo = (cantoPendienteParaMi || (!acc && partida?.turno_inicio)) && !resolviendoMano;
+    const activo = partida?.estado === 'jugando' && (cantoPendienteParaMi || (!acc && partida?.turno_inicio)) && !resolviendoMano;
     if (!activo) { setDisplayTimer(null); return; }
     function tick() {
       const p = partidaRef.current;
+      if (p?.estado !== 'jugando') {
+        clearInterval(displayTimerIntervalRef.current);
+        setDisplayTimer(null);
+        return;
+      }
       if (!p?.turno_inicio) { setDisplayTimer(null); return; }
       const elapsed = (Date.now() - new Date(p.turno_inicio).getTime()) / 1000;
       const remaining = Math.max(0, 15 - Math.floor(elapsed));
@@ -564,7 +569,7 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
     displayTimerIntervalRef.current = setInterval(tick, 1000);
     return () => clearInterval(displayTimerIntervalRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partida?.turno, partida?.turno_inicio, partida?.accion_pendiente?.cantado_por, resolviendoMano]);
+  }, [partida?.turno, partida?.turno_inicio, partida?.accion_pendiente?.cantado_por, partida?.estado, resolviendoMano]);
 
   // Anti-injusticia: al volver a primer plano, re-verificar contra Supabase antes de auto-actuar
   useEffect(() => {
@@ -572,12 +577,12 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
     function onVisible() {
       if (document.hidden) return;
       const p = partidaRef.current;
-      if (!p || p.turno !== user.id || p.accion_pendiente || !p.turno_inicio || resolviendoManoRef.current) return;
+      if (!p || p.estado !== 'jugando' || p.turno !== user.id || p.accion_pendiente || !p.turno_inicio || resolviendoManoRef.current) return;
       const elapsed = (Date.now() - new Date(p.turno_inicio).getTime()) / 1000;
       if (elapsed >= 15 && timerAutoFiredRef.current !== p.turno_inicio) {
-        supabase.from("partidas").select("turno, turno_inicio").eq("codigo", codigo).single()
+        supabase.from("partidas").select("estado, turno, turno_inicio").eq("codigo", codigo).single()
           .then(({ data }) => {
-            if (data && data.turno === user.id && data.turno_inicio === p.turno_inicio) {
+            if (data && data.estado === 'jugando' && data.turno === user.id && data.turno_inicio === p.turno_inicio) {
               if (timerAutoFiredRef.current !== data.turno_inicio) {
                 timerAutoFiredRef.current = data.turno_inicio;
                 irseAlMazoRef.current?.("timeout");
@@ -1274,14 +1279,16 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
   async function irseAlMazo(origen = "manual") {
     if (irseAlMazoEjecutandoRef.current) return;
     if (!partida || resolviendoMano || partida.accion_pendiente) return;
+    if (partidaRef.current?.estado !== 'jugando') return;
     irseAlMazoEjecutandoRef.current = true;
     setIrseAlMazoBloqueado(true);
     const { data: freshPartida, error: errFresh } = await supabase
       .from("partidas")
-      .select("puntos_mano, envido_jugado, mesa, truco_nivel, puntos1, puntos2, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
+      .select("estado, puntos_mano, envido_jugado, mesa, truco_nivel, puntos1, puntos2, jugadas_log") // DEBUG TEMPORAL — PERSISTENCIA: agregar jugadas_log al select
       .eq("codigo", codigo)
       .single();
     if (errFresh) { console.error("irseAlMazo fetch fresco:", errFresh); irseAlMazoEjecutandoRef.current = false; setIrseAlMazoBloqueado(false); return; }
+    if (freshPartida?.estado !== 'jugando') { irseAlMazoEjecutandoRef.current = false; setIrseAlMazoBloqueado(false); return; }
     const motivoFin = origen === "timeout" ? "timeout" : "abandono";
     const debiaJugadaId = origen === "timeout" ? partida.turno : null;
     const puntosObj = partida.puntos || 15;
