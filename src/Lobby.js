@@ -430,13 +430,34 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
   const reconexionLobbyTimerRef = useRef(null);
 
   useEffect(() => {
-    cargar();
-    cargarTorneos();
-    const disparar = () => {
+    // Freno de frecuencia: como máximo una llamada cada MS_FRENO; si llega otra antes, queda UNA sola pendiente
+    // para cuando se cumpla el plazo (las que lleguen mientras hay una pendiente se descartan).
+    const MS_FRENO = 2000;
+    function crearFreno(fn) {
+      let ultima = 0;
+      let timer = null;
+      return {
+        llamar() {
+          const falta = MS_FRENO - (Date.now() - ultima);
+          if (falta <= 0) {
+            ultima = Date.now();
+            fn();
+          } else if (!timer) {
+            timer = setTimeout(() => { timer = null; ultima = Date.now(); fn(); }, falta);
+          }
+        },
+        cancelar() { if (timer) { clearTimeout(timer); timer = null; } },
+      };
+    }
+    const frenoCargar = crearFreno(() => {
       if (cargandoRef.current) return; // ignorar si ya hay una carga en vuelo
       cargar();
-    };
-    const dispararTorneos = () => { cargarTorneos(); };
+    });
+    const frenoTorneos = crearFreno(() => { cargarTorneos(); });
+    frenoCargar.llamar();
+    frenoTorneos.llamar();
+    const disparar = frenoCargar.llamar;
+    const dispararTorneos = frenoTorneos.llamar;
     // "montado" se apaga en el cleanup ANTES de desmontar el canal activo, para que un
     // CLOSED disparado por ese removeChannel del unmount no programe un reintento después
     // de que el efecto ya se limpió (canal huérfano que nadie volvería a remover).
@@ -488,6 +509,8 @@ export default function Lobby({ user, perfil, onPerfilActualizado, onJugarIA, on
       montado = false;
       if (reconexionLobbyTimerRef.current) clearTimeout(reconexionLobbyTimerRef.current);
       clearInterval(pollingSalaPropia);
+      frenoCargar.cancelar();
+      frenoTorneos.cancelar();
       document.removeEventListener("visibilitychange", onVisible);
       if (canalRef.current) supabase.removeChannel(canalRef.current);
       canalRef.current = null;
