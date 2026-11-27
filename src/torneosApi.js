@@ -1,5 +1,10 @@
 import { supabase } from "./supabase";
 
+// Avisa a App que cambió mi inscripción en un torneo (para que vuelva a preguntar si estoy anotado)
+function avisarCambioTorneo() {
+  window.dispatchEvent(new Event("truco-torneo-cambio"));
+}
+
 async function tieneOtroTorneoActivo(userId) {
   const { data: inscripciones } = await supabase
     .from("torneo_jugadores")
@@ -59,6 +64,7 @@ export async function unirseATorneo({ user, torneo }) {
   const { error } = await supabase.rpc("inscribir_torneo", { p_torneo_id: torneo.id });
   if (error) return { error: error.message };
 
+  avisarCambioTorneo();
   return { data: true };
 }
 
@@ -66,5 +72,6 @@ export async function salirDeTorneo({ torneo }) {
   const { error } = await supabase.rpc("salir_torneo", { p_torneo_id: torneo.id });
   if (error) return { error: error.message };
 
+  avisarCambioTorneo();
   return { data: true };
 }

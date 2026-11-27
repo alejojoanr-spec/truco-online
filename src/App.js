@@ -1309,8 +1309,36 @@ export default function App() {
   // Libre = no está dentro de una partida (IA ni 1vs1) ni en pantallas que taparían la mesa
   libreRetomarRef.current = modoJuego !== "single" && modoJuego !== "multi" && !verTerminos && !verPrivacidad && !verAdmin;
 
+  // Bandera "estoy anotado en un torneo abierto o en curso" (null = todavía sin saber). Solo si es true se sondea mi_partida_torneo.
+  // Si la consulta falla se trata como true (comportamiento anterior) para no perder la función de retomar.
+  const [torneoActivo, setTorneoActivo] = useState(null);
   useEffect(() => {
     if (!puedeRetomar) return;
+    let vivo = true;
+    async function refrescarBandera() {
+      let activo = true;
+      try {
+        const { data, error } = await supabase.rpc("mi_torneo_activo");
+        if (!error && data === false) activo = false;
+      } catch (e) { /* se queda en true */ }
+      if (vivo) setTorneoActivo(activo);
+    }
+    function onVisible() { if (!document.hidden) refrescarBandera(); }
+    refrescarBandera();
+    const intervaloBandera = setInterval(() => { if (!document.hidden) refrescarBandera(); }, 5 * 60 * 1000); // red de seguridad
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("truco-torneo-cambio", refrescarBandera);
+    return () => {
+      vivo = false;
+      clearInterval(intervaloBandera);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("truco-torneo-cambio", refrescarBandera);
+      setTorneoActivo(null);
+    };
+  }, [puedeRetomar, user?.id]);
+
+  useEffect(() => {
+    if (!puedeRetomar || !torneoActivo) return;
     const uid = user.id;
     let activo = true;
 
@@ -1356,7 +1384,7 @@ export default function App() {
       setAvisoTorneo(null);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [puedeRetomar, user?.id]);
+  }, [puedeRetomar, user?.id, torneoActivo]);
 
   // Si el jugador cambia de pantalla o empieza otra partida durante los 2 s del cartel, se cancela
   const claveVista = `${modoJuego}|${verTorneos}|${verTerminos}|${verPrivacidad}|${verAdmin}`;
