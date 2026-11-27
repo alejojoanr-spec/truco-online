@@ -490,8 +490,9 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
         .on("broadcast", { event: "revancha_request" }, () => {
           setRevanchaEstado("rival_pide");
         })
-        .on("broadcast", { event: "revancha_reject" }, () => {
+        .on("broadcast", { event: "revancha_reject" }, ({ payload }) => {
           if (revanchaTimerRef.current) clearInterval(revanchaTimerRef.current);
+          setRevanchaMensaje(payload?.motivo || "");
           setRevanchaEstado("rechazada");
           setTimeout(() => setRevanchaEstado(null), 3000);
         })
@@ -1393,7 +1394,9 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
             setRevanchaEstado(prev => prev === "esperando_rival" ? "cancelada" : prev);
             setTimeout(() => setRevanchaEstado(null), 10000);
           } else {
-            setRevanchaEstado(prev => prev === "esperando_rival" ? null : prev);
+            setRevanchaMensaje("Tu rival no respondió a tiempo");
+            setRevanchaEstado(prev => prev === "esperando_rival" ? "cancelada" : prev);
+            setTimeout(() => setRevanchaEstado(prev => prev === "cancelada" ? null : prev), 3000);
           }
           return 30;
         }
@@ -1430,7 +1433,8 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
         setRevanchaMensaje(errAceptar?.message || "");
         setRevanchaEstado("cancelada");
         setTimeout(() => setRevanchaEstado(null), 4000);
-        if (channelRef.current) channelRef.current.send({ type: "broadcast", event: "revancha_reject" });
+        const motivo = /saldo/i.test(errAceptar?.message || "") ? errAceptar.message : "La revancha no se pudo crear";
+        if (channelRef.current) channelRef.current.send({ type: "broadcast", event: "revancha_reject", payload: { motivo } });
         return;
       }
 
@@ -1509,6 +1513,13 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
     return () => clearInterval(id);
   }, [revanchaEstado, codigo]);
 
+  // Cartel "tu rival quiere revancha": el servidor solo deja aceptar durante 30 s, así que se cierra solo a los 28
+  useEffect(() => {
+    if (revanchaEstado !== "rival_pide") return;
+    const id = setTimeout(() => setRevanchaEstado(prev => prev === "rival_pide" ? null : prev), 28000);
+    return () => clearTimeout(id);
+  }, [revanchaEstado, codigo]);
+
   function rechazarRevancha() {
     setRevanchaEstado(null);
     if (channelRef.current) channelRef.current.send({ type: "broadcast", event: "revancha_reject" });
@@ -1553,7 +1564,7 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
             {revanchaEstado === "procesando" && <div style={{ fontSize:13,color:"#4ade80",padding:"10px" }}>⏳ Preparando la revancha...</div>}
             {(revanchaEstado === "rechazada" || revanchaEstado === "cancelada") && (
               <div style={{ fontSize:13,color:"#f87171",background:"rgba(248,113,113,0.07)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:10,padding:"12px" }}>
-                {revanchaEstado === "rechazada" ? "El rival no aceptó la revancha" : (revanchaMensaje || "La revancha fue cancelada")}
+                {revanchaEstado === "rechazada" ? (revanchaMensaje || "El rival no aceptó la revancha") : (revanchaMensaje || "La revancha fue cancelada")}
               </div>
             )}
             <button onClick={volver} style={{ padding:"12px 28px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>Volver al inicio</button>
@@ -1582,7 +1593,7 @@ export default function Multijugador({ user, perfil, onVolver, onIrAPartidaTorne
             {revanchaEstado === "procesando" && <div style={{ fontSize:13,color:"#4ade80",padding:"10px" }}>⏳ Preparando la revancha...</div>}
             {(revanchaEstado === "rechazada" || revanchaEstado === "cancelada") && (
               <div style={{ fontSize:13,color:"#f87171",background:"rgba(248,113,113,0.07)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:10,padding:"12px" }}>
-                {revanchaEstado === "rechazada" ? "El rival no aceptó la revancha" : (revanchaMensaje || "La revancha fue cancelada")}
+                {revanchaEstado === "rechazada" ? (revanchaMensaje || "El rival no aceptó la revancha") : (revanchaMensaje || "La revancha fue cancelada")}
               </div>
             )}
             <button onClick={volver} style={{ width:"100%",padding:"13px",borderRadius:12,cursor:"pointer",background:"linear-gradient(135deg,#1a472a,#2d6a4f)",border:"1px solid #4ade80",color:"#4ade80",fontFamily:"'Lato',sans-serif",fontSize:15,fontWeight:700 }}>{resultadoPartida.torneo ? "Volver a Torneos" : "Volver al inicio"}</button>
